@@ -4,7 +4,7 @@
     "description": "The name of the application"
   },
   "appDescription": {
-    "message": "发现源码文件(*.map)",
-    "description": "发现源码文件(*.map)"
+    "message": "Chrome extention，用于发现源码文件(*.map)",
+    "description": "Chrome extention，用于发现源码文件(*.map)"
   }
 }
