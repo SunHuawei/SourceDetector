@@ -141,11 +141,11 @@ jsURLs.split('\n').filter(Boolean).forEach(jsURL => {
 3. 点击"加载已解压的扩展程序..."
 4. 选择`path/to/source-detector/app`目录
 
-![安装SourceDetector](images/source detector install.png)
+<img src='images/source detector install.png' />
 
 之后你在浏览任何网页时，该插件将自动检测是否有.map文件。其会自动按网站分组显示源码文件，并可点击下载全部或部分源码文件。
 
-![自动检测，并可下载](images/source detector-popup.png)
+<img src='images/source detector-popup.png' />
 
 # 有问题？有建议？
 
