@@ -155,6 +155,8 @@ jsURLs.split('\n').filter(Boolean).forEach(jsURL => {
 
 <img src='images/source detector-popup.png' />
 
+进入[webpack首页](https://webpack.js.org/)，查看右上角的小图标吧～
+
 # 有问题？有建议？
 
 欢迎说出你的想法。欢迎issue和PR。
