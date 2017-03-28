@@ -137,9 +137,10 @@ jsURLs.split('\n').filter(Boolean).forEach(jsURL => {
 # 如何使用
 
 1. `git clone https://github.com/SunHuawei/SourceDetector.git`
-2. 打开Chrome设置-扩展程序
-3. 点击"加载已解压的扩展程序..."
-4. 选择`path/to/source-detector/app`目录
+2. `bower install`
+3. 打开Chrome设置-扩展程序
+4. 点击"加载已解压的扩展程序..."
+5. 选择`path/to/source-detector/app`目录
 
 <img src='images/source detector install.png' />
 
