@@ -134,13 +134,20 @@ jsURLs.split('\n').filter(Boolean).forEach(jsURL => {
 
 不过依然不过瘾。这样只能是当我有了某个.map文件时可以解析出源文件。如果能有一个工具随时提醒我，我访问的某个网站有源码，并帮我下载下来就更完美了。于是便有了这个[Chrome extention](https://github.com/SunHuawei/SourceDetector)。
 
-# 如何使用
+# 安装
+
+## Chrome web store
+安装地址[https://chrome.google.com/webstore/detail/source-detecotor/aioimldmpakibclgckpdfpfkadbflfkn?hl=zh-CN&gl=CN](https://chrome.google.com/webstore/detail/source-detecotor/aioimldmpakibclgckpdfpfkadbflfkn?hl=zh-CN&gl=CN)
+
+## 源码安装
 
 1. `git clone https://github.com/SunHuawei/SourceDetector.git`
+2. `npm install`
 2. `bower install`
+1. `gulp`
 3. 打开Chrome设置-扩展程序
 4. 点击"加载已解压的扩展程序..."
-5. 选择`path/to/source-detector/app`目录
+5. 选择`path/to/source-detector/dist`目录
 
 <img src='images/source detector install.png' />
 
