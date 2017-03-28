@@ -1,8 +1,8 @@
-SourceDetector是一个自动发现.map文件，并帮你下载到本地的一个chrome extention。
+SourceDetector是一个自动发现.map文件，并帮你下载到本地的一个chrome extension。
 
 # 缘起
 
-此前我在回答[这个问题](https://www.zhihu.com/question/56236151/answer/149122097)的时候提到，“我偶然间获得了知乎的源码”。本文将解释我是如何“偶然获取”的。另外本repo即是由此而生的一个chrome extention。
+此前我在回答[这个问题](https://www.zhihu.com/question/56236151/answer/149122097)的时候提到，“我偶然间获得了知乎的源码”。本文将解释我是如何“偶然获取”的。另外本repo即是由此而生的一个chrome extension。
 
 # Source Map
 
@@ -132,7 +132,7 @@ jsURLs.split('\n').filter(Boolean).forEach(jsURL => {
 
 # 事后
 
-不过依然不过瘾。这样只能是当我有了某个.map文件时可以解析出源文件。如果能有一个工具随时提醒我，我访问的某个网站有源码，并帮我下载下来就更完美了。于是便有了这个[Chrome extention](https://github.com/SunHuawei/SourceDetector)。
+不过依然不过瘾。这样只能是当我有了某个.map文件时可以解析出源文件。如果能有一个工具随时提醒我，我访问的某个网站有源码，并帮我下载下来就更完美了。于是便有了这个[Chrome extension](https://github.com/SunHuawei/SourceDetector)。
 
 # 安装
 
