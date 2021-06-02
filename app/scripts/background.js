@@ -1,12 +1,11 @@
-'use strict';
+"use strict";
 
-chrome.browserAction.setBadgeText({ text: '' });
+chrome.browserAction.setBadgeText({ text: "" });
 
 var sourceFileList = {};
 chrome.webRequest.onBeforeRequest.addListener(function (details) {
-
-  chrome.tabs.query({ 'active': true, 'windowId': chrome.windows.WINDOW_ID_CURRENT }, function (tabs) {
-    if (details.type === 'script' && /\.js$/.test(details.url) && !/^chrome-extension:\/\//.test(details.url)) {
+  chrome.tabs.query({ active: true, windowId: chrome.windows.WINDOW_ID_CURRENT }, function (tabs) {
+    if (details.type === "script" && /\.js$/.test(details.url) && !/^chrome-extension:\/\//.test(details.url)) {
       tryGetMap(details.url, function (url, content) {
         if (isValidSourceMap(content)) {
           sourceFileList[url] = { content: content, page: tabs[0] };
@@ -16,17 +15,17 @@ chrome.webRequest.onBeforeRequest.addListener(function (details) {
     }
   });
 }, {
-  urls: ['<all_urls>']
+  urls: ["<all_urls>"]
 });
 
 var setBadgeText = function setBadgeText(num) {
-  var text = num > 0 ? '' + num : '';
+  var text = num > 0 ? "" + num : "";
   chrome.browserAction.setBadgeText({ text: text });
 };
 
 var tryGetMap = function tryGetMap(url, callback) {
   setTimeout(function () {
-    fetch(url + '.map').then(function (resp) {
+    fetch(url + ".map").then(function (resp) {
       if (resp.status === 200) {
         resp.text().then(function (text) {
           callback(resp.url, text);

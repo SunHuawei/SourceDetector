@@ -1,10 +1,10 @@
-'use strict';
+"use strict";
 
 var port = chrome.extension.connect({
-  name: 'Communication to BackGround'
+  name: "Communication to BackGround"
 });
 
-port.postMessage('getAllSourceFiles');
+port.postMessage("getAllSourceFiles");
 port.onMessage.addListener(function (list) {
   contentMap = list.reduce(function (map, item) {
     map[item.url] = item.content;
@@ -21,55 +21,55 @@ var renderGroups = function renderGroups(list) {
   });
 
   return createVDOM(
-    'div',
-    { className: 'panel' },
+    "div",
+    { className: "panel" },
     createVDOM(
-      'p',
-      { className: 'actions' },
+      "p",
+      { className: "actions" },
       createVDOM(
-        'a',
-        { href: '#', onclick: downloadAll },
-        'Download All'
+        "a",
+        { href: "#", onclick: downloadAll },
+        "Download All"
       )
     ),
     createVDOM(
-      'p',
-      { className: 'content' },
+      "p",
+      { className: "content" },
       Object.keys(group).map(function (url) {
         return createVDOM(
-          'div',
-          { className: 'group' },
+          "div",
+          { className: "group" },
           createVDOM(
-            'div',
-            { className: 'title' },
+            "div",
+            { className: "title" },
             createVDOM(
-              'a',
-              { href: group[url][0].page.url, target: '_blank' },
+              "a",
+              { href: group[url][0].page.url, target: "_blank" },
               group[url][0].page.title,
-              '(',
+              "(",
               group[url][0].page.url,
-              ')'
+              ")"
             )
           ),
           createVDOM(
-            'ul',
+            "ul",
             null,
             group[url].map(function (file) {
               return createVDOM(
-                'li',
+                "li",
                 null,
                 createVDOM(
-                  'div',
+                  "div",
                   null,
                   createVDOM(
-                    'a',
-                    { className: 'url', href: file.url, onclick: download },
+                    "a",
+                    { className: "url", href: file.url, onclick: download },
                     file.url
                   )
                 ),
                 createVDOM(
-                  'div',
-                  { className: 'fileSize' },
+                  "div",
+                  { className: "fileSize" },
                   fileSizeIEC(file.content.length)
                 )
               );
@@ -105,7 +105,7 @@ var downloadAll = function downloadAll(e) {
 };
 
 var parseFileName = function parseFileName(path) {
-  var filename = path.split('/');
+  var filename = path.split("/");
   return filename[filename.length - 1];
 };
 
@@ -116,33 +116,36 @@ var parseSourceMap = function parseSourceMap(sourceMapFileName, rawSourceMap) {
   if (consumer.hasContentsOfAllSources()) {
     var zip = new JSZip();
 
-    var img = zip.folder('images');
+    var img = zip.folder("images");
     consumer.sources.forEach(function (fileName) {
-      if (fileName.indexOf('webpack://') !== 0) {
+      if (fileName.indexOf("webpack://") !== 0) {
         return;
       }
 
       var fileContent = consumer.sourceContentFor(fileName);
-      fileName = fileName.replace(/^webpack:\/\//, '');
-      fileName = fileName.replace(/^\//, '');
-      fileName = fileName.replace(/^\~\//, 'node_modules/');
+      fileName = fileName.replace(/^webpack:\/\//, "");
+      fileName = fileName.replace(/^\//, "");
+      fileName = fileName.replace(/^\~\//, "node_modules/");
       addZipFile(zip, fileName, fileContent);
     });
 
-    return zip.generateAsync({ type: 'blob' }).then(function (content) {
+    return zip.generateAsync({ type: "blob" }).then(function (content) {
       var reader = new FileReader();
       reader.readAsDataURL(content);
       reader.onloadend = function () {
-        chrome.downloads.download({ filename: sourceMapFileName + '.zip', url: reader.result });
+        chrome.downloads.download({
+          filename: sourceMapFileName + ".zip",
+          url: reader.result
+        });
       };
     });
   } else {
-    console.log('TODO');
+    console.log("TODO");
   }
 };
 
 var addZipFile = function addZipFile(root, filename, content) {
-  var folders = filename.split('/');
+  var folders = filename.split("/");
   var folder = root;
   for (var i = 0; i < folders.length - 1; i++) {
     folder = folder.folder(folders[i]);
@@ -152,5 +155,5 @@ var addZipFile = function addZipFile(root, filename, content) {
 };
 
 function fileSizeIEC(a, b, c, d, e) {
-  return (b = Math, c = b.log, d = 1024, e = c(a) / c(d) | 0, a / b.pow(d, e)).toFixed(2) + ' ' + (e ? 'KMGTPEZY'[--e] + 'B' : 'Bytes');
+  return (b = Math, c = b.log, d = 1024, e = c(a) / c(d) | 0, a / b.pow(d, e)).toFixed(2) + " " + (e ? "KMGTPEZY"[--e] + "B" : "Bytes");
 }
