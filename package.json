@@ -1,0 +1,53 @@
+{
+  "name": "source-collector",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --import tsx scripts/build.ts --watch",
+    "build": "tsx scripts/build.ts",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.13.5",
+    "@emotion/styled": "^11.13.5",
+    "@mui/icons-material": "^6.1.10",
+    "@mui/material": "^6.1.10",
+    "dexie": "^4.0.1",
+    "jszip": "^3.10.1",
+    "monaco-editor": "^0.52.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^7.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@types/chrome": "^0.0.287",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.10.1",
+    "@types/react": "^18.3.14",
+    "@types/react-dom": "^18.3.2",
+    "@typescript-eslint/eslint-plugin": "^8.17.0",
+    "@typescript-eslint/parser": "^8.17.0",
+    "esbuild": "^0.20.1",
+    "eslint": "^9.16.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "fs-extra": "^11.2.0",
+    "globals": "^15.12.0",
+    "prettier": "^3.4.2",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.15.0"
+  },
+  "description": "Chrome extension for automatically collecting and viewing source maps",
+  "main": "eslint.config.js",
+  "keywords": [
+    "chrome-extension",
+    "sourcemap",
+    "developer-tools"
+  ],
+  "author": "",
+  "license": "MIT"
+}
