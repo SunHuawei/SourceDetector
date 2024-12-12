@@ -5,7 +5,7 @@ import { SourceMapFile } from '@/types';
  * Format file size to human readable string
  */
 export function formatFileSize(bytes: number): string {
-    const units = ['B', 'KB', 'MB', 'GB'];
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let size = bytes;
     let unitIndex = 0;
 
@@ -101,4 +101,24 @@ export function getFileNameFromUrl(url: string): string {
     } catch {
         return 'unknown';
     }
+}
+
+/**
+ * Create a hash for a given string
+ */
+export function createHash(algorithm: string) {
+    const encoder = new TextEncoder();
+
+    return {
+        update(data: string) {
+            const buffer = encoder.encode(data);
+            return {
+                async digest(encoding: string) {
+                    const hashBuffer = await crypto.subtle.digest(algorithm.toUpperCase(), buffer);
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                }
+            };
+        }
+    };
 } 

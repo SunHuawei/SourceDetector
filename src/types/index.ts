@@ -3,11 +3,15 @@ export interface SourceMapFile {
     url: string;
     sourceMapUrl: string;
     content: string;
+    originalContent: string;
     fileType: 'js' | 'css';
     size: number;
     timestamp: number;
     pageUrl: string;
     pageTitle: string;
+    version: number;
+    hash: string;
+    isLatest: boolean;
 }
 
 export interface PageData {
@@ -21,6 +25,7 @@ export interface StorageStats {
     usedSpace: number;
     totalSize: number;
     fileCount: number;
+    pagesCount: number;
     oldestTimestamp: number;
 }
 

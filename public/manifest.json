@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "Source Collector",
+    "name": "Source Map Collector",
     "version": "1.0.0",
-    "description": "Automatically collect and view source maps for web pages",
+    "description": "Automatically collect and view source maps from websites",
     "permissions": [
         "storage",
         "activeTab",
@@ -45,7 +45,13 @@
             "resources": [
                 "js/*.js",
                 "js/**/*.js",
-                "js/**/*.js.map"
+                "js/**/*.js.map",
+                "assets/*",
+                "assets/**/*",
+                "pages/*",
+                "pages/**/*",
+                "vs/*",
+                "vs/**/*"
             ],
             "matches": [
                 "<all_urls>"

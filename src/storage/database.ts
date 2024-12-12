@@ -1,6 +1,6 @@
 import Dexie, { Table } from 'dexie';
 import { SourceMapFile, AppSettings } from '@/types';
-import { DEFAULT_SETTINGS } from '@/background/constants';
+import { DEFAULT_SETTINGS, getDefaultSettingsWithSystemPreference } from '@/background/constants';
 
 export class SourceCollectorDB extends Dexie {
     sourceMapFiles!: Table<SourceMapFile>;
@@ -16,7 +16,12 @@ export class SourceCollectorDB extends Dexie {
 
     async getSettings(): Promise<AppSettings> {
         const settings = await this.settings.toArray();
-        return settings[0] || DEFAULT_SETTINGS;
+        if (settings.length === 0) {
+            const defaultSettings = getDefaultSettingsWithSystemPreference();
+            await this.settings.add(defaultSettings);
+            return defaultSettings;
+        }
+        return settings[0];
     }
 
     async updateSettings(settings: Partial<AppSettings>): Promise<void> {

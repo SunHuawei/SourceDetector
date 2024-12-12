@@ -1,6 +1,7 @@
 import { SourceCollectorDB } from '@/storage/database';
-import { SourceMapFile, AppSettings, PageData } from '@/types';
-import { MESSAGE_TYPES, FILE_TYPES } from './constants';
+import { SourceMapFile, AppSettings, PageData, StorageStats } from '@/types';
+import { MESSAGE_TYPES, SETTINGS } from './constants';
+import { createHash } from './utils';
 
 const db = new SourceCollectorDB();
 
@@ -42,6 +43,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                     return await handleGetFileData(message.data);
                 case MESSAGE_TYPES.GET_PAGE_DATA:
                     return await handleGetPageData(message.data);
+                case MESSAGE_TYPES.GET_ALL_SOURCE_MAPS:
+                    return await handleGetAllSourceMaps();
+                case MESSAGE_TYPES.CLEAR_DATA:
+                    return await handleClearData();
                 default:
                     return { success: false, reason: 'Unknown message type' };
             }
@@ -54,6 +59,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     handleMessage().then(sendResponse);
     return true;
 });
+
+async function handleClearData() {
+    try {
+        await db.sourceMapFiles.clear();
+        return { success: true };
+    } catch (error) {
+        console.error('Error clearing data:', error);
+        return { success: false, reason: String(error) };
+    }
+}
 
 async function handleGetPageData(data: { url: string }) {
     try {
@@ -91,11 +106,14 @@ async function handleSourceMapFound(data: { sourceUrl: string; mapUrl: string; f
 
         // 检查文件类型是否需要收集
         if (
-            (data.fileType === FILE_TYPES.JS && !settings.collectJs) ||
-            (data.fileType === FILE_TYPES.CSS && !settings.collectCss)
+            (data.fileType === SETTINGS.FILE_TYPES.JS && !settings.collectJs) ||
+            (data.fileType === SETTINGS.FILE_TYPES.CSS && !settings.collectCss)
         ) {
             return { success: false, reason: 'File type not collected' };
         }
+
+        // 检查是否已存在相同的文件
+        const existingFile = await db.sourceMapFiles.where('url').equals(data.sourceUrl).first();
 
         // 获取 sourcemap 内容
         const response = await fetch(data.mapUrl);
@@ -104,24 +122,69 @@ async function handleSourceMapFound(data: { sourceUrl: string; mapUrl: string; f
         }
 
         const content = await response.text();
-        const size = new Blob([content]).size;
+
+        // Fetch original file content
+        const originalResponse = await fetch(data.sourceUrl);
+        if (!originalResponse.ok) {
+            throw new Error(`Failed to fetch original file: ${originalResponse.status}`);
+        }
+        const originalContent = await originalResponse.text();
+
+        // Calculate content hash using both source map and original content
+        const hash = await createHash('SHA-256')
+            .update(content + originalContent)
+            .digest('hex');
+
+        // If latest version has the same hash, no need to save
+        if (existingFile && existingFile.hash === hash) {
+            console.log('File content unchanged:', data.sourceUrl);
+            return { success: false, reason: 'File content unchanged' };
+        }
+
+        const size = new Blob([content]).size + new Blob([originalContent]).size;
 
         // 检查文件大小
         if (size > settings.maxFileSize * 1024 * 1024) {
             return { success: false, reason: 'File too large' };
         }
 
-        // 创建 sourcemap 记录
+        // If we're here, we need to save a new version
+        // First, mark all existing versions as not latest
+        if (existingFile) {
+            const existingFiles = await db.sourceMapFiles
+                .where('url')
+                .equals(data.sourceUrl)
+                .toArray();
+
+            await Promise.all(
+                existingFiles.map(file =>
+                    db.sourceMapFiles.update(file.id, { isLatest: false })
+                )
+            );
+        }
+
+        const latestVersion = existingFile ?
+            (await db.sourceMapFiles
+                .where('url')
+                .equals(data.sourceUrl)
+                .toArray())
+                .reduce((max, file) => Math.max(max, file.version), 0) : 0;
+
+        // 创建新的 sourcemap 记录
         const sourceMapFile: SourceMapFile = {
             id: crypto.randomUUID(),
             url: data.sourceUrl,
             sourceMapUrl: data.mapUrl,
             content,
+            originalContent,
             fileType: data.fileType,
             size,
             timestamp: Date.now(),
             pageUrl: currentPage?.url || '',
-            pageTitle: currentPage?.title || ''
+            pageTitle: currentPage?.title || '',
+            version: latestVersion + 1,
+            hash,
+            isLatest: true
         };
 
         // 存储文件
@@ -172,7 +235,30 @@ async function handleDeleteSourceMap(data: { url: string }) {
 // 获取存储统计信息
 async function handleGetStorageStats() {
     try {
-        const stats = await db.getStorageStats();
+        const files = await db.sourceMapFiles.toArray();
+
+        // Count unique domains instead of pages
+        const uniqueDomains = new Set(
+            files.map(file => {
+                try {
+                    return new URL(file.pageUrl).hostname;
+                } catch (error) {
+                    console.error('Error parsing URL:', error);
+                    return '';
+                }
+            }).filter(Boolean) // Remove empty strings from failed URL parsing
+        );
+
+        const stats: StorageStats = {
+            usedSpace: files.reduce((total, file) => total + file.size, 0),
+            totalSize: files.reduce((total, file) => total + file.size, 0),
+            fileCount: files.length,
+            pagesCount: uniqueDomains.size,
+            oldestTimestamp: files.length > 0
+                ? Math.min(...files.map(f => f.timestamp))
+                : Date.now()
+        };
+
         return { success: true, data: stats };
     } catch (error) {
         console.error('Error getting storage stats:', error);
@@ -226,5 +312,15 @@ async function checkAndCleanStorage(settings: AppSettings) {
         }
     } catch (error) {
         console.error('Error cleaning storage:', error);
+    }
+}
+
+async function handleGetAllSourceMaps() {
+    try {
+        const files = await db.sourceMapFiles.toArray();
+        return { success: true, data: files };
+    } catch (error) {
+        console.error('Error getting all source maps:', error);
+        return { success: false, reason: String(error) };
     }
 } 
