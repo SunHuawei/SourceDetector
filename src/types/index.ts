@@ -40,6 +40,7 @@ export interface AppSettings {
     maxFileSize: number;
     maxTotalSize: number;
     maxFiles: number;
+    enableDesktopApp: boolean;
 }
 
 export interface Message<T = unknown> {

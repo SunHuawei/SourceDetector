@@ -4,6 +4,7 @@ import {
     checkCorsAccess,
     formatError
 } from './utils';
+import { tauriClient } from '../utils/tauri-client';
 
 // 存储已处理的文件 URL，避免重复处理
 const processedUrls = new Set<string>();
@@ -109,6 +110,8 @@ async function notifySourceMapFound(sourceUrl: string, mapUrl: string, fileType:
         const response = await chrome.runtime.sendMessage({
             type: MESSAGE_TYPES.FOUND_SOURCE_MAP,
             data: {
+                pageUrl: window.location.href,
+                pageTitle: document.title,
                 sourceUrl,
                 mapUrl,
                 fileType,

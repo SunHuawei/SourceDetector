@@ -1,7 +1,8 @@
 import { SourceCollectorDB } from '@/storage/database';
 import { SourceMapFile, AppSettings, PageData, StorageStats } from '@/types';
-import { MESSAGE_TYPES, SETTINGS } from './constants';
+import { MESSAGE_TYPES, SETTINGS, FILE_TYPES } from './constants';
 import { createHash } from './utils';
+import { tauriClient } from '@/utils/tauri-client';
 
 const db = new SourceCollectorDB();
 
@@ -98,58 +99,130 @@ async function handleGetFileData(data: { url: string }) {
     }
 }
 
-// 处理发现的 sourcemap
-async function handleSourceMapFound(data: { sourceUrl: string; mapUrl: string; fileType: 'js' | 'css' }) {
+// Shared function to fetch and process source map content
+async function fetchSourceMapContent(sourceUrl: string, mapUrl: string): Promise<{
+    content: string;
+    originalContent: string;
+    size: number;
+    hash: string;
+} | null> {
     try {
-        console.log(data);
-        const settings = await db.getSettings();
-
-        // 检查文件类型是否需要收集
-        if (
-            (data.fileType === SETTINGS.FILE_TYPES.JS && !settings.collectJs) ||
-            (data.fileType === SETTINGS.FILE_TYPES.CSS && !settings.collectCss)
-        ) {
-            return { success: false, reason: 'File type not collected' };
-        }
-
-        // 检查是否已存在相同的文件
-        const existingFile = await db.sourceMapFiles.where('url').equals(data.sourceUrl).first();
-
-        // 获取 sourcemap 内容
-        const response = await fetch(data.mapUrl);
+        // Get sourcemap content
+        const response = await fetch(mapUrl);
         if (!response.ok) {
             throw new Error(`Failed to fetch sourcemap: ${response.status}`);
         }
-
         const content = await response.text();
 
         // Fetch original file content
-        const originalResponse = await fetch(data.sourceUrl);
+        const originalResponse = await fetch(sourceUrl);
         if (!originalResponse.ok) {
             throw new Error(`Failed to fetch original file: ${originalResponse.status}`);
         }
         const originalContent = await originalResponse.text();
 
-        // Calculate content hash using both source map and original content
+        // Calculate size and hash
+        const size = new Blob([content]).size + new Blob([originalContent]).size;
         const hash = await createHash('SHA-256')
             .update(content + originalContent)
             .digest('hex');
 
-        // If latest version has the same hash, no need to save
-        if (existingFile && existingFile.hash === hash) {
+        return { content, originalContent, size, hash };
+    } catch (error) {
+        console.error('Error fetching source map content:', error);
+        return null;
+    }
+}
+
+// Main handler for source map discovery
+async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css' }) {
+    try {
+        const settings = await db.getSettings();
+        let desktopResult = false;
+        let indexedDBResult = false;
+
+        // Process with desktop app if enabled
+        if (settings.enableDesktopApp) {
+            desktopResult = await handleSourceMapFoundWithDesktop(data);
+        }
+
+        // Always process with IndexedDB
+        const indexedDBResponse = await handleSourceMapFoundWithIndexedDB(data);
+        indexedDBResult = indexedDBResponse.success;
+
+        return {
+            success: settings.enableDesktopApp ? (desktopResult || indexedDBResult) : indexedDBResult,
+            reason: settings.enableDesktopApp && !desktopResult && !indexedDBResult
+                ? 'Failed to store in both destinations'
+                : !indexedDBResult
+                    ? indexedDBResponse.reason || 'Failed to store in IndexedDB'
+                    : undefined
+        };
+    } catch (error) {
+        console.error('Error handling source map:', error);
+        return { success: false, reason: String(error) };
+    }
+}
+
+// Handle storing source map in desktop app
+async function handleSourceMapFoundWithDesktop(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css' }) {
+    try {
+        const content = await fetchSourceMapContent(data.sourceUrl, data.mapUrl);
+        if (!content) return false;
+
+        const sourceMap = {
+            url: data.sourceUrl,
+            source_map_url: data.mapUrl,
+            content: content.content,
+            original_content: content.originalContent,
+            file_type: data.fileType,
+            size: content.size,
+            hash: content.hash,
+        };
+
+        // Send to Tauri app
+        return await tauriClient.sendSourceMap(
+            data.pageUrl,
+            data.pageTitle,
+            sourceMap
+        );
+    } catch (error) {
+        console.error('Error processing source map for desktop:', error);
+        return false;
+    }
+}
+
+// Handle storing source map in IndexedDB
+async function handleSourceMapFoundWithIndexedDB(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css' }) {
+    try {
+        const settings = await db.getSettings();
+
+        // Check file type collection settings
+        if (
+            (data.fileType === FILE_TYPES.JS && !settings.collectJs) ||
+            (data.fileType === FILE_TYPES.CSS && !settings.collectCss)
+        ) {
+            return { success: false, reason: 'File type not collected' };
+        }
+
+        // Check existing file
+        const existingFile = await db.sourceMapFiles.where('url').equals(data.sourceUrl).first();
+
+        const content = await fetchSourceMapContent(data.sourceUrl, data.mapUrl);
+        if (!content) return { success: false, reason: 'Failed to fetch content' };
+
+        // Check file size
+        if (content.size > settings.maxFileSize * 1024 * 1024) {
+            return { success: false, reason: 'File too large' };
+        }
+
+        // Check if content unchanged
+        if (existingFile && existingFile.hash === content.hash) {
             console.log('File content unchanged:', data.sourceUrl);
             return { success: false, reason: 'File content unchanged' };
         }
 
-        const size = new Blob([content]).size + new Blob([originalContent]).size;
-
-        // 检查文件大小
-        if (size > settings.maxFileSize * 1024 * 1024) {
-            return { success: false, reason: 'File too large' };
-        }
-
-        // If we're here, we need to save a new version
-        // First, mark all existing versions as not latest
+        // Update existing versions
         if (existingFile) {
             const existingFiles = await db.sourceMapFiles
                 .where('url')
@@ -163,6 +236,7 @@ async function handleSourceMapFound(data: { sourceUrl: string; mapUrl: string; f
             );
         }
 
+        // Get latest version number
         const latestVersion = existingFile ?
             (await db.sourceMapFiles
                 .where('url')
@@ -170,34 +244,34 @@ async function handleSourceMapFound(data: { sourceUrl: string; mapUrl: string; f
                 .toArray())
                 .reduce((max, file) => Math.max(max, file.version), 0) : 0;
 
-        // 创建新的 sourcemap 记录
-        const sourceMapFile: SourceMapFile = {
+        // Create new record
+        const sourceMapFile = {
             id: crypto.randomUUID(),
             url: data.sourceUrl,
             sourceMapUrl: data.mapUrl,
-            content,
-            originalContent,
+            content: content.content,
+            originalContent: content.originalContent,
             fileType: data.fileType,
-            size,
+            size: content.size,
             timestamp: Date.now(),
-            pageUrl: currentPage?.url || '',
-            pageTitle: currentPage?.title || '',
+            pageUrl: data.pageUrl,
+            pageTitle: data.pageTitle,
             version: latestVersion + 1,
-            hash,
+            hash: content.hash,
             isLatest: true
         };
 
-        // 存储文件
+        // Store file
         await db.sourceMapFiles.add(sourceMapFile);
 
-        // 检查是否需要清理存储
+        // Check storage cleanup
         if (settings.autoCleanup) {
             await checkAndCleanStorage(settings);
         }
 
         return { success: true };
     } catch (error) {
-        console.error('Error handling sourcemap:', error);
+        console.error('Error handling source map for IndexedDB:', error);
         return { success: false, reason: String(error) };
     }
 }
