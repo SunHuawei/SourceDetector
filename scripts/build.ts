@@ -4,6 +4,7 @@ import { resolve } from 'path';
 
 const BUILD_DIR = 'dist';
 const SRC_DIR = 'src';
+const RULES_DIR = 'rules'; // Add this line
 
 function formatDuration(duration: number): string {
     if (duration < 1000) {
@@ -12,63 +13,20 @@ function formatDuration(duration: number): string {
     return `${(duration / 1000).toFixed(2)}s`;
 }
 
-async function copyMonacoEditorAssets() {
-    const monacoDir = resolve('node_modules/monaco-editor/min/vs');
-    const targetDir = resolve(BUILD_DIR, 'pages/viewer/vs');
-
-    // Copy all Monaco Editor files
-    await fs.copy(monacoDir, targetDir);
-
-    // Copy worker bootstrap file
-    await fs.copy(
-        resolve(SRC_DIR, 'utils/worker-bootstrap.js'),
-        resolve(BUILD_DIR, 'pages/viewer/vs/worker-bootstrap.js')
-    );
-
-    // Ensure worker files are copied with proper permissions
-    const workerFiles = [
-        'base/worker/workerMain.js',
-        'language/typescript/tsWorker.js',
-        'language/html/htmlWorker.js',
-        'language/css/cssWorker.js',
-        'language/json/jsonWorker.js',
-        'editor/editor.worker.js'
-    ];
-
-    // Modify worker files to include bootstrap
-    for (const workerFile of workerFiles) {
-        const sourcePath = resolve(monacoDir, workerFile);
-        const targetPath = resolve(targetDir, workerFile);
-
-        if (await fs.pathExists(sourcePath)) {
-            // Read the original worker content
-            const workerContent = await fs.readFile(sourcePath, 'utf-8');
-
-            // Create the modified worker content with bootstrap
-            const modifiedContent = `importScripts('../worker-bootstrap.js');\n${workerContent}`;
-
-            // Write the modified worker file
-            await fs.writeFile(targetPath, modifiedContent, 'utf-8');
-
-            // Ensure the file is executable
-            await fs.chmod(targetPath, 0o755);
-        }
-    }
-}
-
 async function build(isWatch = false) {
     const startTime = Date.now();
     console.log('🚀 Building extension...');
+
+    // Copy rules directory to dist
+    await fs.copy(RULES_DIR, resolve(BUILD_DIR, RULES_DIR));
+    console.log(`📦 Copied ${RULES_DIR} to ${BUILD_DIR}`);
 
     try {
         // Build context for watch mode
         const ctx = await esbuild.context({
             entryPoints: {
                 'background/index': resolve(SRC_DIR, 'background/index.ts'),
-                'content/index': resolve(SRC_DIR, 'content/index.ts'),
                 'popup/index': resolve(SRC_DIR, 'popup/index.tsx'),
-                'pages/viewer/index': resolve(SRC_DIR, 'pages/viewer/index.tsx'),
-                'pages/sourcemaps/index': resolve(SRC_DIR, 'pages/sourcemaps/index.tsx'),
                 'pages/settings/index': resolve(SRC_DIR, 'pages/settings/index.tsx'),
             },
             bundle: true,
@@ -114,17 +72,6 @@ async function build(isWatch = false) {
             resolve(SRC_DIR, 'pages/settings/index.html'),
             resolve(BUILD_DIR, 'pages/settings/index.html')
         );
-        await fs.copy(
-            resolve(SRC_DIR, 'pages/viewer/index.html'),
-            resolve(BUILD_DIR, 'pages/viewer/index.html')
-        );
-        await fs.copy(
-            resolve(SRC_DIR, 'pages/sourcemaps/index.html'),
-            resolve(BUILD_DIR, 'pages/sourcemaps/index.html')
-        );
-
-        // Copy Monaco Editor assets
-        await copyMonacoEditorAssets();
 
         // Read and modify manifest
         const manifestContent = JSON.parse(
@@ -147,11 +94,6 @@ async function build(isWatch = false) {
             ],
             "matches": ["<all_urls>"]
         }];
-
-        // Add CSP for Monaco Editor
-        manifestContent.content_security_policy = {
-            "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'"
-        };
 
         await fs.writeFile(
             resolve(BUILD_DIR, 'manifest.json'),

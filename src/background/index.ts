@@ -1,23 +1,184 @@
 import { SourceCollectorDB } from '@/storage/database';
-import { SourceMapFile, AppSettings, PageData, StorageStats } from '@/types';
-import { MESSAGE_TYPES, SETTINGS, FILE_TYPES } from './constants';
-import { createHash } from './utils';
+import { AppSettings, PageData, StorageStats } from '@/types';
 import { tauriClient } from '@/utils/tauri-client';
+import { FILE_TYPES, MESSAGE_TYPES } from './constants';
+import { createHash } from './utils';
 
 const db = new SourceCollectorDB();
 
-// 存储当前页面的信息
+// Simple in-memory cache with 5s expiration
+const CACHE_EXPIRATION = 5000; // 5 seconds
+const cache = new Map<string, { content: string; timestamp: number }>();
+
+// Function to get content from cache or fetch
+async function getFileContent(url: string): Promise<string> {
+    try {
+        const now = Date.now();
+        const cached = cache.get(url);
+        
+        // Return cached content if it exists and hasn't expired
+        if (cached && (now - cached.timestamp) < CACHE_EXPIRATION) {
+            return cached.content;
+        }
+
+        // Fetch fresh content
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch ${url}: ${response.status}`);
+        }
+        const content = await response.text();
+
+        // Update cache
+        cache.set(url, { content, timestamp: now });
+
+        // Clean old entries periodically
+        if (cache.size > 100) { // Prevent memory leaks
+            for (const [key, value] of cache.entries()) {
+                if (now - value.timestamp > CACHE_EXPIRATION) {
+                    cache.delete(key);
+                }
+            }
+        }
+
+        return content;
+    } catch (error) {
+        console.error('Error getting file content:', error);
+        throw error;
+    }
+}
+
+// Store current page information
 let currentPage: { url: string; title: string } | null = null;
 
-// 监听标签页更新
-chrome.tabs.onUpdated.addListener((_, changeInfo, tab) => {
-    if (changeInfo.status === 'complete' && tab.url && tab.title) {
-        currentPage = {
-            url: tab.url,
-            title: tab.title
-        };
+// Function to update badge
+async function updateBadge(url: string) {
+    try {
+        // Get source maps for current page using the new schema
+        const files = await db.getPageFiles(url);
+        const latestFiles = files.filter(file => file.isLatest);
+
+        // Update badge text and color
+        if (latestFiles.length > 0) {
+            await chrome.action.setBadgeText({ text: String(latestFiles.length) });
+            await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' }); // Green color
+        } else {
+            await chrome.action.setBadgeText({ text: '' });
+        }
+    } catch (error) {
+        console.error('Error updating badge:', error);
+        await chrome.action.setBadgeText({ text: '' });
+    }
+}
+
+// Function to update current page information
+async function updateCurrentPage() {
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab?.url && tab?.title) {
+            currentPage = {
+                url: tab.url,
+                title: tab.title
+            };
+            // Update badge when page changes
+            await updateBadge(tab.url);
+        }
+    } catch (error) {
+        console.error('Error updating current page:', error);
+    }
+}
+
+// Monitor tab updates
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete') {
+        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (activeTab?.id === tabId) {
+            await updateCurrentPage();
+        }
     }
 });
+
+// Monitor tab activation
+chrome.tabs.onActivated.addListener(async () => {
+    await updateCurrentPage();
+});
+
+// Monitor window focus
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
+    if (windowId !== chrome.windows.WINDOW_ID_NONE) {
+        await updateCurrentPage();
+    }
+});
+
+// Modify fetchSourceMapContent to use cache
+async function fetchSourceMapContent(sourceUrl: string, mapUrl: string): Promise<{
+    content: string;
+    originalContent: string;
+    size: number;
+    hash: string;
+} | null> {
+    try {
+        // Get both files using the caching function
+        const content = await getFileContent(mapUrl);
+        const originalContent = await getFileContent(sourceUrl);
+
+        // Calculate size and hash
+        const size = new Blob([content]).size + new Blob([originalContent]).size;
+        const hash = await createHash('SHA-256')
+            .update(content + originalContent)
+            .digest('hex');
+
+        return { content, originalContent, size, hash };
+    } catch (error) {
+        console.error('Error fetching source map content:', error);
+        return null;
+    }
+}
+
+// Listen for requests to detect JS/CSS files
+chrome.webRequest.onCompleted.addListener(
+    (details) => {
+                console.log('------details------', details.url);
+        if (!/\.(js|css)(\?.*)?$/.test(details.url)) {
+            return;
+        }
+
+        // Process asynchronously
+        (async () => {
+            try {
+                console.log('------details------', details.url);
+                // Get content from cache or fetch
+                const content = await getFileContent(details.url);
+                
+                // Check for source map in the last line
+                // lastLine is like this:
+                // /*# sourceMappingURL=https://example.com/path/to/map.css.map */
+                // or
+                // //# sourceMappingURL=https://example.com/path/to/map.css.map
+                const lastLine = content.split('\n').pop()?.trim() || '';
+                const sourceMapMatch = lastLine.match(/#\s*sourceMappingURL=([^\s\*]+)/);
+
+                if (sourceMapMatch) {
+                    const mapUrl = sourceMapMatch[1];
+                    const fullMapUrl = mapUrl.startsWith('http')
+                        ? mapUrl
+                        : new URL(mapUrl, details.url).toString();
+
+                    await handleSourceMapFound({
+                        pageTitle: currentPage?.title || '',
+                        pageUrl: currentPage?.url || '',
+                        sourceUrl: details.url,
+                        mapUrl: fullMapUrl,
+                        fileType: details.url.endsWith('.css') ? 'css' : 'js',
+                        originalContent: content
+                    });
+                }
+            } catch (error) {
+                console.error('Error processing response:', error);
+            }
+        })();
+    },
+    { urls: ['<all_urls>'] }
+);
 
 // 监听消息
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -73,14 +234,13 @@ async function handleClearData() {
 
 async function handleGetPageData(data: { url: string }) {
     try {
-        const files = await db.sourceMapFiles.where('pageUrl').equals(data.url).toArray();
+        const files = await db.getPageFiles(data.url);
         const pageData: PageData = {
             url: data.url,
             title: currentPage?.title || '',
             timestamp: Date.now(),
             files: files
         };
-        console.log('------page data------', pageData);
         return { success: true, data: pageData };
     } catch (error) {
         console.error('Error getting page data:', error);
@@ -99,43 +259,8 @@ async function handleGetFileData(data: { url: string }) {
     }
 }
 
-// Shared function to fetch and process source map content
-async function fetchSourceMapContent(sourceUrl: string, mapUrl: string): Promise<{
-    content: string;
-    originalContent: string;
-    size: number;
-    hash: string;
-} | null> {
-    try {
-        // Get sourcemap content
-        const response = await fetch(mapUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch sourcemap: ${response.status}`);
-        }
-        const content = await response.text();
-
-        // Fetch original file content
-        const originalResponse = await fetch(sourceUrl);
-        if (!originalResponse.ok) {
-            throw new Error(`Failed to fetch original file: ${originalResponse.status}`);
-        }
-        const originalContent = await originalResponse.text();
-
-        // Calculate size and hash
-        const size = new Blob([content]).size + new Blob([originalContent]).size;
-        const hash = await createHash('SHA-256')
-            .update(content + originalContent)
-            .digest('hex');
-
-        return { content, originalContent, size, hash };
-    } catch (error) {
-        console.error('Error fetching source map content:', error);
-        return null;
-    }
-}
-
 // Main handler for source map discovery
-async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css' }) {
+async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css'; originalContent: string }) {
     try {
         const settings = await db.getSettings();
         let desktopResult = false;
@@ -165,7 +290,7 @@ async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; 
 }
 
 // Handle storing source map in desktop app
-async function handleSourceMapFoundWithDesktop(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css' }) {
+async function handleSourceMapFoundWithDesktop(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css'; originalContent: string }) {
     try {
         const content = await fetchSourceMapContent(data.sourceUrl, data.mapUrl);
         if (!content) return false;
@@ -192,88 +317,149 @@ async function handleSourceMapFoundWithDesktop(data: { pageTitle: string; pageUr
     }
 }
 
-// Handle storing source map in IndexedDB
-async function handleSourceMapFoundWithIndexedDB(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css' }) {
-    try {
-        const settings = await db.getSettings();
+// Lock mechanism
+class DatabaseLock {
+    private locks: Map<string, Promise<void>> = new Map();
+    private readonly timeout: number;
 
-        // Check file type collection settings
-        if (
-            (data.fileType === FILE_TYPES.JS && !settings.collectJs) ||
-            (data.fileType === FILE_TYPES.CSS && !settings.collectCss)
-        ) {
-            return { success: false, reason: 'File type not collected' };
-        }
-
-        // Check existing file
-        const existingFile = await db.sourceMapFiles.where('url').equals(data.sourceUrl).first();
-
-        const content = await fetchSourceMapContent(data.sourceUrl, data.mapUrl);
-        if (!content) return { success: false, reason: 'Failed to fetch content' };
-
-        // Check file size
-        if (content.size > settings.maxFileSize * 1024 * 1024) {
-            return { success: false, reason: 'File too large' };
-        }
-
-        // Check if content unchanged
-        if (existingFile && existingFile.hash === content.hash) {
-            console.log('File content unchanged:', data.sourceUrl);
-            return { success: false, reason: 'File content unchanged' };
-        }
-
-        // Update existing versions
-        if (existingFile) {
-            const existingFiles = await db.sourceMapFiles
-                .where('url')
-                .equals(data.sourceUrl)
-                .toArray();
-
-            await Promise.all(
-                existingFiles.map(file =>
-                    db.sourceMapFiles.update(file.id, { isLatest: false })
-                )
-            );
-        }
-
-        // Get latest version number
-        const latestVersion = existingFile ?
-            (await db.sourceMapFiles
-                .where('url')
-                .equals(data.sourceUrl)
-                .toArray())
-                .reduce((max, file) => Math.max(max, file.version), 0) : 0;
-
-        // Create new record
-        const sourceMapFile = {
-            id: crypto.randomUUID(),
-            url: data.sourceUrl,
-            sourceMapUrl: data.mapUrl,
-            content: content.content,
-            originalContent: content.originalContent,
-            fileType: data.fileType,
-            size: content.size,
-            timestamp: Date.now(),
-            pageUrl: data.pageUrl,
-            pageTitle: data.pageTitle,
-            version: latestVersion + 1,
-            hash: content.hash,
-            isLatest: true
-        };
-
-        // Store file
-        await db.sourceMapFiles.add(sourceMapFile);
-
-        // Check storage cleanup
-        if (settings.autoCleanup) {
-            await checkAndCleanStorage(settings);
-        }
-
-        return { success: true };
-    } catch (error) {
-        console.error('Error handling source map for IndexedDB:', error);
-        return { success: false, reason: String(error) };
+    constructor(timeoutMs: number = 10000) { // Default 10s timeout
+        this.timeout = timeoutMs;
     }
+
+    private createTimeoutPromise(): Promise<void> {
+        return new Promise((_, reject) => {
+            setTimeout(() => {
+                reject(new Error('Lock acquisition timeout'));
+            }, this.timeout);
+        });
+    }
+
+    async acquireLock(key: string): Promise<() => void> {
+        let releaseLock: () => void;
+        const newLockPromise = new Promise<void>(resolve => {
+            releaseLock = () => {
+                this.locks.delete(key);
+                resolve();
+            };
+        });
+
+        const currentLock = this.locks.get(key);
+        if (currentLock) {
+            try {
+                await Promise.race([currentLock, this.createTimeoutPromise()]);
+            } catch (error) {
+                console.error('Error waiting for lock:', error);
+                this.locks.delete(key);
+                throw error;
+            }
+        }
+
+        this.locks.set(key, newLockPromise);
+        return releaseLock!;
+    }
+
+    async withLock<T>(key: string, operation: () => Promise<T>): Promise<T> {
+        let releaseLock: (() => void) | undefined;
+        try {
+            releaseLock = await this.acquireLock(key);
+            return await operation();
+        } finally {
+            releaseLock?.();
+        }
+    }
+}
+
+const dbLock = new DatabaseLock();
+
+// Handle storing source map in IndexedDB
+async function handleSourceMapFoundWithIndexedDB(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css'; originalContent: string }) {
+    return dbLock.withLock('sourceMap', async () => {
+        try {
+            const settings = await db.getSettings();
+
+            // Check file type collection settings
+            if (
+                (data.fileType === FILE_TYPES.JS && !settings.collectJs) ||
+                (data.fileType === FILE_TYPES.CSS && !settings.collectCss)
+            ) {
+                return { success: false, reason: 'File type not collected' };
+            }
+
+            const content = await fetchSourceMapContent(data.sourceUrl, data.mapUrl);
+            if (!content) return { success: false, reason: 'Failed to fetch content' };
+
+            // Check file size
+            if (content.size > settings.maxFileSize * 1024 * 1024) {
+                return { success: false, reason: 'File too large' };
+            }
+            
+            // Check existing file
+            const existingFile = await db.sourceMapFiles.where('url').equals(data.sourceUrl).first();
+
+            // Check if content unchanged
+            if (existingFile && existingFile.hash === content.hash) {
+                // Even if content is unchanged, we still need to associate it with the current page
+                await db.addSourceMapToPage(data.pageUrl, data.pageTitle, existingFile);
+                console.log('File content unchanged:', data.sourceUrl);
+                return { success: true, reason: 'File content unchanged but added to page' };
+            }
+
+            // Update existing versions if they exist
+            if (existingFile) {
+                const existingFiles = await db.sourceMapFiles
+                    .where('url')
+                    .equals(data.sourceUrl)
+                    .toArray();
+                await Promise.all(
+                    existingFiles.map(file =>
+                        db.sourceMapFiles.update(file.id, { isLatest: false })
+                    )
+                );
+            }
+
+            // Get latest version number
+            const latestVersion = existingFile ?
+                (await db.sourceMapFiles
+                    .where('url')
+                    .equals(data.sourceUrl)
+                    .toArray())
+                    .reduce((max, file) => Math.max(max, file.version), 0) : 0;
+
+            // Create new source map record
+            const sourceMapFile = {
+                id: content.hash,
+                url: data.sourceUrl,
+                sourceMapUrl: data.mapUrl,
+                content: content.content,
+                originalContent: content.originalContent,
+                fileType: data.fileType,
+                size: content.size,
+                timestamp: Date.now(),
+                version: latestVersion + 1,
+                hash: content.hash,
+                isLatest: true
+            };
+
+            // Store source map
+            await db.sourceMapFiles.add(sourceMapFile);
+
+            // Associate with page
+            await db.addSourceMapToPage(data.pageUrl, data.pageTitle, sourceMapFile);
+
+            // Check storage cleanup
+            if (settings.autoCleanup) {
+                await checkAndCleanStorage(settings);
+            }
+
+            // Update badge after storing new source map
+            await updateBadge(data.pageUrl);
+
+            return { success: true };
+        } catch (error) {
+            console.error('Error handling source map for IndexedDB:', error);
+            return { success: false, reason: String(error) };
+        }
+    });
 }
 
 // 获取 sourcemap
@@ -309,30 +495,7 @@ async function handleDeleteSourceMap(data: { url: string }) {
 // 获取存储统计信息
 async function handleGetStorageStats() {
     try {
-        const files = await db.sourceMapFiles.toArray();
-
-        // Count unique domains instead of pages
-        const uniqueDomains = new Set(
-            files.map(file => {
-                try {
-                    return new URL(file.pageUrl).hostname;
-                } catch (error) {
-                    console.error('Error parsing URL:', error);
-                    return '';
-                }
-            }).filter(Boolean) // Remove empty strings from failed URL parsing
-        );
-
-        const stats: StorageStats = {
-            usedSpace: files.reduce((total, file) => total + file.size, 0),
-            totalSize: files.reduce((total, file) => total + file.size, 0),
-            fileCount: files.length,
-            pagesCount: uniqueDomains.size,
-            oldestTimestamp: files.length > 0
-                ? Math.min(...files.map(f => f.timestamp))
-                : Date.now()
-        };
-
+        const stats = await db.getStorageStats();
         return { success: true, data: stats };
     } catch (error) {
         console.error('Error getting storage stats:', error);
@@ -362,10 +525,14 @@ async function handleUpdateSettings(settings: Partial<AppSettings>) {
     }
 }
 
-// 清空历史记录
+// 清空史记录
 async function handleClearHistory() {
     try {
-        await db.sourceMapFiles.clear();
+        await Promise.all([
+            db.sourceMapFiles.clear(),
+            db.pages.clear(),
+            db.pageSourceMaps.clear()
+        ]);
         return { success: true };
     } catch (error) {
         console.error('Error clearing history:', error);

@@ -17,14 +17,13 @@ export class SourceMapDownloader {
         const rawSourceMap = JSON.parse(file.content);
         const consumer = new SourceMapConsumer(rawSourceMap);
 
-        // Get original file name and path
+        // Get full path including domain for compiled file
         const originalUrl = new URL(file.url);
-        const originalPath = originalUrl.pathname;
-        const filePath = originalPath.startsWith('/') ? originalPath.slice(1) : originalPath;
-
-        // Add original file and source map maintaining the path structure
-        compiledFolder.file(filePath, file.originalContent);
-        compiledFolder.file(`${filePath}.map`, file.content);
+        const compiledPath = `${originalUrl.hostname}${originalUrl.pathname}`;
+        
+        // Add original file and source map maintaining the full path structure
+        compiledFolder.file(compiledPath, file.originalContent);
+        compiledFolder.file(`${compiledPath}.map`, file.content);
 
         // Process source files maintaining their relative paths
         const processedPaths = new Set<string>();
@@ -35,8 +34,8 @@ export class SourceMapDownloader {
             const sourceContent = consumer.sourceContentFor(sourcePath);
             if (sourceContent) {
                 // Clean up source path (remove leading slash and any '../' or './')
-                let cleanPath = sourcePath
-                    .replace(/^\//, '') // Remove leading slash
+                const cleanPath = sourcePath
+                    .replace(/^\//, '') // Remove leading /
                     .replace(/^(\.\.\/)*/, '') // Remove leading ../
                     .replace(/^(\.\/)*/, ''); // Remove leading ./
 
@@ -45,7 +44,7 @@ export class SourceMapDownloader {
             }
         });
 
-        return { filePath, originalUrl };
+        return { compiledPath, originalUrl };
     }
 
     private static async downloadZip(zip: JSZip, fileName: string) {
@@ -70,7 +69,7 @@ export class SourceMapDownloader {
                 throw new Error('Failed to create folders');
             }
 
-            const { filePath, originalUrl } = await this.createZipWithSourceMap(
+            const { compiledPath, originalUrl } = await this.createZipWithSourceMap(
                 file,
                 zip,
                 compiledFolder,
@@ -78,7 +77,7 @@ export class SourceMapDownloader {
             );
 
             const domainName = originalUrl.hostname.replace(/[^a-zA-Z0-9]/g, '_');
-            const fileName = `${domainName}_${filePath.split('/').pop()}_v${file.version}_with_sources.zip`;
+            const fileName = `${domainName}_${compiledPath.split('/').pop()}_v${file.version}_with_sources.zip`;
 
             await this.downloadZip(zip, fileName);
         } catch (error) {

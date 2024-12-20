@@ -6,30 +6,28 @@
     "permissions": [
         "storage",
         "activeTab",
-        "scripting",
-        "webRequest",
         "downloads",
         "unlimitedStorage",
-        "tabs"
+        "tabs",
+        "webRequest",
+        "declarativeNetRequest"
     ],
     "host_permissions": [
         "<all_urls>"
     ],
+    "declarative_net_request": {
+        "rule_resources": [
+            {
+                "id": "ruleset_1",
+                "enabled": true,
+                "path": "rules/rules.json"
+            }
+        ]
+    },
     "background": {
         "service_worker": "background/index.js",
         "type": "module"
     },
-    "content_scripts": [
-        {
-            "matches": [
-                "<all_urls>"
-            ],
-            "js": [
-                "content/index.js"
-            ],
-            "type": "module"
-        }
-    ],
     "action": {
         "default_popup": "popup/index.html",
         "default_icon": {

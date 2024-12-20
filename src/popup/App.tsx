@@ -27,7 +27,8 @@ import {
     Settings as SettingsIcon,
     CloudDownload as CloudDownloadIcon,
     ListAlt as ListAltIcon,
-    MoreVert as MoreVertIcon
+    MoreVert as MoreVertIcon,
+    History as HistoryIcon
 } from '@mui/icons-material';
 import { SourceMapFile, StorageStats, PageData } from '@/types';
 import { MESSAGE_TYPES } from '@/background/constants';
@@ -41,6 +42,12 @@ interface GroupedSourceMap {
     url: string;
     fileType: 'js' | 'css';
     versions: SourceMapFile[];
+}
+
+// Helper function to format bundle size
+function getBundleSize(files: SourceMapFile[]): string {
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    return formatFileSize(totalSize);
 }
 
 export default function App() {
@@ -95,34 +102,9 @@ export default function App() {
         }
     };
 
-    const handleViewFile = (file: SourceMapFile) => {
+    const introduceDesktop = () => {
         chrome.tabs.create({
-            url: chrome.runtime.getURL(
-                `pages/viewer/index.html?level=file&file=${encodeURIComponent(file.url)}`
-            )
-        });
-    };
-
-    const handleViewDomain = (domain: string) => {
-        chrome.tabs.create({
-            url: chrome.runtime.getURL(
-                `pages/viewer/index.html?level=domain&domain=${encodeURIComponent(domain)}`
-            )
-        });
-    };
-
-    const handleOpenPages = () => {
-        chrome.tabs.create({
-            url: chrome.runtime.getURL('pages/sourcemaps/index.html')
-        });
-    };
-
-
-    const handleViewPage = (pageUrl: string) => {
-        chrome.tabs.create({
-            url: chrome.runtime.getURL(
-                `pages/viewer/index.html?level=page&page=${encodeURIComponent(pageUrl)}`
-            )
+            url: chrome.runtime.getURL('pages/desktop/index.html')
         });
     };
 
@@ -214,115 +196,192 @@ export default function App() {
 
     if (loading) {
         return (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
-                <CircularProgress />
+            <Box p={2} width={600}>
+                <Box display="flex" justifyContent="center" alignItems="center" minHeight={600}>
+                    <CircularProgress />
+                </Box>
             </Box>
         );
     }
 
+    // Sort the grouped files by URL
+    const sortedGroupedFiles = [...groupedFiles].sort((a, b) => {
+        console.log('aaa----', a.url, a.url.split('/').pop())
+        // Get the filename from the URL
+        const aFilename = a.url.split('/').pop() || '';
+        const bFilename = b.url.split('/').pop() || '';
+        return aFilename.localeCompare(bFilename);
+    });
+
+    // Count unique sites
+    const uniqueSites = new Set(
+        sortedGroupedFiles.map(group => {
+            try {
+                return new URL(group.url).hostname;
+            } catch {
+                return group.url;
+            }
+        })
+    );
+
     return (
-        <Box p={2} width={600}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6">Source Maps</Typography>
-                <Box>
-                    {groupedFiles.length > 0 && (
-                        <Tooltip title="Download latest versions of all source maps">
-                            <span>
-                                <Button
-                                    startIcon={downloadingAll ? <CircularProgress size={16} /> : <CloudDownloadIcon />}
-                                    onClick={handleDownloadAll}
-                                    disabled={downloadingAll}
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{ mr: 1 }}
-                                >
-                                    Download Latest
-                                </Button>
-                            </span>
+        <Box
+            sx={{
+                width: 600,
+                height: '600px',
+                display: 'flex',
+                flexDirection: 'column'
+            }}
+        >
+            {/* Fixed Header */}
+            <Box
+                sx={{
+                    p: 2,
+                    borderBottom: 1,
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1
+                }}
+            >
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="h6">Source Maps</Typography>
+                    <Box>
+                        {sortedGroupedFiles.length > 0 && (
+                            <Tooltip title={`Download latest versions of all source maps (${getBundleSize(sortedGroupedFiles.map(g => g.versions[0]))})`}>
+                                <span>
+                                    <Button
+                                        startIcon={downloadingAll ? <CircularProgress size={16} /> : <CloudDownloadIcon />}
+                                        onClick={handleDownloadAll}
+                                        disabled={downloadingAll}
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{ mr: 1 }}
+                                    >
+                                        Download Latest ({getBundleSize(sortedGroupedFiles.map(g => g.versions[0]))})
+                                    </Button>
+                                </span>
+                            </Tooltip>
+                        )}
+                        <Tooltip title="View all pages">
+                            <IconButton onClick={introduceDesktop}>
+                                <ListAltIcon />
+                            </IconButton>
                         </Tooltip>
-                    )}
-                    <Tooltip title="View all pages">
-                        <IconButton onClick={handleOpenPages}>
-                            <ListAltIcon />
+                        <IconButton onClick={() => chrome.runtime.openOptionsPage()}>
+                            <SettingsIcon />
                         </IconButton>
-                    </Tooltip>
-                    <IconButton onClick={() => chrome.runtime.openOptionsPage()}>
-                        <SettingsIcon />
-                    </IconButton>
+                    </Box>
                 </Box>
             </Box>
 
-            {groupedFiles.length > 0 ? (
-                <TableContainer component={Paper}>
-                    <Table size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Source File</TableCell>
-                                <TableCell align="right">Latest Version</TableCell>
-                                <TableCell align="right">Previous Versions</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {groupedFiles.map((group) => (
-                                <TableRow key={group.url}>
-                                    <TableCell>
-                                        <Box display="flex" alignItems="center" gap={1}>
-                                            {group.fileType === 'js' ? (
-                                                <JavascriptIcon fontSize="small" />
-                                            ) : (
-                                                <CssIcon fontSize="small" />
-                                            )}
-                                            <Typography variant="body2" noWrap>
-                                                {group.url.split('/').pop()}
-                                            </Typography>
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        {group.versions[0] && (
-                                            <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
-                                                <Chip
-                                                    size="small"
-                                                    color="primary"
-                                                    label={`v${group.versions[0].version}`}
-                                                />
-                                                <Tooltip title="View source map">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => handleViewFile(group.versions[0])}
+            {/* Scrollable Content */}
+            <Box sx={{ flexGrow: 1, overflow: 'hidden', px: 2 }}>
+                {sortedGroupedFiles.length > 0 ? (
+                    <TableContainer
+                        component={Paper}
+                        sx={{
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }}
+                    >
+                        <Table
+                            size="small"
+                            sx={{
+                                tableLayout: 'fixed',
+                                '& th, & td': {  // Apply to both header and body cells
+                                    padding: '8px 16px',  // Consistent padding
+                                    boxSizing: 'border-box',
+                                    '&:first-of-type': {
+                                        width: '60%',
+                                    },
+                                    '&:not(:first-of-type)': {
+                                        width: '20%',
+                                    }
+                                }
+                            }}
+                        >
+                            <TableHead
+                                sx={{
+                                    bgcolor: 'background.paper',
+                                    position: 'sticky',
+                                    top: 0,
+                                    zIndex: 1,
+                                }}
+                            >
+                                <TableRow>
+                                    <TableCell>Source File</TableCell>
+                                    <TableCell align="right">Latest Version</TableCell>
+                                    <TableCell align="right">Previous Versions</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {sortedGroupedFiles.map((group) => (
+                                    <TableRow key={group.url}>
+                                        <TableCell sx={{
+                                            overflow: 'hidden',
+                                            whiteSpace: 'nowrap',
+                                            textOverflow: 'ellipsis'
+                                        }}>
+                                            <Tooltip title={group.url} arrow>
+                                                <Box display="flex" alignItems="center" gap={1} sx={{
+                                                    minWidth: 0,
+                                                }}>
+                                                    {group.fileType === 'js' ? (
+                                                        <JavascriptIcon fontSize="small" sx={{ flexShrink: 0 }} />
+                                                    ) : (
+                                                        <CssIcon fontSize="small" sx={{ flexShrink: 0 }} />
+                                                    )}
+                                                    <Typography
+                                                        variant="body2"
+                                                        component="div"
+                                                        sx={{
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap',
+                                                            flexGrow: 1,
+                                                        }}
                                                     >
-                                                        <OpenInNewIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Download latest version">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => handleDownload(group.versions[0])}
-                                                        disabled={downloading[group.versions[0].id]}
-                                                    >
-                                                        {downloading[group.versions[0].id] ? (
-                                                            <CircularProgress size={16} />
-                                                        ) : (
-                                                            <DownloadIcon fontSize="small" />
-                                                        )}
-                                                    </IconButton>
+                                                        {group.url.split('/').pop()}
+                                                    </Typography>
+                                                </Box>
+                                            </Tooltip>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <Box display="flex" justifyContent="flex-end" gap={1}>
+                                                <Tooltip title={`Download latest version (${formatFileSize(group.versions[0].size)})`} arrow>
+                                                    <span>
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => handleDownload(group.versions[0])}
+                                                            disabled={downloading[group.versions[0].id]}
+                                                        >
+                                                            {downloading[group.versions[0].id] ? (
+                                                                <CircularProgress size={20} />
+                                                            ) : (
+                                                                <CloudDownloadIcon />
+                                                            )}
+                                                        </IconButton>
+                                                    </span>
                                                 </Tooltip>
                                             </Box>
-                                        )}
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        {group.versions.length > 1 && (
-                                            <>
-                                                <Tooltip title="Show previous versions">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={(e) => handleVersionMenuOpen(e, group.url)}
-                                                    >
-                                                        <MoreVertIcon fontSize="small" />
-                                                        <Typography variant="caption" sx={{ ml: 0.5 }}>
-                                                            {group.versions.length - 1}
-                                                        </Typography>
-                                                    </IconButton>
-                                                </Tooltip>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <Box display="flex" justifyContent="flex-end" gap={1}>
+                                                {group.versions.length > 1 && (
+                                                    <Tooltip title="View history versions" arrow>
+                                                        <span>
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={(e) => handleVersionMenuOpen(e, group.url)}
+                                                            >
+                                                                <HistoryIcon />
+                                                            </IconButton>
+                                                        </span>
+                                                    </Tooltip>
+                                                )}
                                                 <Menu
                                                     anchorEl={anchorEl[group.url]}
                                                     open={Boolean(anchorEl[group.url])}
@@ -331,7 +390,7 @@ export default function App() {
                                                     {group.versions.slice(1).map((version) => (
                                                         <MenuItem
                                                             key={version.id}
-                                                            onClick={() => handleViewFile(version)}
+                                                            onClick={introduceDesktop}
                                                             sx={{ minWidth: 200 }}
                                                         >
                                                             <ListItemText
@@ -347,7 +406,7 @@ export default function App() {
                                                                     </Box>
                                                                 }
                                                             />
-                                                            <Tooltip title={`Download v${version.version}`}>
+                                                            <Tooltip title={`Download v${version.version} (${formatFileSize(version.size)})`}>
                                                                 <IconButton
                                                                     size="small"
                                                                     onClick={(e) => {
@@ -366,32 +425,43 @@ export default function App() {
                                                         </MenuItem>
                                                     ))}
                                                 </Menu>
-                                            </>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            ) : (
-                <Box textAlign="center" py={4}>
-                    <Typography variant="body1" color="textSecondary" gutterBottom>
-                        No source maps found on this page.
-                    </Typography>
-                </Box>
-            )}
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                ) : (
+                    <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+                        <Typography variant="body1" color="text.secondary">
+                            No source maps found on this page
+                        </Typography>
+                    </Box>
+                )}
+            </Box>
 
-            {stats && (
-                <Box mt={2} pt={2} borderTop={1} borderColor="divider">
-                    <Typography variant="body2" color="textSecondary">
-                        Storage: {formatFileSize(stats.usedSpace)} used
+            {/* Fixed Footer */}
+            <Box
+                sx={{
+                    p: 2,
+                    borderTop: 1,
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper',
+                    position: 'sticky',
+                    bottom: 0
+                }}
+            >
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                        {stats && `Storage Used: ${formatFileSize(stats.totalSize)}`}
                     </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                        Source maps from {stats.pagesCount} {stats.pagesCount === 1 ? 'domain' : 'domains'}
+                    <Typography variant="body2" color="text.secondary">
+                        {pageData?.files.length || 0} Source Maps Found on {uniqueSites.size} {uniqueSites.size === 1 ? 'Site' : 'Sites'}
                     </Typography>
                 </Box>
-            )}
+            </Box>
+
             <Toast
                 open={toast.open}
                 message={toast.message}
@@ -400,4 +470,4 @@ export default function App() {
             />
         </Box>
     );
-} 
+}

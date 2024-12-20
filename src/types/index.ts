@@ -1,3 +1,17 @@
+export interface Page {
+    id: string;
+    url: string;
+    title: string;
+    timestamp: number;
+}
+
+export interface PageSourceMap {
+    id: string;
+    pageId: string;
+    sourceMapId: string;
+    timestamp: number;
+}
+
 export interface SourceMapFile {
     id: string;
     url: string;
@@ -7,11 +21,18 @@ export interface SourceMapFile {
     fileType: 'js' | 'css';
     size: number;
     timestamp: number;
-    pageUrl: string;
-    pageTitle: string;
     version: number;
     hash: string;
     isLatest: boolean;
+}
+
+export interface SourceMapFoundData {
+    pageTitle: string;
+    pageUrl: string;
+    sourceUrl: string;
+    mapUrl: string;
+    fileType: 'js' | 'css';
+    originalContent: string;
 }
 
 export interface PageData {
@@ -30,6 +51,7 @@ export interface StorageStats {
 }
 
 export interface AppSettings {
+    id?: number;
     darkMode: boolean;
     autoCollect: boolean;
     autoCleanup: boolean;

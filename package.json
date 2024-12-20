@@ -15,14 +15,14 @@
     "@mui/lab": "^6.0.0-beta.18",
     "@mui/material": "^6.1.10",
     "@mui/x-tree-view": "^7.23.0",
+    "@types/webextension-polyfill": "^0.12.1",
     "dexie": "^4.0.1",
     "jszip": "^3.10.1",
-    "monaco-editor": "^0.52.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.0.2",
     "source-map-js": "^1.2.1",
-    "@monaco-editor/react": "^4.6.0"
+    "webextension-polyfill": "^0.10.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
