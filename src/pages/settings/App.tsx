@@ -1,34 +1,31 @@
-import React, { useEffect, useState } from 'react';
-import {
-    Box,
-    AppBar,
-    Toolbar,
-    IconButton,
-    Typography,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemSecondaryAction,
-    Switch,
-    Slider,
-    Button,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Alert,
-    CircularProgress,
-} from '@mui/material';
-import {
-    ArrowBack as ArrowBackIcon,
-    Delete as DeleteIcon,
-    Download as DownloadIcon,
-    Upload as UploadIcon,
-} from '@mui/icons-material';
-import { AppSettings, StorageStats } from '@/types';
 import { DEFAULT_SETTINGS, MESSAGE_TYPES, STORAGE_LIMITS } from '@/background/constants';
 import { formatFileSize } from '@/background/utils';
+import { Toast } from '@/components/Toast';
+import { AppSettings, StorageStats } from '@/types';
+import {
+    Delete as DeleteIcon
+} from '@mui/icons-material';
+import {
+    Alert,
+    AppBar,
+    Box,
+    Button,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    List,
+    ListItem,
+    ListItemSecondaryAction,
+    ListItemText,
+    Slider,
+    Switch,
+    Toolbar,
+    Typography
+} from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import React, { useEffect, useState } from 'react';
 
 export default function App() {
     const [loading, setLoading] = useState(true);
@@ -37,7 +34,7 @@ export default function App() {
     const [clearDialogOpen, setClearDialogOpen] = useState(false);
     const [exportDialogOpen, setExportDialogOpen] = useState(false);
     const [importDialogOpen, setImportDialogOpen] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info' | 'warning'; text: string } | null>(null);
 
     useEffect(() => {
         loadData();
@@ -153,7 +150,8 @@ export default function App() {
                     fileCount: 0,
                     totalSize: 0,
                     pagesCount: 0,
-                    oldestTimestamp: Date.now()
+                    oldestTimestamp: Date.now(),
+                    uniqueSiteCount: 0
                 });
                 setSettings(DEFAULT_SETTINGS);
                 setMessage({ type: 'success', text: 'Data cleared successfully' });
@@ -201,34 +199,23 @@ export default function App() {
             >
                 <AppBar position="static">
                     <Toolbar>
-                        <IconButton
-                            edge="start"
-                            color="inherit"
-                            onClick={() => window.close()}
-                            sx={{ mr: 2 }}
-                        >
-                            <ArrowBackIcon />
-                        </IconButton>
                         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                            Settings
+                            Source Detector - Settings
                         </Typography>
                     </Toolbar>
                 </AppBar>
 
                 <Box p={2} sx={{ overflowY: 'auto' }}>
-                    {message && (
-                        <Alert
-                            severity={message.type}
-                            onClose={() => setMessage(null)}
-                            sx={{ mb: 2 }}
-                        >
-                            {message.text}
-                        </Alert>
-                    )}
+                    <Toast
+                        open={!!message}
+                        message={message?.text || ''}
+                        severity={message?.type || 'info'}
+                        onClose={() => setMessage(null)}
+                    />
 
                     {stats && (
                         <Alert severity="info" sx={{ mb: 2 }}>
-                            Storage used: {formatFileSize(stats.usedSpace)} • Files: {stats.fileCount}
+                            Storage used: {formatFileSize(stats.usedSpace)} • {stats.fileCount} Source Maps Found on {stats.uniqueSiteCount} {stats.uniqueSiteCount === 1 ? 'Site' : 'Sites'}
                         </Alert>
                     )}
 
@@ -341,23 +328,6 @@ export default function App() {
                     </List>
 
                     <Box mt={4} display="flex" justifyContent="space-between">
-                        <Box>
-                            <Button
-                                variant="outlined"
-                                startIcon={<DownloadIcon />}
-                                onClick={() => setExportDialogOpen(true)}
-                                sx={{ mr: 1 }}
-                            >
-                                Export
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                startIcon={<UploadIcon />}
-                                onClick={() => setImportDialogOpen(true)}
-                            >
-                                Import
-                            </Button>
-                        </Box>
                         <Button
                             variant="outlined"
                             color="error"

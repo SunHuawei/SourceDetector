@@ -2,7 +2,7 @@ import { getDefaultSettingsWithSystemPreference } from '@/background/constants';
 import { AppSettings, Page, PageSourceMap, SourceMapFile } from '@/types';
 import Dexie from 'dexie';
 
-const DB_VERSION = 3;
+const DB_VERSION = 1;
 const DB_NAME = 'SourceCollectorDB';
 
 export class SourceCollectorDB extends Dexie {
@@ -15,7 +15,7 @@ export class SourceCollectorDB extends Dexie {
         super(DB_NAME);
 
         this.version(DB_VERSION).stores({
-            sourceMapFiles: 'id, url, timestamp, fileType, isLatest, hash',
+            sourceMapFiles: 'id, url, timestamp, fileType, isLatest, hash, size',
             pages: 'id, url, timestamp',
             pageSourceMaps: 'id, pageId, sourceMapId, timestamp',
             settings: '++id'
@@ -43,9 +43,9 @@ export class SourceCollectorDB extends Dexie {
     async updateSettings(settings: Partial<AppSettings>): Promise<void> {
         try {
             const currentSettings = await this.getSettings();
-            const updatedSettings = { 
-                ...currentSettings, 
-                ...settings 
+            const updatedSettings = {
+                ...currentSettings,
+                ...settings
             };
             await this.settings.where('id').equals(currentSettings.id!).modify(updatedSettings);
         } catch (error) {
@@ -55,19 +55,47 @@ export class SourceCollectorDB extends Dexie {
     }
 
     async getStorageStats() {
-        const files = await this.sourceMapFiles.toArray();
-        const pages = await this.pages.toArray();
-        const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-        const oldestFile = files.reduce((oldest, file) =>
-            file.timestamp < oldest.timestamp ? file : oldest
-            , files[0]);
+        // Run all queries in parallel for better performance
+        let totalSize = 0;
+        let oldestTimestamp = Date.now();
+
+        // Count unique sites using index, processing one record at a time
+        const uniqueSites = new Set();
+
+        const [fileCount, pagesCount] = await Promise.all([
+
+            // Get file count without loading data
+            this.sourceMapFiles.count(),
+
+            // Get page count without loading data
+            this.pages.count(),
+
+            // Get total size and oldest file in a single table scan
+            this.sourceMapFiles.each((file: SourceMapFile) => {
+                totalSize += file.size;
+                if (file.timestamp < oldestTimestamp) {
+                    oldestTimestamp = file.timestamp;
+                }
+            }),
+
+            this.pages
+                .orderBy('url')
+                .eachPrimaryKey(url => {
+                    try {
+                        uniqueSites.add(new URL(url).hostname);
+                    } catch {
+                        uniqueSites.add(url);
+                    }
+                })
+        ]);
 
         return {
             usedSpace: totalSize,
             totalSize: totalSize,
-            fileCount: files.length,
-            pagesCount: pages.length,
-            oldestTimestamp: oldestFile?.timestamp || Date.now()
+            fileCount,
+            uniqueSiteCount: uniqueSites.size,
+            pagesCount,
+            oldestTimestamp: oldestTimestamp
         };
     }
 

@@ -36,15 +36,15 @@ export function Toast({
     message,
     severity = 'info',
     onClose,
-    autoHideDuration = 3000
+    autoHideDuration = 2000
 }: ToastProps) {
     return (
         <Snackbar
             open={open}
             autoHideDuration={autoHideDuration}
             onClose={onClose}
-            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-            sx={{ maxWidth: '300px' }}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            sx={{ maxWidth: '300px', top: '100px' }}
         >
             <Box
                 sx={{

@@ -1,42 +1,37 @@
-import React, { useEffect, useState } from 'react';
+import { MESSAGE_TYPES } from '@/background/constants';
+import { formatFileSize } from '@/background/utils';
+import { Toast } from '@/components/Toast';
+import { PageData, SourceMapFile, StorageStats } from '@/types';
+import { SourceMapDownloader } from '@/utils/sourceMapDownloader';
+import {
+    CloudDownload as CloudDownloadIcon,
+    Css as CssIcon,
+    Download as DownloadIcon,
+    History as HistoryIcon,
+    Javascript as JavascriptIcon,
+    ListAlt as ListAltIcon,
+    Settings as SettingsIcon
+} from '@mui/icons-material';
 import {
     Box,
+    Button,
+    Chip,
+    CircularProgress,
+    IconButton,
+    ListItemText,
+    Menu,
+    MenuItem,
+    Paper,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
     TableRow,
-    IconButton,
-    Typography,
-    Paper,
-    CircularProgress,
     Tooltip,
-    Chip,
-    Menu,
-    MenuItem,
-    ListItemIcon,
-    ListItemText,
-    Button
+    Typography
 } from '@mui/material';
-import {
-    Javascript as JavascriptIcon,
-    Css as CssIcon,
-    Download as DownloadIcon,
-    OpenInNew as OpenInNewIcon,
-    Settings as SettingsIcon,
-    CloudDownload as CloudDownloadIcon,
-    ListAlt as ListAltIcon,
-    MoreVert as MoreVertIcon,
-    History as HistoryIcon
-} from '@mui/icons-material';
-import { SourceMapFile, StorageStats, PageData } from '@/types';
-import { MESSAGE_TYPES } from '@/background/constants';
-import { formatFileSize } from '@/background/utils';
-import JSZip from 'jszip';
-import { SourceMapConsumer } from 'source-map-js';
-import { SourceMapDownloader } from '@/utils/sourceMapDownloader';
-import { Toast } from '@/components/Toast';
+import React, { useEffect, useState } from 'react';
 
 interface GroupedSourceMap {
     url: string;
@@ -54,8 +49,6 @@ export default function App() {
     const [loading, setLoading] = useState(true);
     const [pageData, setPageData] = useState<PageData | null>(null);
     const [stats, setStats] = useState<StorageStats | null>(null);
-    const [anchorEl, setAnchorEl] = useState<{ [key: string]: HTMLElement | null }>({});
-    const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
     const [downloading, setDownloading] = useState<{ [key: string]: boolean }>({});
     const [downloadingAll, setDownloadingAll] = useState(false);
     const [toast, setToast] = useState<{
@@ -74,17 +67,14 @@ export default function App() {
 
     const loadData = async () => {
         try {
-            console.log('Loading data...');
             // 获取当前页面数据
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            console.log('Current tab:', tab);
             if (!tab.url) return;
 
             const response = await chrome.runtime.sendMessage({
                 type: MESSAGE_TYPES.GET_PAGE_DATA,
                 data: { url: tab.url }
             });
-            console.log('Page data response:', response);
 
             setPageData(response.data);
 
@@ -92,7 +82,6 @@ export default function App() {
             const statsResponse = await chrome.runtime.sendMessage({
                 type: MESSAGE_TYPES.GET_STORAGE_STATS
             });
-            console.log('Stats response:', statsResponse);
 
             setStats(statsResponse.data);
         } catch (error) {
@@ -102,11 +91,15 @@ export default function App() {
         }
     };
 
-    const introduceDesktop = () => {
+    const openInDesktop = (type: 'handleVersionMenuOpen' | 'handleViewAllPages', options?: any) => {
         chrome.tabs.create({
-            url: chrome.runtime.getURL('pages/desktop/index.html')
+            url: chrome.runtime.getURL('pages/desktop/index.html?type=' + type + '&options=' + (options ? JSON.stringify(options) : ''))
         });
     };
+
+    const handleViewAllPages = () => {
+        openInDesktop('handleViewAllPages');
+    }
 
     const handleDownload = async (file: SourceMapFile) => {
         try {
@@ -124,14 +117,8 @@ export default function App() {
         }
     };
 
-    const handleVersionMenuOpen = (event: React.MouseEvent<HTMLElement>, groupUrl: string) => {
-        setAnchorEl(prev => ({ ...prev, [groupUrl]: event.currentTarget }));
-        setSelectedGroup(groupUrl);
-    };
-
-    const handleVersionMenuClose = (groupUrl: string) => {
-        setAnchorEl(prev => ({ ...prev, [groupUrl]: null }));
-        setSelectedGroup(null);
+    const handleVersionMenuOpen = (groupUrl: string) => {
+        openInDesktop('handleVersionMenuOpen', { groupUrl });
     };
 
     // Group files by URL and sort versions
@@ -151,16 +138,6 @@ export default function App() {
             fileType: files[0].fileType,
             versions: files.sort((a, b) => b.version - a.version) // Sort by version descending
         }));
-    }, [pageData?.files]);
-
-    // Calculate unique pages count
-    const uniquePagesCount = React.useMemo(() => {
-        if (!pageData?.files) return 0;
-
-        const uniquePages = new Set(
-            pageData.files.map(file => file.pageUrl)
-        );
-        return uniquePages.size;
     }, [pageData?.files]);
 
     const handleDownloadAll = async () => {
@@ -206,23 +183,11 @@ export default function App() {
 
     // Sort the grouped files by URL
     const sortedGroupedFiles = [...groupedFiles].sort((a, b) => {
-        console.log('aaa----', a.url, a.url.split('/').pop())
         // Get the filename from the URL
         const aFilename = a.url.split('/').pop() || '';
         const bFilename = b.url.split('/').pop() || '';
         return aFilename.localeCompare(bFilename);
     });
-
-    // Count unique sites
-    const uniqueSites = new Set(
-        sortedGroupedFiles.map(group => {
-            try {
-                return new URL(group.url).hostname;
-            } catch {
-                return group.url;
-            }
-        })
-    );
 
     return (
         <Box
@@ -265,7 +230,7 @@ export default function App() {
                             </Tooltip>
                         )}
                         <Tooltip title="View all pages">
-                            <IconButton onClick={introduceDesktop}>
+                            <IconButton onClick={handleViewAllPages}>
                                 <ListAltIcon />
                             </IconButton>
                         </Tooltip>
@@ -375,56 +340,13 @@ export default function App() {
                                                         <span>
                                                             <IconButton
                                                                 size="small"
-                                                                onClick={(e) => handleVersionMenuOpen(e, group.url)}
+                                                                onClick={() => handleVersionMenuOpen(group.url)}
                                                             >
                                                                 <HistoryIcon />
                                                             </IconButton>
                                                         </span>
                                                     </Tooltip>
                                                 )}
-                                                <Menu
-                                                    anchorEl={anchorEl[group.url]}
-                                                    open={Boolean(anchorEl[group.url])}
-                                                    onClose={() => handleVersionMenuClose(group.url)}
-                                                >
-                                                    {group.versions.slice(1).map((version) => (
-                                                        <MenuItem
-                                                            key={version.id}
-                                                            onClick={introduceDesktop}
-                                                            sx={{ minWidth: 200 }}
-                                                        >
-                                                            <ListItemText
-                                                                primary={
-                                                                    <Box display="flex" alignItems="center" gap={1}>
-                                                                        <Chip
-                                                                            size="small"
-                                                                            label={`v${version.version}`}
-                                                                        />
-                                                                        <Typography variant="caption">
-                                                                            {new Date(version.timestamp).toLocaleDateString()}
-                                                                        </Typography>
-                                                                    </Box>
-                                                                }
-                                                            />
-                                                            <Tooltip title={`Download v${version.version} (${formatFileSize(version.size)})`}>
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleDownload(version);
-                                                                    }}
-                                                                    disabled={downloading[version.id]}
-                                                                >
-                                                                    {downloading[version.id] ? (
-                                                                        <CircularProgress size={16} />
-                                                                    ) : (
-                                                                        <DownloadIcon fontSize="small" />
-                                                                    )}
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        </MenuItem>
-                                                    ))}
-                                                </Menu>
                                             </Box>
                                         </TableCell>
                                     </TableRow>
@@ -441,26 +363,28 @@ export default function App() {
                 )}
             </Box>
 
-            {/* Fixed Footer */}
-            <Box
-                sx={{
-                    p: 2,
-                    borderTop: 1,
-                    borderColor: 'divider',
-                    bgcolor: 'background.paper',
-                    position: 'sticky',
-                    bottom: 0
-                }}
-            >
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="body2" color="text.secondary">
-                        {stats && `Storage Used: ${formatFileSize(stats.totalSize)}`}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        {pageData?.files.length || 0} Source Maps Found on {uniqueSites.size} {uniqueSites.size === 1 ? 'Site' : 'Sites'}
-                    </Typography>
+            {
+                stats &&
+                <Box
+                    sx={{
+                        p: 2,
+                        borderTop: 1,
+                        borderColor: 'divider',
+                        bgcolor: 'background.paper',
+                        position: 'sticky',
+                        bottom: 0
+                    }}
+                >
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="body2" color="text.secondary">
+                            {`Storage Used: ${formatFileSize(stats.usedSpace)}`}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            {stats.fileCount} Source Maps Found on {stats.uniqueSiteCount} {stats.uniqueSiteCount === 1 ? 'Site' : 'Sites'}
+                        </Typography>
+                    </Box>
                 </Box>
-            </Box>
+            }
 
             <Toast
                 open={toast.open}

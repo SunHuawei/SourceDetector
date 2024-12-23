@@ -53,6 +53,7 @@ let currentPage: { url: string; title: string } | null = null;
 // Function to update badge
 async function updateBadge(url: string) {
     try {
+        console.log('updateBadge', url)
         // Get source maps for current page using the new schema
         const files = await db.getPageFiles(url);
         const latestFiles = files.filter(file => file.isLatest);
@@ -137,7 +138,7 @@ async function fetchSourceMapContent(sourceUrl: string, mapUrl: string): Promise
 // Listen for requests to detect JS/CSS files
 chrome.webRequest.onCompleted.addListener(
     (details) => {
-                console.log('------details------', details.url);
+        console.log('details', details.initiator)
         if (!/\.(js|css)(\?.*)?$/.test(details.url)) {
             return;
         }
@@ -145,7 +146,6 @@ chrome.webRequest.onCompleted.addListener(
         // Process asynchronously
         (async () => {
             try {
-                console.log('------details------', details.url);
                 // Get content from cache or fetch
                 const content = await getFileContent(details.url);
                 
@@ -182,9 +182,7 @@ chrome.webRequest.onCompleted.addListener(
 
 // 监听消息
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    console.log(_sender);
     const handleMessage = async () => {
-        console.log(message);
         try {
             switch (message.type) {
                 case MESSAGE_TYPES.FOUND_SOURCE_MAP:
@@ -251,7 +249,6 @@ async function handleGetPageData(data: { url: string }) {
 async function handleGetFileData(data: { url: string }) {
     try {
         const file = await db.sourceMapFiles.where('url').equals(data.url).first();
-        console.log('------file------', file);
         return { success: true, data: file };
     } catch (error) {
         console.error('Error getting file data:', error);
@@ -400,7 +397,6 @@ async function handleSourceMapFoundWithIndexedDB(data: { pageTitle: string; page
             if (existingFile && existingFile.hash === content.hash) {
                 // Even if content is unchanged, we still need to associate it with the current page
                 await db.addSourceMapToPage(data.pageUrl, data.pageTitle, existingFile);
-                console.log('File content unchanged:', data.sourceUrl);
                 return { success: true, reason: 'File content unchanged but added to page' };
             }
 

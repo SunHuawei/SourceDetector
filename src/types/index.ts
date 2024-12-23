@@ -46,6 +46,7 @@ export interface StorageStats {
     usedSpace: number;
     totalSize: number;
     fileCount: number;
+    uniqueSiteCount: number;
     pagesCount: number;
     oldestTimestamp: number;
 }
