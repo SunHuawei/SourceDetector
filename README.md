@@ -15,25 +15,15 @@ Source Detector is a Chrome extension that automatically collects and views sour
 
 ## Functions
 
-- Collects .map files from a website
-- Displays a badge with the number of parsed source files
-- Displays two tabs: "Parsed Source Files" and ".map Files"
-- "Parsed Source Files" tab
-  - Displays a tree to show all the latest parsed source files
-    - Click to popup a dialog to introduce the desktop app
-    - Displays history versions of each source file, click to popup a dialog to introduce the desktop app
-  - Download the latest parsed source files as a zip file
-- ".map Files" tab
-  - Displays a tree to show all the latest .map files
-    - Displays a tree to show the parsed source files of each .map file
-    - Click to popup a dialog to introduce the desktop app
-    - Click to download the parsed source files of each .map file
-    - Click to download the latest .map file
-    - Displays history versions of each .map file, click to popup a dialog to introduce the desktop app
-    - Click to download each .map file as a zip file
-    - Click to download all the latest .map files as a zip file
-  - Download each .map files as a zip file
-  - Download all the latest .map files as a zip file
-- Show View All Pages, click to popup a dialog to introduce the desktop app
-- Show more history .map files, click to popup a dialog to introduce the desktop app
-- Show .map files from x domains, click to popup a dialog to introduce the desktop app
+- Displays a badge with the number when detected source files
+- Collects source map files from a website
+  - .map files
+  - TODO: inline source map files
+- Collects CRX files from a extension website or a extension page
+- Download source map files and parsed files
+- Download CRX files and parsed files
+- Show View All Pages in desktop app
+- Show history source map files in desktop app
+- Show source map files from x domains in desktop app
+- Show history CRX files in desktop app
+- Show CRX files from x domains in desktop app

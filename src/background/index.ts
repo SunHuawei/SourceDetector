@@ -643,15 +643,30 @@ async function handleGetAllSourceMaps() {
 // Get CRX download URL from extension page
 async function getCrxUrl(url: string): Promise<string | null> {
     try {
-        const extId = url.split('/')[6]?.split('?')[0] || url.split('//')[1]?.split('/')[0];
-        if (!extId) return null;
+        // Extract extension ID from various URL patterns
+        const cws_pattern = /^https?:\/\/(?:chrome.google.com\/webstore|chromewebstore.google.com)\/.+?\/([a-z]{32})(?=[\/#?]|$)/;
+        const match = cws_pattern.exec(url);
+        const extId = match?.[1] || url.split('/')[6]?.split('?')[0] || url.split('//')[1]?.split('/')[0];
+        if (!extId || !/^[a-z]{32}$/.test(extId)) return null;
 
         const platformInfo = await chrome.runtime.getPlatformInfo();
-        const version = navigator.userAgent.split("Chrome/")[1]?.split(" ")[0];
+        const version = navigator.userAgent.split("Chrome/")[1]?.split(" ")[0] || '9999.0.9999.0';
 
-        return `https://clients2.google.com/service/update2/crx?response=redirect&nacl_arch=${platformInfo.nacl_arch
-            }&prodversion=${version}&acceptformat=crx2,crx3&x=id%3D${extId
-            }%26installsource%3Dondemand%26uc`;
+        // Construct URL with all necessary parameters
+        let downloadUrl = 'https://clients2.google.com/service/update2/crx?response=redirect';
+        downloadUrl += '&os=' + platformInfo.os;
+        downloadUrl += '&arch=' + platformInfo.arch;
+        downloadUrl += '&os_arch=' + platformInfo.arch;
+        downloadUrl += '&nacl_arch=' + platformInfo.nacl_arch;
+        // Use chromiumcrx as product ID since we're not Chrome
+        downloadUrl += '&prod=chromiumcrx';
+        downloadUrl += '&prodchannel=unknown';
+        downloadUrl += '&prodversion=' + version;
+        downloadUrl += '&acceptformat=crx2,crx3';
+        downloadUrl += '&x=id%3D' + extId;
+        downloadUrl += '%26uc';
+
+        return downloadUrl;
     } catch (error) {
         console.error('Error getting CRX URL:', error);
         return null;

@@ -159,9 +159,11 @@ export function CrxFileTree({ crxUrl, parsed, onDownload }: Props) {
 
     if (!fileTree) {
         return <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-            <Typography variant="body1" color="text.secondary">
-                No files found on this page
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                <Typography variant="body1" color="text.secondary">
+                    No files found on this page
+                </Typography>
+            </Box>
         </Box>
     }
 
