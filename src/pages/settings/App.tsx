@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS, MESSAGE_TYPES, STORAGE_LIMITS } from '@/background/constants';
-import { formatFileSize } from '@/background/utils';
+import { formatBytes } from '@/background/utils';
 import { Toast } from '@/components/Toast';
 import { AppSettings, StorageStats } from '@/types';
 import {
@@ -215,7 +215,7 @@ export default function App() {
 
                     {stats && (
                         <Alert severity="info" sx={{ mb: 2 }}>
-                            Storage used: {formatFileSize(stats.usedSpace)} • {stats.fileCount} Source Maps Found on {stats.uniqueSiteCount} {stats.uniqueSiteCount === 1 ? 'Site' : 'Sites'}
+                            Storage used: {formatBytes(stats.usedSpace)} • {stats.fileCount} Source Maps Found on {stats.uniqueSiteCount} {stats.uniqueSiteCount === 1 ? 'Site' : 'Sites'}
                         </Alert>
                     )}
 
@@ -279,7 +279,7 @@ export default function App() {
                         <ListItem>
                             <ListItemText
                                 primary="Cleanup Threshold (MB)"
-                                secondary={`Clean up when storage exceeds ${formatFileSize(
+                                secondary={`Clean up when storage exceeds ${formatBytes(
                                     (settings?.cleanupThreshold ?? 500) * 1024 * 1024
                                 )}`}
                             />

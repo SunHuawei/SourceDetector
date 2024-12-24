@@ -1,5 +1,5 @@
 import { getDefaultSettingsWithSystemPreference } from '@/background/constants';
-import { AppSettings, Page, PageSourceMap, SourceMapFile } from '@/types';
+import { AppSettings, Page, PageSourceMap, SourceMapFile, CrxFile } from '@/types';
 import Dexie from 'dexie';
 
 const DB_VERSION = 1;
@@ -10,6 +10,7 @@ export class SourceCollectorDB extends Dexie {
     pages!: Dexie.Table<Page, string>;
     pageSourceMaps!: Dexie.Table<PageSourceMap, string>;
     settings!: Dexie.Table<AppSettings, number>;
+    crxFiles!: Dexie.Table<CrxFile, number>;
 
     constructor() {
         super(DB_NAME);
@@ -18,8 +19,25 @@ export class SourceCollectorDB extends Dexie {
             sourceMapFiles: 'id, url, timestamp, fileType, isLatest, hash, size',
             pages: 'id, url, timestamp',
             pageSourceMaps: 'id, pageId, sourceMapId, timestamp',
-            settings: '++id'
+            settings: '++id',
+            crxFiles: '++id, pageUrl, pageTitle, crxUrl, blob, size, timestamp, count'
         });
+    }
+
+    async addCrxFile(crxFile: CrxFile & { version?: number }): Promise<CrxFile> {
+        const id = await this.crxFiles.add(crxFile);
+        return { ...crxFile, id };
+    }
+
+    async updateCrxFile(crxFile: CrxFile): Promise<void> {
+        await this.crxFiles.put(crxFile);
+    }
+
+    async getCrxFileByPageUrl(pageUrl: string): Promise<CrxFile | undefined> {
+        return this.crxFiles
+            .where('pageUrl')
+            .equals(pageUrl)
+            .first();
     }
 
     async getSettings(): Promise<AppSettings> {

@@ -9,7 +9,7 @@ interface DownloadOptions {
 export class SourceMapDownloader {
     private static async createZipWithSourceMap(
         file: SourceMapFile,
-        zip: JSZip,
+        _zip: JSZip,
         compiledFolder: JSZip,
         sourceFolder: JSZip
     ) {

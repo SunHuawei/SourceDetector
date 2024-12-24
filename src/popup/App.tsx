@@ -1,53 +1,40 @@
 import { MESSAGE_TYPES } from '@/background/constants';
-import { formatFileSize } from '@/background/utils';
+import { formatBytes } from '@/background/utils';
 import { Toast } from '@/components/Toast';
-import { PageData, SourceMapFile, StorageStats } from '@/types';
+import { CrxFile, PageData, ParsedCrxFile, SourceMapFile, StorageStats } from '@/types';
+import { isExtensionPage } from '@/utils/isExtensionPage';
+import { parseCrxFile } from '@/utils/parseCrxFile';
 import { SourceMapDownloader } from '@/utils/sourceMapDownloader';
+import { groupSourceMapFiles } from '@/utils/sourceMapUtils';
 import {
     CloudDownload as CloudDownloadIcon,
-    Css as CssIcon,
-    Download as DownloadIcon,
-    History as HistoryIcon,
-    Javascript as JavascriptIcon,
     ListAlt as ListAltIcon,
     Settings as SettingsIcon
 } from '@mui/icons-material';
 import {
     Box,
     Button,
-    Chip,
     CircularProgress,
     IconButton,
-    ListItemText,
-    Menu,
-    MenuItem,
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
     Tooltip,
     Typography
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
-
-interface GroupedSourceMap {
-    url: string;
-    fileType: 'js' | 'css';
-    versions: SourceMapFile[];
-}
+import JSZip from 'jszip';
+import { useEffect, useMemo, useState } from 'react';
+import { CrxFileTree } from './components/CrxFileTree';
+import { SourceMapTable } from './components/SourceMapTable';
 
 // Helper function to format bundle size
 function getBundleSize(files: SourceMapFile[]): string {
     const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-    return formatFileSize(totalSize);
+    return formatBytes(totalSize);
 }
 
 export default function App() {
     const [loading, setLoading] = useState(true);
     const [pageData, setPageData] = useState<PageData | null>(null);
+    const [crxFile, setCrxFile] = useState<CrxFile | null>(null);
+    const [parsed, setParsed] = useState<ParsedCrxFile | null>(null);
     const [stats, setStats] = useState<StorageStats | null>(null);
     const [downloading, setDownloading] = useState<{ [key: string]: boolean }>({});
     const [downloadingAll, setDownloadingAll] = useState(false);
@@ -67,22 +54,36 @@ export default function App() {
 
     const loadData = async () => {
         try {
-            // 获取当前页面数据
+            console.log('loadData')
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            console.log('tab.url', tab.url)
             if (!tab.url) return;
+            if (isExtensionPage(tab.url)) {
+                console.log('isExtensionPage', tab.url)
+                const response = await chrome.runtime.sendMessage({
+                    type: MESSAGE_TYPES.GET_CRX_FILE,
+                    data: { url: tab.url }
+                });
+                console.log('response', response);
+                if (response.success && response.data) {
+                    setCrxFile(response.data);
+                    const result = await parseCrxFile(response.data.crxUrl);
+                    setParsed(result);
+                }
+            } else {
+                console.log('is not extension page', tab.url)
+                const response = await chrome.runtime.sendMessage({
+                    type: MESSAGE_TYPES.GET_PAGE_DATA,
+                    data: { url: tab.url }
+                });
+                console.log('response', response)
+                setPageData(response.data);
+            }
 
-            const response = await chrome.runtime.sendMessage({
-                type: MESSAGE_TYPES.GET_PAGE_DATA,
-                data: { url: tab.url }
-            });
-
-            setPageData(response.data);
-
-            // 获取存储统计
             const statsResponse = await chrome.runtime.sendMessage({
                 type: MESSAGE_TYPES.GET_STORAGE_STATS
             });
-
+            console.log('statsResponse', statsResponse)
             setStats(statsResponse.data);
         } catch (error) {
             console.error('Error loading data:', error);
@@ -121,41 +122,70 @@ export default function App() {
         openInDesktop('handleVersionMenuOpen', { groupUrl });
     };
 
-    // Group files by URL and sort versions
-    const groupedFiles: GroupedSourceMap[] = React.useMemo(() => {
-        if (!pageData?.files) return [];
-
-        const groups: { [key: string]: SourceMapFile[] } = {};
-        pageData.files.forEach(file => {
-            if (!groups[file.url]) {
-                groups[file.url] = [];
-            }
-            groups[file.url].push(file);
-        });
-
-        return Object.entries(groups).map(([url, files]) => ({
-            url,
-            fileType: files[0].fileType,
-            versions: files.sort((a, b) => b.version - a.version) // Sort by version descending
-        }));
-    }, [pageData?.files]);
-
     const handleDownloadAll = async () => {
-        if (!pageData?.files.length) return;
+        if (crxFile && parsed) {
+            try {
+                setDownloadingAll(true);
+                // Create a new zip file
+                const newZip = new JSZip();
 
-        try {
-            setDownloadingAll(true);
-            const latestVersions = groupedFiles.map(group => group.versions[0]);
-            await SourceMapDownloader.downloadAllLatest(latestVersions, pageData.url, {
-                onError: (error) => {
-                    showToast(error.message, 'error');
+                // Add the original CRX file directly
+                newZip.file('extension.crx', parsed.blob);
+
+                // Create a folder for parsed files
+                const parsedFolder = newZip.folder('parsed');
+                if (!parsedFolder) {
+                    throw new Error('Failed to create parsed folder');
                 }
-            });
-            showToast('All files downloaded successfully', 'success');
-        } catch (error) {
-            showToast('Failed to download files', 'error');
-        } finally {
-            setDownloadingAll(false);
+
+                // Get all files from the parsed CRX file
+                const zip = parsed.zip;
+                await Promise.all(
+                    Object.keys(zip.files).map(async (path) => {
+                        const zipObject = zip.files[path];
+                        if (!zipObject.dir) {
+                            const content = await zipObject.async('uint8array');
+                            parsedFolder.file(path, content);
+                        }
+                    })
+                );
+
+                // Generate and download the zip
+                const blob = await newZip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                // Use page title for the zip file name, fallback to 'extension-files' if no title
+                const safeTitle = crxFile.pageTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'extension-files';
+                a.download = `${safeTitle}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showToast('All files downloaded successfully', 'success');
+            } catch (error) {
+                console.error('Error downloading files:', error);
+                showToast('Failed to download files', 'error');
+            } finally {
+                setDownloadingAll(false);
+            }
+        } else if (pageData?.files.length) {
+            try {
+                setDownloadingAll(true);
+                const latestVersions = groupedFiles.map(group => group.versions[0]);
+                await SourceMapDownloader.downloadAllLatest(latestVersions, pageData.url, {
+                    onError: (error) => {
+                        showToast(error.message, 'error');
+                    }
+                });
+                showToast('All files downloaded successfully', 'success');
+            } catch (error) {
+                console.error('Error downloading files:', error);
+                showToast('Failed to download files', 'error');
+            } finally {
+                setDownloadingAll(false);
+            }
         }
     };
 
@@ -171,6 +201,41 @@ export default function App() {
         setToast(prev => ({ ...prev, open: false }));
     };
 
+    const handleCrxFileDownload = async (path: string) => {
+        if (!parsed) return;
+        try {
+            setDownloading(prev => ({ ...prev, [path]: true }));
+            const file = parsed.zip.files[path];
+            if (!file) {
+                throw new Error('File not found');
+            }
+            const content = await file.async('blob');
+            const url = URL.createObjectURL(content);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = path.split('/').pop() || path;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('File downloaded successfully', 'success');
+        } catch (error) {
+            console.error('Error downloading file:', error);
+            showToast('Failed to download file', 'error');
+        } finally {
+            setDownloading(prev => ({ ...prev, [path]: false }));
+        }
+    };
+
+    const groupedFiles = useMemo(() => {
+        if (!pageData?.files) return [];
+        return groupSourceMapFiles(pageData.files).sort((a, b) => {
+            const aFilename = a.url.split('/').pop() || '';
+            const bFilename = b.url.split('/').pop() || '';
+            return aFilename.localeCompare(bFilename);
+        });
+    }, [pageData?.files]);
+
     if (loading) {
         return (
             <Box p={2} width={600}>
@@ -180,14 +245,6 @@ export default function App() {
             </Box>
         );
     }
-
-    // Sort the grouped files by URL
-    const sortedGroupedFiles = [...groupedFiles].sort((a, b) => {
-        // Get the filename from the URL
-        const aFilename = a.url.split('/').pop() || '';
-        const bFilename = b.url.split('/').pop() || '';
-        return aFilename.localeCompare(bFilename);
-    });
 
     return (
         <Box
@@ -211,10 +268,15 @@ export default function App() {
                 }}
             >
                 <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="h6">Source Maps</Typography>
+                    <Typography variant="h6">
+                        {crxFile ? 'Extension Files' : 'Source Maps'}
+                    </Typography>
                     <Box>
-                        {sortedGroupedFiles.length > 0 && (
-                            <Tooltip title={`Download latest versions of all source maps (${getBundleSize(sortedGroupedFiles.map(g => g.versions[0]))})`}>
+                        {(groupedFiles.length > 0 || crxFile) && (
+                            <Tooltip title={crxFile ?
+                                `Download all files (${formatBytes(parsed?.size || 0 + crxFile.size)})` :
+                                `Download latest versions of all source maps (${getBundleSize(groupedFiles.map(g => g.versions[0]))})`
+                            }>
                                 <span>
                                     <Button
                                         startIcon={downloadingAll ? <CircularProgress size={16} /> : <CloudDownloadIcon />}
@@ -224,7 +286,10 @@ export default function App() {
                                         variant="outlined"
                                         sx={{ mr: 1 }}
                                     >
-                                        Download Latest ({getBundleSize(sortedGroupedFiles.map(g => g.versions[0]))})
+                                        {downloadingAll ? 'Downloading...' : crxFile ?
+                                            `Download All (${formatBytes(parsed?.size || 0 + crxFile.size)})` :
+                                            `Download Latest (${getBundleSize(groupedFiles.map(g => g.versions[0]))})`
+                                        }
                                     </Button>
                                 </span>
                             </Tooltip>
@@ -243,128 +308,30 @@ export default function App() {
 
             {/* Scrollable Content */}
             <Box sx={{ flexGrow: 1, overflow: 'hidden', px: 2 }}>
-                {sortedGroupedFiles.length > 0 ? (
-                    <TableContainer
-                        component={Paper}
-                        sx={{
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column'
-                        }}
-                    >
-                        <Table
-                            size="small"
-                            sx={{
-                                tableLayout: 'fixed',
-                                '& th, & td': {  // Apply to both header and body cells
-                                    padding: '8px 16px',  // Consistent padding
-                                    boxSizing: 'border-box',
-                                    '&:first-of-type': {
-                                        width: '60%',
-                                    },
-                                    '&:not(:first-of-type)': {
-                                        width: '20%',
-                                    }
-                                }
-                            }}
-                        >
-                            <TableHead
-                                sx={{
-                                    bgcolor: 'background.paper',
-                                    position: 'sticky',
-                                    top: 0,
-                                    zIndex: 1,
-                                }}
-                            >
-                                <TableRow>
-                                    <TableCell>Source File</TableCell>
-                                    <TableCell align="right">Latest Version</TableCell>
-                                    <TableCell align="right">Previous Versions</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {sortedGroupedFiles.map((group) => (
-                                    <TableRow key={group.url}>
-                                        <TableCell sx={{
-                                            overflow: 'hidden',
-                                            whiteSpace: 'nowrap',
-                                            textOverflow: 'ellipsis'
-                                        }}>
-                                            <Tooltip title={group.url} arrow>
-                                                <Box display="flex" alignItems="center" gap={1} sx={{
-                                                    minWidth: 0,
-                                                }}>
-                                                    {group.fileType === 'js' ? (
-                                                        <JavascriptIcon fontSize="small" sx={{ flexShrink: 0 }} />
-                                                    ) : (
-                                                        <CssIcon fontSize="small" sx={{ flexShrink: 0 }} />
-                                                    )}
-                                                    <Typography
-                                                        variant="body2"
-                                                        component="div"
-                                                        sx={{
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                            whiteSpace: 'nowrap',
-                                                            flexGrow: 1,
-                                                        }}
-                                                    >
-                                                        {group.url.split('/').pop()}
-                                                    </Typography>
-                                                </Box>
-                                            </Tooltip>
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <Box display="flex" justifyContent="flex-end" gap={1}>
-                                                <Tooltip title={`Download latest version (${formatFileSize(group.versions[0].size)})`} arrow>
-                                                    <span>
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => handleDownload(group.versions[0])}
-                                                            disabled={downloading[group.versions[0].id]}
-                                                        >
-                                                            {downloading[group.versions[0].id] ? (
-                                                                <CircularProgress size={20} />
-                                                            ) : (
-                                                                <CloudDownloadIcon />
-                                                            )}
-                                                        </IconButton>
-                                                    </span>
-                                                </Tooltip>
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <Box display="flex" justifyContent="flex-end" gap={1}>
-                                                {group.versions.length > 1 && (
-                                                    <Tooltip title="View history versions" arrow>
-                                                        <span>
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={() => handleVersionMenuOpen(group.url)}
-                                                            >
-                                                                <HistoryIcon />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-                                                )}
-                                            </Box>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                {crxFile ? (
+                    <CrxFileTree
+                        crxUrl={crxFile.crxUrl}
+                        parsed={parsed}
+                        onDownload={handleCrxFileDownload}
+                    />
+                ) : groupedFiles.length > 0 ? (
+                    <SourceMapTable
+                        groupedFiles={groupedFiles}
+                        onDownload={handleDownload}
+                        onVersionMenuOpen={handleVersionMenuOpen}
+                        downloading={downloading}
+                    />
                 ) : (
                     <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
                         <Typography variant="body1" color="text.secondary">
-                            No source maps found on this page
+                            No {crxFile ? 'files' : 'source maps'} found on this page
                         </Typography>
                     </Box>
                 )}
             </Box>
 
-            {
-                stats &&
+            {/* Fixed Footer */}
+            {stats && (
                 <Box
                     sx={{
                         p: 2,
@@ -377,14 +344,14 @@ export default function App() {
                 >
                     <Box display="flex" justifyContent="space-between" alignItems="center">
                         <Typography variant="body2" color="text.secondary">
-                            {`Storage Used: ${formatFileSize(stats.usedSpace)}`}
+                            {`Storage Used: ${formatBytes(stats.usedSpace)}`}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                             {stats.fileCount} Source Maps Found on {stats.uniqueSiteCount} {stats.uniqueSiteCount === 1 ? 'Site' : 'Sites'}
                         </Typography>
                     </Box>
                 </Box>
-            }
+            )}
 
             <Toast
                 open={toast.open}

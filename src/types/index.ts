@@ -1,3 +1,5 @@
+import JSZip from 'jszip';
+
 export interface Page {
     id: string;
     url: string;
@@ -70,3 +72,22 @@ export interface Message<T = unknown> {
     type: string;
     payload: T;
 } 
+
+export interface CrxFile {
+    id?: number;
+    pageUrl: string;
+    pageTitle: string;
+    crxUrl: string;
+    blob: Blob;
+    size: number;
+    timestamp: number;
+    count: number;
+}
+
+export interface ParsedCrxFile {
+    zip: JSZip;
+    size: number;
+    count: number;
+    timestamp: number;
+    blob: Blob;
+}

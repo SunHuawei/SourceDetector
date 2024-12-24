@@ -1,21 +1,7 @@
-import JSZip from 'jszip';
 import { SourceMapFile } from '@/types';
+import { formatBytes } from '@/utils/format';
+import JSZip from 'jszip';
 
-/**
- * Format file size to human readable string
- */
-export function formatFileSize(bytes: number): string {
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let size = bytes;
-    let unitIndex = 0;
-
-    while (size >= 1024 && unitIndex < units.length - 1) {
-        size /= 1024;
-        unitIndex++;
-    }
-
-    return `${size.toFixed(2)} ${units[unitIndex]}`;
-}
 
 /**
  * Create a download URL for a file
@@ -113,7 +99,7 @@ export function createHash(algorithm: string) {
         update(data: string) {
             const buffer = encoder.encode(data);
             return {
-                async digest(encoding: string) {
+                async digest(_encoding: string) {
                     const hashBuffer = await crypto.subtle.digest(algorithm.toUpperCase(), buffer);
                     const hashArray = Array.from(new Uint8Array(hashBuffer));
                     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -121,4 +107,38 @@ export function createHash(algorithm: string) {
             };
         }
     };
-} 
+}
+
+export function getFileExtension(filename: string): string {
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    return ext;
+}
+
+export function isJavaScriptFile(filename: string): boolean {
+    const ext = getFileExtension(filename);
+    return ext === 'js' || ext === 'mjs' || ext === 'cjs';
+}
+
+export function isCSSFile(filename: string): boolean {
+    const ext = getFileExtension(filename);
+    return ext === 'css';
+}
+
+export function isSourceMapFile(filename: string): boolean {
+    const ext = getFileExtension(filename);
+    return ext === 'map';
+}
+
+export function isChromePage(url: string): boolean {
+    return url.startsWith('chrome://') || url.startsWith('chrome-extension://');
+}
+
+export function isChromeWebStorePage(url: string): boolean {
+    return url.startsWith('https://chromewebstore.google.com/');
+}
+
+export function isExtensionPage(url: string): boolean {
+    return isChromePage(url) || isChromeWebStorePage(url);
+}
+
+export { formatBytes };

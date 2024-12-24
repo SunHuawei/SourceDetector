@@ -1,8 +1,10 @@
 import { SourceCollectorDB } from '@/storage/database';
-import { AppSettings, PageData, StorageStats } from '@/types';
+import { AppSettings, PageData } from '@/types';
 import { tauriClient } from '@/utils/tauri-client';
 import { FILE_TYPES, MESSAGE_TYPES } from './constants';
 import { createHash } from './utils';
+import { parseCrxFile, parsedCrxFileFromCrxFile } from '@/utils/parseCrxFile';
+import { isExtensionPage } from '@/utils/isExtensionPage';
 
 const db = new SourceCollectorDB();
 
@@ -15,7 +17,7 @@ async function getFileContent(url: string): Promise<string> {
     try {
         const now = Date.now();
         const cached = cache.get(url);
-        
+
         // Return cached content if it exists and hasn't expired
         if (cached && (now - cached.timestamp) < CACHE_EXPIRATION) {
             return cached.content;
@@ -51,19 +53,32 @@ async function getFileContent(url: string): Promise<string> {
 let currentPage: { url: string; title: string } | null = null;
 
 // Function to update badge
-async function updateBadge(url: string) {
+async function updateBadge(url: string, isCrx: boolean = false) {
     try {
-        console.log('updateBadge', url)
-        // Get source maps for current page using the new schema
-        const files = await db.getPageFiles(url);
-        const latestFiles = files.filter(file => file.isLatest);
-
-        // Update badge text and color
-        if (latestFiles.length > 0) {
-            await chrome.action.setBadgeText({ text: String(latestFiles.length) });
-            await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' }); // Green color
+        if (isCrx) {
+            const crxFile = await db.getCrxFileByPageUrl(url);
+            if (crxFile) {
+                console.log('updateBadge', url, crxFile.count)
+                await chrome.action.setBadgeText({ text: String(crxFile.count) });
+                await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+            } else {
+                console.log('updateBadge', url, 0)
+                await chrome.action.setBadgeText({ text: '' });
+            }
         } else {
-            await chrome.action.setBadgeText({ text: '' });
+            // Get source maps for current page using the new schema
+            const files = await db.getPageFiles(url);
+            const latestFiles = files.filter(file => file.isLatest);
+
+            // Update badge text and color
+            if (latestFiles.length > 0) {
+                console.log('updateBadge', url, latestFiles.length)
+                await chrome.action.setBadgeText({ text: String(latestFiles.length) });
+                await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' }); // Green color
+            } else {
+                console.log('updateBadge', url, 0)
+                await chrome.action.setBadgeText({ text: '' });
+            }
         }
     } catch (error) {
         console.error('Error updating badge:', error);
@@ -75,7 +90,7 @@ async function updateBadge(url: string) {
 async function updateCurrentPage() {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tab?.url && tab?.title) {
+        if (tab?.url && tab?.title && !isExtensionPage(tab.url)) {
             currentPage = {
                 url: tab.url,
                 title: tab.title
@@ -89,26 +104,71 @@ async function updateCurrentPage() {
 }
 
 // Monitor tab updates
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete') {
-        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (activeTab?.id === tabId) {
+chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url) {
+        console.log('tab.url', tab.url, isExtensionPage(tab.url))
+        if (isExtensionPage(tab.url)) {
+            await updateCrxPage(tab);
+        } else {
             await updateCurrentPage();
         }
     }
 });
-
-// Monitor tab activation
-chrome.tabs.onActivated.addListener(async () => {
-    await updateCurrentPage();
-});
-
-// Monitor window focus
-chrome.windows.onFocusChanged.addListener(async (windowId) => {
-    if (windowId !== chrome.windows.WINDOW_ID_NONE) {
+async function onTabActivated() {
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (isExtensionPage(activeTab?.url || '')) {
+        await updateCrxPage(activeTab);
+    } else {
         await updateCurrentPage();
     }
-});
+}
+
+// Monitor tab activation
+chrome.tabs.onActivated.addListener(onTabActivated);
+
+// Monitor window focus
+chrome.windows.onFocusChanged.addListener(onTabActivated);
+
+async function updateCrxPage(tab: chrome.tabs.Tab) {
+    const url = tab.url;
+    if (!url) return;
+    await updateBadge(url, true);
+    const crxUrl = await getCrxUrl(url);
+    if (crxUrl) {
+        // check if the file exists
+        let crxFile = await db.getCrxFileByPageUrl(url);
+        if (!crxFile) {
+            // save to db
+            crxFile = await db.addCrxFile({
+                pageUrl: url,
+                pageTitle: tab.title || '',
+                crxUrl: crxUrl,
+                blob: new Blob(),
+                size: 0,
+                timestamp: Date.now(),
+                count: 0
+            });
+        }
+
+        const result = await parseCrxFile(crxUrl);
+        console.log('result', result);
+        if (result && result.count > 0) {
+            await db.updateCrxFile({
+                id: crxFile.id,
+                pageUrl: url,
+                pageTitle: tab.title || '',
+                crxUrl: crxUrl,
+                blob: result.blob,
+                size: result.blob.size,
+                count: result.count,
+                timestamp: Date.now(),
+            });
+            console.log('updateCrxFile', crxFile);
+            // update badge
+            await updateBadge(url, true);
+        }
+    }
+}
 
 // Modify fetchSourceMapContent to use cache
 async function fetchSourceMapContent(sourceUrl: string, mapUrl: string): Promise<{
@@ -138,6 +198,10 @@ async function fetchSourceMapContent(sourceUrl: string, mapUrl: string): Promise
 // Listen for requests to detect JS/CSS files
 chrome.webRequest.onCompleted.addListener(
     (details) => {
+        if (isExtensionPage(details.url)) {
+            return;
+        }
+
         console.log('details', details.initiator)
         if (!/\.(js|css)(\?.*)?$/.test(details.url)) {
             return;
@@ -148,7 +212,7 @@ chrome.webRequest.onCompleted.addListener(
             try {
                 // Get content from cache or fetch
                 const content = await getFileContent(details.url);
-                
+
                 // Check for source map in the last line
                 // lastLine is like this:
                 // /*# sourceMappingURL=https://example.com/path/to/map.css.map */
@@ -207,6 +271,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                     return await handleGetAllSourceMaps();
                 case MESSAGE_TYPES.CLEAR_DATA:
                     return await handleClearData();
+                case MESSAGE_TYPES.GET_CRX_FILE:
+                    return await handleGetCrxFile(message.data);
                 default:
                     return { success: false, reason: 'Unknown message type' };
             }
@@ -219,6 +285,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     handleMessage().then(sendResponse);
     return true;
 });
+
+async function handleGetCrxFile(data: { url: string }) {
+    try {
+        const crxFile = await db.getCrxFileByPageUrl(data.url);
+        if (!crxFile) return { success: false, reason: 'CRX file not found' };
+
+        return { success: true, data: crxFile };
+    } catch (error) {
+        console.error('Error getting CRX file:', error);
+        return { success: false, reason: String(error) };
+    }
+}
 
 async function handleClearData() {
     try {
@@ -389,7 +467,7 @@ async function handleSourceMapFoundWithIndexedDB(data: { pageTitle: string; page
             if (content.size > settings.maxFileSize * 1024 * 1024) {
                 return { success: false, reason: 'File too large' };
             }
-            
+
             // Check existing file
             const existingFile = await db.sourceMapFiles.where('url').equals(data.sourceUrl).first();
 
@@ -521,7 +599,7 @@ async function handleUpdateSettings(settings: Partial<AppSettings>) {
     }
 }
 
-// 清空史记录
+// 清空史记
 async function handleClearHistory() {
     try {
         await Promise.all([
@@ -560,4 +638,22 @@ async function handleGetAllSourceMaps() {
         console.error('Error getting all source maps:', error);
         return { success: false, reason: String(error) };
     }
-} 
+}
+
+// Get CRX download URL from extension page
+async function getCrxUrl(url: string): Promise<string | null> {
+    try {
+        const extId = url.split('/')[6]?.split('?')[0] || url.split('//')[1]?.split('/')[0];
+        if (!extId) return null;
+
+        const platformInfo = await chrome.runtime.getPlatformInfo();
+        const version = navigator.userAgent.split("Chrome/")[1]?.split(" ")[0];
+
+        return `https://clients2.google.com/service/update2/crx?response=redirect&nacl_arch=${platformInfo.nacl_arch
+            }&prodversion=${version}&acceptformat=crx2,crx3&x=id%3D${extId
+            }%26installsource%3Dondemand%26uc`;
+    } catch (error) {
+        console.error('Error getting CRX URL:', error);
+        return null;
+    }
+}

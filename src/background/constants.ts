@@ -16,7 +16,9 @@ export const MESSAGE_TYPES = {
     EXPORT_DATA: 'EXPORT_DATA',
     IMPORT_DATA: 'IMPORT_DATA',
     CLEAR_DATA: 'CLEAR_DATA',
-    GET_ALL_SOURCE_MAPS: 'GET_ALL_SOURCE_MAPS'
+    GET_ALL_SOURCE_MAPS: 'GET_ALL_SOURCE_MAPS',
+    GET_CRX_FILE: 'GET_CRX_FILE',
+    DOWNLOAD_CRX_FILE: 'DOWNLOAD_CRX_FILE',
 } as const;
 
 interface NumberSetting {
@@ -69,19 +71,21 @@ export const SETTINGS = {
 
 export const STORAGE_LIMITS = SETTINGS.STORAGE;
 
-// Create default settings without dark mode preference
-const createDefaultSettings = (darkMode: boolean): AppSettings => ({
-    darkMode,
-    autoCollect: true,
-    autoCleanup: true,
-    cleanupThreshold: SETTINGS.STORAGE.CLEANUP_THRESHOLD.default,
-    retentionDays: SETTINGS.STORAGE.RETENTION_DAYS.default,
-    collectJs: true,
-    collectCss: true,
-    maxFileSize: SETTINGS.STORAGE.FILE_SIZE.default,
-    maxTotalSize: SETTINGS.STORAGE.TOTAL_SIZE.default,
-    maxFiles: SETTINGS.STORAGE.FILES_COUNT.default
-});
+function createDefaultSettings(darkMode: boolean) {
+    return {
+        darkMode,
+        autoCollect: true,
+        autoCleanup: true,
+        cleanupThreshold: 1024 * 1024 * 1024, // 1GB
+        retentionDays: 30,
+        collectJs: true,
+        collectCss: true,
+        maxFileSize: 1024 * 1024 * 10, // 10MB
+        maxTotalSize: 1024 * 1024 * 1024, // 1GB
+        maxFiles: 1000,
+        enableDesktopApp: false,
+    };
+}
 
 // Default settings with light mode
 export const DEFAULT_SETTINGS = createDefaultSettings(false);
