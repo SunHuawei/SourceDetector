@@ -18,7 +18,6 @@ Source Detector is a Chrome extension that automatically collects and views sour
 - Displays a badge with the number when detected source files
 - Collects source map files from a website
   - .map files
-  - TODO: inline source map files
 - Collects CRX files from a extension website or a extension page
 - Download source map files and parsed files
 - Download CRX files and parsed files
@@ -27,3 +26,9 @@ Source Detector is a Chrome extension that automatically collects and views sour
 - Show source map files from x domains in desktop app
 - Show history CRX files in desktop app
 - Show CRX files from x domains in desktop app
+
+## TODO 
+- [ ] i18n
+- [ ] inline source map files
+- [ ] UI improvements
+- [ ] Open in desktop app

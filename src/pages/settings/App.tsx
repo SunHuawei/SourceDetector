@@ -97,7 +97,7 @@ export default function App() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `source-collector-export-${new Date().toISOString()}.json`;
+                a.download = `source-detector-export-${new Date().toISOString()}.json`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);

@@ -3,9 +3,9 @@ import { AppSettings, Page, PageSourceMap, SourceMapFile, CrxFile } from '@/type
 import Dexie from 'dexie';
 
 const DB_VERSION = 1;
-const DB_NAME = 'SourceCollectorDB';
+const DB_NAME = 'SourceDetectorDB';
 
-export class SourceCollectorDB extends Dexie {
+export class SourceDetectorDB extends Dexie {
     sourceMapFiles!: Dexie.Table<SourceMapFile, string>;
     pages!: Dexie.Table<Page, string>;
     pageSourceMaps!: Dexie.Table<PageSourceMap, string>;

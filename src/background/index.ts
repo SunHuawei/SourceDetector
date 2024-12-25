@@ -1,4 +1,4 @@
-import { SourceCollectorDB } from '@/storage/database';
+import { SourceDetectorDB } from '@/storage/database';
 import { AppSettings, PageData } from '@/types';
 import { tauriClient } from '@/utils/tauri-client';
 import { FILE_TYPES, MESSAGE_TYPES } from './constants';
@@ -6,7 +6,7 @@ import { createHash } from './utils';
 import { parseCrxFile, parsedCrxFileFromCrxFile } from '@/utils/parseCrxFile';
 import { isExtensionPage } from '@/utils/isExtensionPage';
 
-const db = new SourceCollectorDB();
+const db = new SourceDetectorDB();
 
 // Simple in-memory cache with 5s expiration
 const CACHE_EXPIRATION = 5000; // 5 seconds

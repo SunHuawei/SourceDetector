@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Source Map Collector",
+    "name": "Source Detector",
     "version": "1.0.0",
     "description": "Automatically collect and view source maps from websites",
     "permissions": [

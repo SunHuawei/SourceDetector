@@ -23,6 +23,7 @@ import JSZip from 'jszip';
 import { useEffect, useMemo, useState } from 'react';
 import { CrxFileTree } from './components/CrxFileTree';
 import { SourceMapTable } from './components/SourceMapTable';
+import { openInDesktop } from '@/utils/desktopApp';
 
 // Helper function to format bundle size
 function getBundleSize(files: SourceMapFile[]): string {
@@ -92,15 +93,9 @@ export default function App() {
         }
     };
 
-    const openInDesktop = (type: 'handleVersionMenuOpen' | 'handleViewAllPages', options?: any) => {
-        chrome.tabs.create({
-            url: chrome.runtime.getURL('pages/desktop/index.html?type=' + type + '&options=' + (options ? JSON.stringify(options) : ''))
-        });
-    };
-
     const handleViewAllPages = () => {
         openInDesktop('handleViewAllPages');
-    }
+    };
 
     const handleDownload = async (file: SourceMapFile) => {
         try {
