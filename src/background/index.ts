@@ -273,6 +273,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                     return await handleClearData();
                 case MESSAGE_TYPES.GET_CRX_FILE:
                     return await handleGetCrxFile(message.data);
+                case MESSAGE_TYPES.GET_SERVER_STATUS:
+                    return { success: true, data: { isOnline: serverStatus } };
                 default:
                     return { success: false, reason: 'Unknown message type' };
             }
@@ -672,3 +674,33 @@ async function getCrxUrl(url: string): Promise<string | null> {
         return null;
     }
 }
+
+// Add heartbeat constants
+const HEARTBEAT_INTERVAL = 5000; // 5 seconds
+const SERVER_URL = 'http://127.0.0.1:63798';
+let serverStatus = false;
+
+// Add heartbeat function
+async function checkServerStatus() {
+    try {
+        const response = await fetch(`${SERVER_URL}/health`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            }
+        });
+        serverStatus = response.ok;
+    } catch (error) {
+        serverStatus = false;
+    }
+
+    // Broadcast status to all tabs
+    chrome.runtime.sendMessage({
+        type: MESSAGE_TYPES.SERVER_STATUS_CHANGED,
+        data: { isOnline: serverStatus }
+    }).catch(() => {}); // Ignore errors if no listeners
+}
+
+// Start heartbeat
+setInterval(checkServerStatus, HEARTBEAT_INTERVAL);
+checkServerStatus(); // Initial check

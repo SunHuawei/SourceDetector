@@ -9,7 +9,9 @@ import { groupSourceMapFiles } from '@/utils/sourceMapUtils';
 import {
     CloudDownload as CloudDownloadIcon,
     ListAlt as ListAltIcon,
-    Settings as SettingsIcon
+    Settings as SettingsIcon,
+    CircleOutlined,
+    CheckCircle
 } from '@mui/icons-material';
 import {
     Box,
@@ -48,9 +50,30 @@ export default function App() {
         message: '',
         severity: 'info'
     });
+    const [serverStatus, setServerStatus] = useState(false);
 
     useEffect(() => {
         loadData();
+    }, []);
+
+    useEffect(() => {
+        // Check initial server status
+        chrome.runtime.sendMessage({
+            type: MESSAGE_TYPES.GET_SERVER_STATUS
+        }).then(response => {
+            if (response.success) {
+                setServerStatus(response.data.isOnline);
+            }
+        });
+
+        // Listen for server status changes
+        const listener = (message: any) => {
+            if (message.type === MESSAGE_TYPES.SERVER_STATUS_CHANGED) {
+                setServerStatus(message.data.isOnline);
+            }
+        };
+        chrome.runtime.onMessage.addListener(listener);
+        return () => chrome.runtime.onMessage.removeListener(listener);
     }, []);
 
     const loadData = async () => {
@@ -94,7 +117,7 @@ export default function App() {
     };
 
     const handleViewAllPages = () => {
-        openInDesktop('handleViewAllPages');
+        openInDesktop('handleViewAllPages', serverStatus,{});
     };
 
     const handleDownload = async (file: SourceMapFile) => {
@@ -114,7 +137,7 @@ export default function App() {
     };
 
     const handleVersionMenuOpen = (groupUrl: string) => {
-        openInDesktop('handleVersionMenuOpen', { groupUrl });
+        openInDesktop('handleVersionMenuOpen', serverStatus, { groupUrl });
     };
 
     const handleDownloadAll = async () => {
@@ -231,6 +254,11 @@ export default function App() {
         });
     }, [pageData?.files]);
 
+    const handleOpenDesktopApp = () => {
+        // Use the existing openInDesktop function which handles fallback
+        openInDesktop('handleOpenDesktopApp', serverStatus,{});
+    };
+
     if (loading) {
         return (
             <Box p={2} width={600}>
@@ -267,6 +295,19 @@ export default function App() {
                         {crxFile ? 'Extension Files' : 'Source Maps'}
                     </Typography>
                     <Box>
+                        <Tooltip title={`${serverStatus ? 'Desktop App Online - Click to open' : 'Desktop App Offline - Click to open'}`}>
+                            <IconButton
+                                size="small"
+                                sx={{ mr: 1 }}
+                                onClick={handleOpenDesktopApp}
+                            >
+                                {serverStatus ? (
+                                    <CheckCircle color="success" />
+                                ) : (
+                                    <CircleOutlined color="error" />
+                                )}
+                            </IconButton>
+                        </Tooltip>
                         {(groupedFiles.length > 0 || crxFile) && (
                             <Tooltip title={crxFile ?
                                 `Download all files (${formatBytes(parsed?.size || 0 + crxFile.size)})` :

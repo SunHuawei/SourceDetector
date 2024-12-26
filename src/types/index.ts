@@ -54,7 +54,7 @@ export interface StorageStats {
 }
 
 export interface AppSettings {
-    id?: number;
+    id?: string;
     darkMode: boolean;
     autoCollect: boolean;
     autoCleanup: boolean;
@@ -74,7 +74,7 @@ export interface Message<T = unknown> {
 } 
 
 export interface CrxFile {
-    id?: number;
+    id?: string;
     pageUrl: string;
     pageTitle: string;
     crxUrl: string;

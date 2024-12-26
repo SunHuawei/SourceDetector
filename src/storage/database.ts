@@ -19,14 +19,15 @@ export class SourceDetectorDB extends Dexie {
             sourceMapFiles: 'id, url, timestamp, fileType, isLatest, hash, size',
             pages: 'id, url, timestamp',
             pageSourceMaps: 'id, pageId, sourceMapId, timestamp',
-            settings: '++id',
-            crxFiles: '++id, pageUrl, pageTitle, crxUrl, blob, size, timestamp, count'
+            settings: 'id',
+            crxFiles: 'id, pageUrl, pageTitle, crxUrl, blob, size, timestamp, count'
         });
     }
 
     async addCrxFile(crxFile: CrxFile & { version?: number }): Promise<CrxFile> {
-        const id = await this.crxFiles.add(crxFile);
-        return { ...crxFile, id };
+        const fileWithId = { ...crxFile, id: crypto.randomUUID() };
+        await this.crxFiles.add(fileWithId);
+        return fileWithId;
     }
 
     async updateCrxFile(crxFile: CrxFile): Promise<void> {
@@ -46,10 +47,10 @@ export class SourceDetectorDB extends Dexie {
             if (settings.length === 0) {
                 const defaultSettings = {
                     ...getDefaultSettingsWithSystemPreference(),
-                    id: undefined  // Let Dexie handle auto-increment
+                    id: crypto.randomUUID()
                 };
-                const id = await this.settings.add(defaultSettings);
-                return { ...defaultSettings, id };
+                await this.settings.add(defaultSettings);
+                return defaultSettings;
             }
             return settings[0];
         } catch (error) {
