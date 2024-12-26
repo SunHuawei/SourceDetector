@@ -112,17 +112,17 @@ export function setupIpcHandlers(dbOps: DatabaseOperations) {
             return { success: true, data: settings };
         } catch (error) {
             console.error('Error getting settings:', error);
-            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+            return { success: false, error: String(error) };
         }
     });
 
-    ipcMain.handle('settings:update', async (_event, settings: AppSettings) => {
+    ipcMain.handle('settings:update', async (_event, settings: Partial<AppSettings>) => {
         try {
-            dbOps.updateSettings(settings);
+            await dbOps.updateSettings(settings);
             return { success: true };
         } catch (error) {
             console.error('Error updating settings:', error);
-            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+            return { success: false, error: String(error) };
         }
     });
 

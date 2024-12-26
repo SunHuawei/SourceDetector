@@ -81,7 +81,6 @@ const migrations: Migration[] = [
                 ('sourceMapFiles', 0),
                 ('pages', 0),
                 ('pageSourceMaps', 0),
-                ('settings', 0),
                 ('crxFiles', 0);
         `
     }

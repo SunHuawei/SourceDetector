@@ -2,13 +2,25 @@ import Fastify, { FastifyInstance } from 'fastify'
 import cors from '@fastify/cors'
 import 'dotenv/config'
 import { DatabaseOperations } from './database-operations'
+import { app } from 'electron'
+import path from 'path'
+import fs from 'fs'
 
 // Default values in case env variables are not set
 const DEFAULT_PORT = 63798
 const DEFAULT_HOST = '127.0.0.1'
 
+// Create logs directory if it doesn't exist
+const logsDir = path.join(app.getPath('userData'), 'logs');
+if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// Log file path
+const logFile = path.join(logsDir, 'server.log');
+
 // Supported table names for sync
-const SUPPORTED_TABLES = ['sourceMapFiles', 'pages', 'pageSourceMaps', 'settings', 'crxFiles'] as const;
+const SUPPORTED_TABLES = ['sourceMapFiles', 'pages', 'pageSourceMaps', 'crxFiles'] as const;
 type TableName = typeof SUPPORTED_TABLES[number];
 
 interface SyncRequest {
@@ -19,7 +31,9 @@ interface SyncRequest {
 
 export async function createServer(dbOps: DatabaseOperations): Promise<FastifyInstance> {
     const fastify = Fastify({
-        logger: true
+        logger: {
+            file: logFile
+        }
     })
 
     // Register CORS
@@ -90,19 +104,13 @@ export async function createServer(dbOps: DatabaseOperations): Promise<FastifyIn
                     }
                     break;
 
-                case 'settings':
-                    if (data.length > 0) {
-                        await dbOps.updateSettings(data[0]);
-                    }
-                    break;
-
                 case 'crxFiles':
                     for (const file of data) {
                         await dbOps.addCrxFile({
                             pageUrl: file.pageUrl,
                             pageTitle: file.pageTitle,
                             crxUrl: file.crxUrl,
-                            blob: Buffer.from(file.blob),
+                            blob: Buffer.from(file.blob, 'base64'),
                             size: file.size,
                             timestamp: file.timestamp,
                             count: file.count

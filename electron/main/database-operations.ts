@@ -122,20 +122,9 @@ export class DatabaseOperations {
             getPageSourceMaps: this.db.prepare('SELECT * FROM page_source_maps WHERE page_id = ?'),
 
             // Settings
-            getSettings: this.db.prepare('SELECT * FROM settings ORDER BY id DESC LIMIT 1'),
-            insertSettings: this.db.prepare(`
-                INSERT INTO settings (id, dark_mode, auto_collect, auto_cleanup, cleanup_threshold,
-                    retention_days, collect_js, collect_css, max_file_size, max_total_size,
-                    max_files)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `),
-            updateSettings: this.db.prepare(`
-                UPDATE settings SET
-                dark_mode = ?, auto_collect = ?, auto_cleanup = ?, cleanup_threshold = ?,
-                retention_days = ?, collect_js = ?, collect_css = ?, max_file_size = ?,
-                max_total_size = ?, max_files = ?
-                WHERE id = ?
-            `),
+            getSettings: this.db.prepare('SELECT * FROM settings LIMIT 1'),
+            insertSettings: this.db.prepare('INSERT INTO settings (cleanup_threshold) VALUES (?)'),
+            updateSettings: this.db.prepare('UPDATE settings SET cleanup_threshold = ?'),
 
             // CRX Files
             insertCrxFile: this.db.prepare(`
@@ -225,7 +214,7 @@ export class DatabaseOperations {
         const settings = this.statements.getSettings.get() as AppSettings | undefined;
         if (!settings) {
             const defaultSettings: AppSettings = {
-                cleanupThreshold: 1000
+                cleanupThreshold: 128 * 1024 * 1024 // 128GB
             };
             this.statements.insertSettings.run(defaultSettings.cleanupThreshold);
             return defaultSettings;
