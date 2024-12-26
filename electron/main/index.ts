@@ -6,7 +6,9 @@ import os from 'node:os'
 import { update } from './update'
 import { createServer, closeServer } from './server'
 import { FastifyInstance } from 'fastify'
-import { database } from './database'
+import { initDatabase, closeDatabase } from './database.js'
+import { DatabaseOperations } from './database-operations.js'
+import { setupIpcHandlers } from './ipc-handlers.js'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -143,14 +145,22 @@ async function createWindow() {
   update(win)
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  // Initialize database
+  const db = initDatabase()
+  const dbOps = new DatabaseOperations(db)
+  
+  // Set up IPC handlers
+  setupIpcHandlers(dbOps)
+  
+  createWindow()
+})
 
-app.on('window-all-closed', async () => {
-  win = null
-  // Close the server when the app is closed
-  await closeServer(server)
-  server = null
-  if (process.platform !== 'darwin') app.quit()
+app.on('window-all-closed', () => {
+  closeDatabase()
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
 })
 
 app.on('second-instance', (event, commandLine) => {

@@ -42,16 +42,16 @@ if (process.platform === 'linux') {
     await electronApp.close()
   })
 
-  describe('[electron-vite-react] e2e tests', async () => {
+  describe('[SourceDetectorDesktop] e2e tests', async () => {
     test('startup', async () => {
       const title = await page.title()
-      expect(title).eq('Electron + Vite + React')
+      expect(title).eq('SourceDetectorDesktop')
     })
 
     test('should be home page is load correctly', async () => {
       const h1 = await page.$('h1')
       const title = await h1?.textContent()
-      expect(title).eq('Electron + Vite + React')
+      expect(title).eq('SourceDetectorDesktop')
     })
 
     test('should be count button can click', async () => {

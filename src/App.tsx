@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import UpdateElectron from '@/components/update'
+import { DatabaseInfo } from '@/components/DatabaseInfo'
 import logoVite from './assets/logo-vite.svg'
 import logoElectron from './assets/logo-electron.svg'
 import './App.css'
@@ -8,13 +9,14 @@ function App() {
   const [count, setCount] = useState(0)
   return (
     <div className='App'>
+      <DatabaseInfo />
       <div className='logo-box'>
         <a href='https://github.com/electron-vite/electron-vite-react' target='_blank'>
-          <img src={logoVite} className='logo vite' alt='Electron + Vite logo' />
-          <img src={logoElectron} className='logo electron' alt='Electron + Vite logo' />
+          <img src={logoVite} className='logo vite' alt='SourceDetectorDesktop logo' />
+          <img src={logoElectron} className='logo electron' alt='SourceDetectorDesktop logo' />
         </a>
       </div>
-      <h1>Electron + Vite + React</h1>
+      <h1>SourceDetectorDesktop</h1>
       <div className='card'>
         <button onClick={() => setCount((count) => count + 1)}>
           count is {count}

@@ -1,10 +1,10 @@
 {
-  "name": "electron-vite-react",
+  "name": "source-detector-desktop",
   "version": "2.2.0",
   "main": "dist-electron/main/index.js",
-  "description": "Electron Vite React boilerplate.",
-  "author": "草鞋没号 <308487730@qq.com>",
-  "license": "MIT",
+  "description": "Source Detector Desktop App",
+  "author": "SunHuawei",
+  "license": "Private",
   "private": true,
   "debug": {
     "env": {
@@ -14,6 +14,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-builder install-app-deps",
     "build": "tsc && vite build && electron-builder",
     "preview": "vite preview",
     "pretest": "vite build --mode=test",
@@ -24,7 +26,7 @@
     "@fastify/cors": "^10.0.1",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
-    "better-sqlite3": "^11.7.0",
+    "better-sqlite3": "11.6.0",
     "dexie": "^4.0.10",
     "dotenv": "^16.4.7",
     "electron-store": "^10.0.0",
