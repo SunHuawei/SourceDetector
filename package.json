@@ -21,16 +21,22 @@
   },
   "dependencies": {
     "@electron/remote": "^2.1.2",
+    "@fastify/cors": "^10.0.1",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
     "better-sqlite3": "^11.7.0",
+    "dexie": "^4.0.10",
+    "dotenv": "^16.4.7",
     "electron-store": "^10.0.0",
     "electron-updater": "^6.3.9",
+    "fastify": "^5.2.0",
     "react-router-dom": "^7.1.1"
   },
   "devDependencies": {
+    "@fastify/type-provider-typebox": "^5.1.0",
     "@playwright/test": "^1.48.2",
     "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",

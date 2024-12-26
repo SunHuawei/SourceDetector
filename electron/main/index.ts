@@ -4,9 +4,14 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import os from 'node:os'
 import { update } from './update'
+import { createServer, closeServer } from './server'
+import { FastifyInstance } from 'fastify'
+import { database } from './database'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+let server: FastifyInstance | null = null
 
 // Register the source-detector:// protocol
 if (process.defaultApp) {
@@ -72,6 +77,7 @@ function handleProtocolUrl(url: string) {
   if (urlObj.protocol !== 'source-detector:') return
   
   const route = urlObj.pathname || '/home'
+  console.log('route', urlObj)
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(`${VITE_DEV_SERVER_URL}#${route}`)
   } else {
@@ -93,6 +99,13 @@ app.on('open-url', (event, url) => {
 })
 
 async function createWindow() {
+  // Start the server before creating the window
+  try {
+    server = await createServer()
+  } catch (err) {
+    console.error('Failed to start server:', err)
+  }
+
   win = new BrowserWindow({
     title: 'Main window',
     icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
@@ -132,8 +145,11 @@ async function createWindow() {
 
 app.whenReady().then(createWindow)
 
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
   win = null
+  // Close the server when the app is closed
+  await closeServer(server)
+  server = null
   if (process.platform !== 'darwin') app.quit()
 })
 
