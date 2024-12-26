@@ -103,7 +103,11 @@ app.on('open-url', (event, url) => {
 async function createWindow() {
   // Start the server before creating the window
   try {
-    server = await createServer()
+    const db = initDatabase()
+    const dbOps = new DatabaseOperations(db)
+    await dbOps.initializeSyncTable()
+
+    server = await createServer(dbOps)
   } catch (err) {
     console.error('Failed to start server:', err)
   }

@@ -55,8 +55,7 @@ const migrations: Migration[] = [
                 collect_css BOOLEAN NOT NULL DEFAULT 1,
                 max_file_size INTEGER NOT NULL DEFAULT 10485760,
                 max_total_size INTEGER NOT NULL DEFAULT 104857600,
-                max_files INTEGER NOT NULL DEFAULT 1000,
-                enable_desktop_app BOOLEAN NOT NULL DEFAULT 0
+                max_files INTEGER NOT NULL DEFAULT 1000
             );
 
             CREATE TABLE IF NOT EXISTS crx_files (
@@ -77,6 +76,23 @@ const migrations: Migration[] = [
             CREATE INDEX IF NOT EXISTS idx_page_source_maps_page_id ON page_source_maps(page_id);
             CREATE INDEX IF NOT EXISTS idx_page_source_maps_source_map_id ON page_source_maps(source_map_id);
             CREATE INDEX IF NOT EXISTS idx_crx_files_page_url ON crx_files(page_url);
+        `
+    },
+    {
+        version: 2,
+        sql: `
+            CREATE TABLE IF NOT EXISTS sync_status (
+                table_name TEXT PRIMARY KEY,
+                timestamp INTEGER NOT NULL
+            );
+
+            -- Initialize sync status for all tables
+            INSERT OR IGNORE INTO sync_status (table_name, timestamp) VALUES
+                ('sourceMapFiles', 0),
+                ('pages', 0),
+                ('pageSourceMaps', 0),
+                ('settings', 0),
+                ('crxFiles', 0);
         `
     }
 ];

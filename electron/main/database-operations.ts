@@ -42,7 +42,6 @@ export interface AppSettings {
     maxFileSize: number;
     maxTotalSize: number;
     maxFiles: number;
-    enableDesktopApp: boolean;
 }
 
 export interface CrxFile {
@@ -137,14 +136,14 @@ export class DatabaseOperations {
             insertSettings: this.db.prepare(`
                 INSERT INTO settings (id, dark_mode, auto_collect, auto_cleanup, cleanup_threshold,
                     retention_days, collect_js, collect_css, max_file_size, max_total_size,
-                    max_files, enable_desktop_app)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    max_files)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `),
             updateSettings: this.db.prepare(`
                 UPDATE settings SET
                 dark_mode = ?, auto_collect = ?, auto_cleanup = ?, cleanup_threshold = ?,
                 retention_days = ?, collect_js = ?, collect_css = ?, max_file_size = ?,
-                max_total_size = ?, max_files = ?, enable_desktop_app = ?
+                max_total_size = ?, max_files = ?
                 WHERE id = ?
             `),
 
@@ -244,10 +243,9 @@ export class DatabaseOperations {
                 retentionDays: 30,
                 collectJs: true,
                 collectCss: true,
-                maxFileSize: 10485760,
-                maxTotalSize: 104857600,
-                maxFiles: 1000,
-                enableDesktopApp: false
+                maxFileSize: 10 * 1024 * 1024,
+                maxTotalSize: 100 * 1024 * 1024,
+                maxFiles: 1000
             };
             this.statements.insertSettings.run(
                 defaultSettings.id, defaultSettings.darkMode ? 1 : 0,
@@ -255,7 +253,7 @@ export class DatabaseOperations {
                 defaultSettings.cleanupThreshold, defaultSettings.retentionDays,
                 defaultSettings.collectJs ? 1 : 0, defaultSettings.collectCss ? 1 : 0,
                 defaultSettings.maxFileSize, defaultSettings.maxTotalSize,
-                defaultSettings.maxFiles, defaultSettings.enableDesktopApp ? 1 : 0
+                defaultSettings.maxFiles
             );
             return defaultSettings;
         }
@@ -265,20 +263,27 @@ export class DatabaseOperations {
             autoCollect: Boolean(settings.autoCollect),
             autoCleanup: Boolean(settings.autoCleanup),
             collectJs: Boolean(settings.collectJs),
-            collectCss: Boolean(settings.collectCss),
-            enableDesktopApp: Boolean(settings.enableDesktopApp)
+            collectCss: Boolean(settings.collectCss)
         };
     }
 
-    updateSettings(settings: AppSettings): void {
-        this.statements.updateSettings.run(
-            settings.darkMode ? 1 : 0, settings.autoCollect ? 1 : 0,
-            settings.autoCleanup ? 1 : 0, settings.cleanupThreshold,
-            settings.retentionDays, settings.collectJs ? 1 : 0,
-            settings.collectCss ? 1 : 0, settings.maxFileSize,
-            settings.maxTotalSize, settings.maxFiles,
-            settings.enableDesktopApp ? 1 : 0, settings.id
+    async updateSettings(settings: Partial<AppSettings>): Promise<void> {
+        const result = this.statements.updateSettings.run(
+            settings.darkMode ? 1 : 0,
+            settings.autoCollect ? 1 : 0,
+            settings.autoCleanup ? 1 : 0,
+            settings.cleanupThreshold,
+            settings.retentionDays,
+            settings.collectJs ? 1 : 0,
+            settings.collectCss ? 1 : 0,
+            settings.maxFileSize,
+            settings.maxTotalSize,
+            settings.maxFiles,
+            settings.id
         );
+        if (result.changes === 0) {
+            throw new Error('Settings not found');
+        }
     }
 
     // CRX Files
@@ -330,5 +335,30 @@ export class DatabaseOperations {
             pagesCount,
             oldestTimestamp
         };
+    }
+
+    // Add new methods for sync status
+    async updateSyncTimestamp(table: string, timestamp: number): Promise<void> {
+        const sql = `INSERT INTO sync_status (table_name, timestamp) 
+                    VALUES ('${table}', ${timestamp})
+                    ON CONFLICT(table_name) DO UPDATE SET timestamp = excluded.timestamp`;
+        await this.db.exec(sql);
+    }
+
+    async getLastSyncTimestamp(table: string): Promise<number> {
+        const sql = `SELECT timestamp FROM sync_status WHERE table_name = '${table}'`;
+        const result = await this.db.exec(sql);
+        const rows = result as unknown as Array<{ timestamp: number }>;
+        return rows[0]?.timestamp || 0;
+    }
+
+    // Add method to initialize sync status table
+    async initializeSyncTable(): Promise<void> {
+        await this.db.exec(`
+            CREATE TABLE IF NOT EXISTS sync_status (
+                table_name TEXT PRIMARY KEY,
+                timestamp INTEGER NOT NULL
+            )
+        `);
     }
 } 
