@@ -73,28 +73,24 @@ export const SETTINGS = {
 
 export const STORAGE_LIMITS = SETTINGS.STORAGE;
 
-function createDefaultSettings(darkMode: boolean) {
-    return {
-        darkMode,
-        autoCollect: true,
-        autoCleanup: true,
-        cleanupThreshold: 1024 * 1024 * 1024, // 1GB
-        retentionDays: 30,
-        collectJs: true,
-        collectCss: true,
-        maxFileSize: 1024 * 1024 * 10, // 10MB
-        maxTotalSize: 1024 * 1024 * 1024, // 1GB
-        maxFiles: 1000,
-        enableDesktopApp: false,
-    };
-}
-
-// Default settings with light mode
-export const DEFAULT_SETTINGS = createDefaultSettings(false);
+export const DEFAULT_SETTINGS: AppSettings = {
+    darkMode: false,
+    autoCollect: true,
+    autoCleanup: false,
+    cleanupThreshold: 1000,
+    retentionDays: 30,
+    collectJs: true,
+    collectCss: true,
+    maxFileSize: 10 * 1024 * 1024,
+    maxTotalSize: 100 * 1024 * 1024,
+    maxFiles: 1000
+};
 
 // Helper to get settings with system preference
-export const getDefaultSettingsWithSystemPreference = (): AppSettings => {
-    const prefersDarkMode = typeof window !== 'undefined'
-        && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-    return createDefaultSettings(!!prefersDarkMode);
-};
+export function getDefaultSettingsWithSystemPreference(): AppSettings {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return {
+        ...DEFAULT_SETTINGS,
+        darkMode: prefersDark
+    };
+}

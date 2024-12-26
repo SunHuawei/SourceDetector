@@ -232,19 +232,9 @@ export default function App() {
 
                         <ListItem>
                             <ListItemText
-                                primary="Enable Desktop App"
+                                primary="Collect JavaScript source maps"
                                 secondary="Send source maps to desktop application"
                             />
-                            <ListItemSecondaryAction>
-                                <Switch
-                                    checked={settings?.enableDesktopApp ?? false}
-                                    onChange={(e) => handleSettingChange('enableDesktopApp', e.target.checked)}
-                                />
-                            </ListItemSecondaryAction>
-                        </ListItem>
-
-                        <ListItem>
-                            <ListItemText primary="Collect JavaScript source maps" />
                             <ListItemSecondaryAction>
                                 <Switch
                                     checked={settings?.collectJs ?? true}

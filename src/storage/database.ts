@@ -1,5 +1,5 @@
 import { getDefaultSettingsWithSystemPreference } from '@/background/constants';
-import { AppSettings, Page, PageSourceMap, SourceMapFile, CrxFile } from '@/types';
+import { AppSettings, Page, PageSourceMap, SourceMapFile, CrxFile, SyncStatus } from '@/types';
 import Dexie from 'dexie';
 
 const DB_VERSION = 1;
@@ -11,6 +11,7 @@ export class SourceDetectorDB extends Dexie {
     pageSourceMaps!: Dexie.Table<PageSourceMap, string>;
     settings!: Dexie.Table<AppSettings, number>;
     crxFiles!: Dexie.Table<CrxFile, number>;
+    syncStatus!: Dexie.Table<SyncStatus, string>;
 
     constructor() {
         super(DB_NAME);
@@ -20,7 +21,8 @@ export class SourceDetectorDB extends Dexie {
             pages: 'id, url, timestamp',
             pageSourceMaps: 'id, pageId, sourceMapId, timestamp',
             settings: 'id',
-            crxFiles: 'id, pageUrl, pageTitle, crxUrl, blob, size, timestamp, count'
+            crxFiles: 'id, pageUrl, pageTitle, crxUrl, blob, size, timestamp, count',
+            syncStatus: 'table, timestamp'
         });
     }
 

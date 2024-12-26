@@ -65,7 +65,6 @@ export interface AppSettings {
     maxFileSize: number;
     maxTotalSize: number;
     maxFiles: number;
-    enableDesktopApp: boolean;
 }
 
 export interface Message<T = unknown> {
@@ -90,4 +89,9 @@ export interface ParsedCrxFile {
     count: number;
     timestamp: number;
     blob: Blob;
+}
+
+export interface SyncStatus {
+    table: string;
+    timestamp: number;
 }

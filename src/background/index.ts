@@ -1,9 +1,8 @@
 import { SourceDetectorDB } from '@/storage/database';
 import { AppSettings, PageData } from '@/types';
-import { tauriClient } from '@/utils/tauri-client';
 import { FILE_TYPES, MESSAGE_TYPES } from './constants';
 import { createHash } from './utils';
-import { parseCrxFile, parsedCrxFileFromCrxFile } from '@/utils/parseCrxFile';
+import { parseCrxFile } from '@/utils/parseCrxFile';
 import { isExtensionPage } from '@/utils/isExtensionPage';
 
 const db = new SourceDetectorDB();
@@ -336,120 +335,8 @@ async function handleGetFileData(data: { url: string }) {
     }
 }
 
-// Main handler for source map discovery
-async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css'; originalContent: string }) {
-    try {
-        const settings = await db.getSettings();
-        let desktopResult = false;
-        let indexedDBResult = false;
-
-        // Process with desktop app if enabled
-        if (settings.enableDesktopApp) {
-            desktopResult = await handleSourceMapFoundWithDesktop(data);
-        }
-
-        // Always process with IndexedDB
-        const indexedDBResponse = await handleSourceMapFoundWithIndexedDB(data);
-        indexedDBResult = indexedDBResponse.success;
-
-        return {
-            success: settings.enableDesktopApp ? (desktopResult || indexedDBResult) : indexedDBResult,
-            reason: settings.enableDesktopApp && !desktopResult && !indexedDBResult
-                ? 'Failed to store in both destinations'
-                : !indexedDBResult
-                    ? indexedDBResponse.reason || 'Failed to store in IndexedDB'
-                    : undefined
-        };
-    } catch (error) {
-        console.error('Error handling source map:', error);
-        return { success: false, reason: String(error) };
-    }
-}
-
-// Handle storing source map in desktop app
-async function handleSourceMapFoundWithDesktop(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css'; originalContent: string }) {
-    try {
-        const content = await fetchSourceMapContent(data.sourceUrl, data.mapUrl);
-        if (!content) return false;
-
-        const sourceMap = {
-            url: data.sourceUrl,
-            source_map_url: data.mapUrl,
-            content: content.content,
-            original_content: content.originalContent,
-            file_type: data.fileType,
-            size: content.size,
-            hash: content.hash,
-        };
-
-        // Send to Tauri app
-        return await tauriClient.sendSourceMap(
-            data.pageUrl,
-            data.pageTitle,
-            sourceMap
-        );
-    } catch (error) {
-        console.error('Error processing source map for desktop:', error);
-        return false;
-    }
-}
-
-// Lock mechanism
-class DatabaseLock {
-    private locks: Map<string, Promise<void>> = new Map();
-    private readonly timeout: number;
-
-    constructor(timeoutMs: number = 10000) { // Default 10s timeout
-        this.timeout = timeoutMs;
-    }
-
-    private createTimeoutPromise(): Promise<void> {
-        return new Promise((_, reject) => {
-            setTimeout(() => {
-                reject(new Error('Lock acquisition timeout'));
-            }, this.timeout);
-        });
-    }
-
-    async acquireLock(key: string): Promise<() => void> {
-        let releaseLock: () => void;
-        const newLockPromise = new Promise<void>(resolve => {
-            releaseLock = () => {
-                this.locks.delete(key);
-                resolve();
-            };
-        });
-
-        const currentLock = this.locks.get(key);
-        if (currentLock) {
-            try {
-                await Promise.race([currentLock, this.createTimeoutPromise()]);
-            } catch (error) {
-                console.error('Error waiting for lock:', error);
-                this.locks.delete(key);
-                throw error;
-            }
-        }
-
-        this.locks.set(key, newLockPromise);
-        return releaseLock!;
-    }
-
-    async withLock<T>(key: string, operation: () => Promise<T>): Promise<T> {
-        let releaseLock: (() => void) | undefined;
-        try {
-            releaseLock = await this.acquireLock(key);
-            return await operation();
-        } finally {
-            releaseLock?.();
-        }
-    }
-}
-
-const dbLock = new DatabaseLock();
-
-// Handle storing source map in IndexedDB
-async function handleSourceMapFoundWithIndexedDB(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css'; originalContent: string }) {
+// Function to handle source map found
+async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css'; originalContent: string }): Promise<{ success: boolean; reason?: string }> {
     return dbLock.withLock('sourceMap', async () => {
         try {
             const settings = await db.getSettings();
@@ -532,11 +419,65 @@ async function handleSourceMapFoundWithIndexedDB(data: { pageTitle: string; page
 
             return { success: true };
         } catch (error) {
-            console.error('Error handling source map for IndexedDB:', error);
+            console.error('Error handling source map:', error);
             return { success: false, reason: String(error) };
         }
     });
 }
+
+// Lock mechanism
+class DatabaseLock {
+    private locks: Map<string, Promise<void>> = new Map();
+    private readonly timeout: number;
+
+    constructor(timeoutMs: number = 10000) { // Default 10s timeout
+        this.timeout = timeoutMs;
+    }
+
+    private createTimeoutPromise(): Promise<void> {
+        return new Promise((_, reject) => {
+            setTimeout(() => {
+                reject(new Error('Lock acquisition timeout'));
+            }, this.timeout);
+        });
+    }
+
+    async acquireLock(key: string): Promise<() => void> {
+        let releaseLock: () => void;
+        const newLockPromise = new Promise<void>(resolve => {
+            releaseLock = () => {
+                this.locks.delete(key);
+                resolve();
+            };
+        });
+
+        const currentLock = this.locks.get(key);
+        if (currentLock) {
+            try {
+                await Promise.race([currentLock, this.createTimeoutPromise()]);
+            } catch (error) {
+                console.error('Error waiting for lock:', error);
+                this.locks.delete(key);
+                throw error;
+            }
+        }
+
+        this.locks.set(key, newLockPromise);
+        return releaseLock!;
+    }
+
+    async withLock<T>(key: string, operation: () => Promise<T>): Promise<T> {
+        let releaseLock: (() => void) | undefined;
+        try {
+            releaseLock = await this.acquireLock(key);
+            return await operation();
+        } finally {
+            releaseLock?.();
+        }
+    }
+}
+
+const dbLock = new DatabaseLock();
 
 // 获取 sourcemap
 async function handleGetSourceMap(data: { url: string }) {
@@ -675,13 +616,24 @@ async function getCrxUrl(url: string): Promise<string | null> {
     }
 }
 
-// Add heartbeat constants
+// Server configuration
+const SERVER_CONFIG = {
+    host: process.env.SERVER_HOST || '127.0.0.1',
+    port: process.env.SERVER_PORT || '63798'
+};
+
+const SERVER_URL = `http://${SERVER_CONFIG.host}:${SERVER_CONFIG.port}`;
 const HEARTBEAT_INTERVAL = 5000; // 5 seconds
-const SERVER_URL = 'http://127.0.0.1:63798';
+const SYNC_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
+
+// Tables to sync
+const TABLES = ['sourceMapFiles', 'pages', 'pageSourceMaps', 'settings', 'crxFiles'] as const;
+type TableName = typeof TABLES[number];
+
 let serverStatus = false;
 
-// Add heartbeat function
-async function checkServerStatus() {
+// Function to check server health
+async function checkServerHealth(): Promise<boolean> {
     try {
         const response = await fetch(`${SERVER_URL}/health`, {
             method: 'GET',
@@ -689,10 +641,17 @@ async function checkServerStatus() {
                 'Accept': 'application/json',
             }
         });
-        serverStatus = response.ok;
+        const { status } = await response.json();
+        return response.ok && status === 'ok';
     } catch (error) {
-        serverStatus = false;
+        console.error('Error checking server health:', error);
+        return false;
     }
+}
+
+// Heartbeat function
+async function checkServerStatus() {
+    serverStatus = await checkServerHealth();
 
     // Broadcast status to all tabs
     chrome.runtime.sendMessage({
@@ -701,6 +660,78 @@ async function checkServerStatus() {
     }).catch(() => {}); // Ignore errors if no listeners
 }
 
-// Start heartbeat
+// Function to sync data to server
+async function syncDataToServer() {
+    try {
+        for (const table of TABLES) {
+            const lastSync = await getLastSyncTimestamp(table);
+            const modifiedData = await getModifiedData(table, lastSync);
+
+            if (modifiedData.length > 0) {
+                const response = await fetch(`${SERVER_URL}/sync`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        table,
+                        lastSyncTimestamp: lastSync,
+                        data: modifiedData
+                    })
+                });
+
+                if (response.ok) {
+                    await updateSyncTimestamp(table, Date.now());
+                    console.log(`Synced ${modifiedData.length} records for ${table}`);
+                }
+            }
+        }
+
+        console.log('Data sync completed successfully');
+    } catch (error) {
+        console.error('Error syncing data:', error);
+    }
+}
+
+// Function to check server status and trigger sync
+async function checkServerAndSync() {
+    if (await checkServerHealth()) {
+        await syncDataToServer();
+    }
+}
+
+// Start heartbeat and sync
 setInterval(checkServerStatus, HEARTBEAT_INTERVAL);
-checkServerStatus(); // Initial check
+setInterval(checkServerAndSync, SYNC_CHECK_INTERVAL);
+
+// Initial checks
+checkServerStatus();
+checkServerAndSync();
+
+// Function to get last sync timestamp for a table
+async function getLastSyncTimestamp(table: TableName): Promise<number> {
+    const syncRecord = await db.syncStatus.where('table').equals(table).first();
+    return syncRecord?.timestamp || 0;
+}
+
+// Function to update sync timestamp
+async function updateSyncTimestamp(table: TableName, timestamp: number): Promise<void> {
+    await db.syncStatus.put({ table, timestamp });
+}
+
+// Function to get data modified since last sync
+async function getModifiedData(table: TableName, lastSync: number) {
+    switch (table) {
+        case 'sourceMapFiles':
+            return await db.sourceMapFiles.where('timestamp').above(lastSync).toArray();
+        case 'pages':
+            return await db.pages.where('timestamp').above(lastSync).toArray();
+        case 'pageSourceMaps':
+            return await db.pageSourceMaps.where('timestamp').above(lastSync).toArray();
+        case 'settings':
+            const settings = await db.getSettings();
+            return settings ? [settings] : [];
+        case 'crxFiles':
+            return await db.crxFiles.where('timestamp').above(lastSync).toArray();
+        default:
+            return [];
+    }
+}
