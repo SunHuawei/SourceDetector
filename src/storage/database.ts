@@ -20,7 +20,7 @@ export class SourceDetectorDB extends Dexie {
             sourceMapFiles: 'id, url, timestamp, fileType, isLatest, hash, size',
             pages: 'id, url, timestamp',
             pageSourceMaps: 'id, pageId, sourceMapId, timestamp',
-            settings: 'id',
+            settings: '',
             crxFiles: 'id, pageUrl, pageTitle, crxUrl, blob, size, timestamp, count',
             syncStatus: 'table, timestamp'
         });
@@ -65,7 +65,8 @@ export class SourceDetectorDB extends Dexie {
                 ...currentSettings,
                 ...settings
             };
-            await this.settings.where('id').equals(currentSettings.id!).modify(updatedSettings);
+            await this.settings.clear();
+            await this.settings.add(updatedSettings);
         } catch (error) {
             console.error('Error in updateSettings:', error);
             throw error;

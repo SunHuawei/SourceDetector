@@ -1,5 +1,5 @@
 import { SourceDetectorDB } from '@/storage/database';
-import { AppSettings, PageData } from '@/types';
+import { AppSettings, PageData, CrxFile } from '@/types';
 import { FILE_TYPES, MESSAGE_TYPES } from './constants';
 import { createHash } from './utils';
 import { parseCrxFile } from '@/utils/parseCrxFile';
@@ -335,9 +335,43 @@ async function handleGetFileData(data: { url: string }) {
     }
 }
 
+// Task queue implementation
+class TaskQueue {
+    private queue: Map<string, Promise<any>> = new Map();
+
+    async enqueue<T>(key: string, task: () => Promise<T>): Promise<T> {
+        const currentTask = this.queue.get(key) || Promise.resolve();
+        try {
+            // Create a new task that waits for the current task to complete
+            const newTask = currentTask.then(task, task);
+            
+            // Update the queue with the new task
+            this.queue.set(key, newTask);
+            
+            // Wait for the task to complete and return its result
+            const result = await newTask;
+            
+            // Clean up if this was the last task in the queue
+            if (this.queue.get(key) === newTask) {
+                this.queue.delete(key);
+            }
+            
+            return result;
+        } catch (error) {
+            // Clean up on error
+            if (this.queue.get(key) === currentTask) {
+                this.queue.delete(key);
+            }
+            throw error;
+        }
+    }
+}
+
+const taskQueue = new TaskQueue();
+
 // Function to handle source map found
 async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css'; originalContent: string }): Promise<{ success: boolean; reason?: string }> {
-    return dbLock.withLock('sourceMap', async () => {
+    return taskQueue.enqueue('sourceMap', async () => {
         try {
             const content = await fetchSourceMapContent(data.sourceUrl, data.mapUrl);
             if (!content) return { success: false, reason: 'Failed to fetch content' };
@@ -405,60 +439,6 @@ async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; 
         }
     });
 }
-
-// Lock mechanism
-class DatabaseLock {
-    private locks: Map<string, Promise<void>> = new Map();
-    private readonly timeout: number;
-
-    constructor(timeoutMs: number = 10000) { // Default 10s timeout
-        this.timeout = timeoutMs;
-    }
-
-    private createTimeoutPromise(): Promise<void> {
-        return new Promise((_, reject) => {
-            setTimeout(() => {
-                reject(new Error('Lock acquisition timeout'));
-            }, this.timeout);
-        });
-    }
-
-    async acquireLock(key: string): Promise<() => void> {
-        let releaseLock: () => void;
-        const newLockPromise = new Promise<void>(resolve => {
-            releaseLock = () => {
-                this.locks.delete(key);
-                resolve();
-            };
-        });
-
-        const currentLock = this.locks.get(key);
-        if (currentLock) {
-            try {
-                await Promise.race([currentLock, this.createTimeoutPromise()]);
-            } catch (error) {
-                console.error('Error waiting for lock:', error);
-                this.locks.delete(key);
-                throw error;
-            }
-        }
-
-        this.locks.set(key, newLockPromise);
-        return releaseLock!;
-    }
-
-    async withLock<T>(key: string, operation: () => Promise<T>): Promise<T> {
-        let releaseLock: (() => void) | undefined;
-        try {
-            releaseLock = await this.acquireLock(key);
-            return await operation();
-        } finally {
-            releaseLock?.();
-        }
-    }
-}
-
-const dbLock = new DatabaseLock();
 
 // 获取 sourcemap
 async function handleGetSourceMap(data: { url: string }) {
@@ -600,8 +580,8 @@ async function getCrxUrl(url: string): Promise<string | null> {
 
 // Server configuration
 const SERVER_CONFIG = {
-    host: process.env.SERVER_HOST || '127.0.0.1',
-    port: process.env.SERVER_PORT || '63798'
+    host: '127.0.0.1',
+    port: '63798'
 };
 
 const SERVER_URL = `http://${SERVER_CONFIG.host}:${SERVER_CONFIG.port}`;
@@ -609,7 +589,7 @@ const HEARTBEAT_INTERVAL = 5000; // 5 seconds
 const SYNC_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
 
 // Tables to sync
-const TABLES = ['sourceMapFiles', 'pages', 'pageSourceMaps', 'settings', 'crxFiles'] as const;
+const TABLES = ['sourceMapFiles', 'pages', 'pageSourceMaps', 'crxFiles'] as const;
 type TableName = typeof TABLES[number];
 
 let serverStatus = false;
@@ -642,21 +622,51 @@ async function checkServerStatus() {
     }).catch(() => {}); // Ignore errors if no listeners
 }
 
+// Function to convert Blob to base64
+async function blobToBase64(blob: Blob): Promise<string> {
+    const arrayBuffer = await blob.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    // Process the array in chunks to avoid call stack size exceeded
+    const chunkSize = 0x8000; // 32KB chunks
+    let result = '';
+    
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+        const chunk = uint8Array.slice(i, i + chunkSize);
+        result += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    
+    return btoa(result);
+}
+
 // Function to sync data to server
 async function syncDataToServer() {
     try {
         for (const table of TABLES) {
+            console.log('syncDataToServer', table);
             const lastSync = await getLastSyncTimestamp(table);
+            console.log('lastSync', lastSync);
             const modifiedData = await getModifiedData(table, lastSync);
-
+            console.log('modifiedData', modifiedData);
             if (modifiedData.length > 0) {
+                // Convert Blob to base64 string for CRX files
+                const processedData = table === 'crxFiles' 
+                    ? await Promise.all(modifiedData.map(async (file) => {
+                        const crxFile = file as CrxFile;
+                        return {
+                            ...crxFile,
+                            blob: await blobToBase64(crxFile.blob)
+                        };
+                    }))
+                    : modifiedData;
+
                 const response = await fetch(`${SERVER_URL}/sync`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         table,
                         lastSyncTimestamp: lastSync,
-                        data: modifiedData
+                        data: processedData
                     })
                 });
 
@@ -675,7 +685,9 @@ async function syncDataToServer() {
 
 // Function to check server status and trigger sync
 async function checkServerAndSync() {
+    console.log('checkServerAndSync');
     if (await checkServerHealth()) {
+        console.log('checkServerAndSync2');
         await syncDataToServer();
     }
 }
@@ -708,9 +720,6 @@ async function getModifiedData(table: TableName, lastSync: number) {
             return await db.pages.where('timestamp').above(lastSync).toArray();
         case 'pageSourceMaps':
             return await db.pageSourceMaps.where('timestamp').above(lastSync).toArray();
-        case 'settings':
-            const settings = await db.getSettings();
-            return settings ? [settings] : [];
         case 'crxFiles':
             return await db.crxFiles.where('timestamp').above(lastSync).toArray();
         default:

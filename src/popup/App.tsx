@@ -103,7 +103,6 @@ export default function App() {
                 console.log('response', response)
                 setPageData(response.data);
             }
-
             const statsResponse = await chrome.runtime.sendMessage({
                 type: MESSAGE_TYPES.GET_STORAGE_STATS
             });
