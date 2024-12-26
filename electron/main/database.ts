@@ -45,17 +45,7 @@ const migrations: Migration[] = [
             );
 
             CREATE TABLE IF NOT EXISTS settings (
-                id TEXT PRIMARY KEY,
-                dark_mode BOOLEAN NOT NULL DEFAULT 0,
-                auto_collect BOOLEAN NOT NULL DEFAULT 1,
-                auto_cleanup BOOLEAN NOT NULL DEFAULT 0,
-                cleanup_threshold INTEGER NOT NULL DEFAULT 1000,
-                retention_days INTEGER NOT NULL DEFAULT 30,
-                collect_js BOOLEAN NOT NULL DEFAULT 1,
-                collect_css BOOLEAN NOT NULL DEFAULT 1,
-                max_file_size INTEGER NOT NULL DEFAULT 10485760,
-                max_total_size INTEGER NOT NULL DEFAULT 104857600,
-                max_files INTEGER NOT NULL DEFAULT 1000
+                cleanup_threshold INTEGER NOT NULL DEFAULT 1000
             );
 
             CREATE TABLE IF NOT EXISTS crx_files (

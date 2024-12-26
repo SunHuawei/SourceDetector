@@ -31,17 +31,7 @@ export interface PageSourceMap {
 }
 
 export interface AppSettings {
-    id: string;
-    darkMode: boolean;
-    autoCollect: boolean;
-    autoCleanup: boolean;
     cleanupThreshold: number;
-    retentionDays: number;
-    collectJs: boolean;
-    collectCss: boolean;
-    maxFileSize: number;
-    maxTotalSize: number;
-    maxFiles: number;
 }
 
 export interface CrxFile {
@@ -235,51 +225,17 @@ export class DatabaseOperations {
         const settings = this.statements.getSettings.get() as AppSettings | undefined;
         if (!settings) {
             const defaultSettings: AppSettings = {
-                id: crypto.randomUUID(),
-                darkMode: false,
-                autoCollect: true,
-                autoCleanup: false,
-                cleanupThreshold: 1000,
-                retentionDays: 30,
-                collectJs: true,
-                collectCss: true,
-                maxFileSize: 10 * 1024 * 1024,
-                maxTotalSize: 100 * 1024 * 1024,
-                maxFiles: 1000
+                cleanupThreshold: 1000
             };
-            this.statements.insertSettings.run(
-                defaultSettings.id, defaultSettings.darkMode ? 1 : 0,
-                defaultSettings.autoCollect ? 1 : 0, defaultSettings.autoCleanup ? 1 : 0,
-                defaultSettings.cleanupThreshold, defaultSettings.retentionDays,
-                defaultSettings.collectJs ? 1 : 0, defaultSettings.collectCss ? 1 : 0,
-                defaultSettings.maxFileSize, defaultSettings.maxTotalSize,
-                defaultSettings.maxFiles
-            );
+            this.statements.insertSettings.run(defaultSettings.cleanupThreshold);
             return defaultSettings;
         }
-        return {
-            ...settings,
-            darkMode: Boolean(settings.darkMode),
-            autoCollect: Boolean(settings.autoCollect),
-            autoCleanup: Boolean(settings.autoCleanup),
-            collectJs: Boolean(settings.collectJs),
-            collectCss: Boolean(settings.collectCss)
-        };
+        return settings;
     }
 
     async updateSettings(settings: Partial<AppSettings>): Promise<void> {
         const result = this.statements.updateSettings.run(
-            settings.darkMode ? 1 : 0,
-            settings.autoCollect ? 1 : 0,
-            settings.autoCleanup ? 1 : 0,
-            settings.cleanupThreshold,
-            settings.retentionDays,
-            settings.collectJs ? 1 : 0,
-            settings.collectCss ? 1 : 0,
-            settings.maxFileSize,
-            settings.maxTotalSize,
-            settings.maxFiles,
-            settings.id
+            settings.cleanupThreshold
         );
         if (result.changes === 0) {
             throw new Error('Settings not found');
