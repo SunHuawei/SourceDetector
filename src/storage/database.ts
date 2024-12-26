@@ -1,4 +1,4 @@
-import { getDefaultSettingsWithSystemPreference } from '@/background/constants';
+import { DEFAULT_SETTINGS } from '@/background/constants';
 import { AppSettings, Page, PageSourceMap, SourceMapFile, CrxFile, SyncStatus } from '@/types';
 import Dexie from 'dexie';
 
@@ -47,10 +47,7 @@ export class SourceDetectorDB extends Dexie {
         try {
             const settings = await this.settings.toArray();
             if (settings.length === 0) {
-                const defaultSettings = {
-                    ...getDefaultSettingsWithSystemPreference(),
-                    id: crypto.randomUUID()
-                };
+                const defaultSettings = DEFAULT_SETTINGS;
                 await this.settings.add(defaultSettings);
                 return defaultSettings;
             }

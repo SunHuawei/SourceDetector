@@ -2,9 +2,7 @@ import { DEFAULT_SETTINGS, MESSAGE_TYPES, STORAGE_LIMITS } from '@/background/co
 import { formatBytes } from '@/background/utils';
 import { Toast } from '@/components/Toast';
 import { AppSettings, StorageStats } from '@/types';
-import {
-    Delete as DeleteIcon
-} from '@mui/icons-material';
+import { Delete as DeleteIcon } from '@mui/icons-material';
 import {
     Alert,
     AppBar,
@@ -20,7 +18,6 @@ import {
     ListItemSecondaryAction,
     ListItemText,
     Slider,
-    Switch,
     Toolbar,
     Typography
 } from '@mui/material';
@@ -32,8 +29,6 @@ export default function App() {
     const [settings, setSettings] = useState<AppSettings | null>(null);
     const [stats, setStats] = useState<StorageStats | null>(null);
     const [clearDialogOpen, setClearDialogOpen] = useState(false);
-    const [exportDialogOpen, setExportDialogOpen] = useState(false);
-    const [importDialogOpen, setImportDialogOpen] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info' | 'warning'; text: string } | null>(null);
 
     useEffect(() => {
@@ -84,59 +79,6 @@ export default function App() {
         }
     };
 
-    const handleExportData = async () => {
-        try {
-            const response = await chrome.runtime.sendMessage({
-                type: MESSAGE_TYPES.EXPORT_DATA
-            });
-
-            if (response.success) {
-                const blob = new Blob([JSON.stringify(response.data, null, 2)], {
-                    type: 'application/json'
-                });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `source-detector-export-${new Date().toISOString()}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                setMessage({ type: 'success', text: 'Data exported successfully' });
-            }
-        } catch (error) {
-            console.error('Error exporting data:', error);
-            setMessage({ type: 'error', text: 'Failed to export data' });
-        } finally {
-            setExportDialogOpen(false);
-        }
-    };
-
-    const handleImportData = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        try {
-            const text = await file.text();
-            const data = JSON.parse(text);
-
-            const response = await chrome.runtime.sendMessage({
-                type: MESSAGE_TYPES.IMPORT_DATA,
-                data
-            });
-
-            if (response.success) {
-                await loadData();
-                setMessage({ type: 'success', text: 'Data imported successfully' });
-            }
-        } catch (error) {
-            console.error('Error importing data:', error);
-            setMessage({ type: 'error', text: 'Failed to import data' });
-        } finally {
-            setImportDialogOpen(false);
-        }
-    };
-
     const handleClearData = async () => {
         try {
             setLoading(true);
@@ -172,10 +114,10 @@ export default function App() {
         () =>
             createTheme({
                 palette: {
-                    mode: settings?.darkMode ? 'dark' : 'light',
+                    mode: 'light',
                 },
             }),
-        [settings?.darkMode]
+        []
     );
 
     if (loading) {
@@ -221,52 +163,6 @@ export default function App() {
 
                     <List>
                         <ListItem>
-                            <ListItemText primary="Dark Mode" />
-                            <ListItemSecondaryAction>
-                                <Switch
-                                    checked={settings?.darkMode ?? false}
-                                    onChange={(e) => handleSettingChange('darkMode', e.target.checked)}
-                                />
-                            </ListItemSecondaryAction>
-                        </ListItem>
-
-                        <ListItem>
-                            <ListItemText
-                                primary="Collect JavaScript source maps"
-                                secondary="Send source maps to desktop application"
-                            />
-                            <ListItemSecondaryAction>
-                                <Switch
-                                    checked={settings?.collectJs ?? true}
-                                    onChange={(e) => handleSettingChange('collectJs', e.target.checked)}
-                                />
-                            </ListItemSecondaryAction>
-                        </ListItem>
-
-                        <ListItem>
-                            <ListItemText primary="Collect CSS source maps" />
-                            <ListItemSecondaryAction>
-                                <Switch
-                                    checked={settings?.collectCss ?? true}
-                                    onChange={(e) => handleSettingChange('collectCss', e.target.checked)}
-                                />
-                            </ListItemSecondaryAction>
-                        </ListItem>
-
-                        <ListItem>
-                            <ListItemText
-                                primary="Auto Cleanup"
-                                secondary="Automatically clean up old source maps"
-                            />
-                            <ListItemSecondaryAction>
-                                <Switch
-                                    checked={settings?.autoCleanup ?? true}
-                                    onChange={(e) => handleSettingChange('autoCleanup', e.target.checked)}
-                                />
-                            </ListItemSecondaryAction>
-                        </ListItem>
-
-                        <ListItem>
                             <ListItemText
                                 primary="Cleanup Threshold (MB)"
                                 secondary={`Clean up when storage exceeds ${formatBytes(
@@ -280,38 +176,6 @@ export default function App() {
                                     max={STORAGE_LIMITS.CLEANUP_THRESHOLD.max}
                                     step={100}
                                     onChange={(_, value) => handleSettingChange('cleanupThreshold', value)}
-                                />
-                            </ListItemSecondaryAction>
-                        </ListItem>
-
-                        <ListItem>
-                            <ListItemText
-                                primary="Retention Days"
-                                secondary={`Keep source maps for ${settings?.retentionDays ?? 30} days`}
-                            />
-                            <ListItemSecondaryAction sx={{ width: '50%' }}>
-                                <Slider
-                                    value={settings?.retentionDays ?? DEFAULT_SETTINGS.retentionDays}
-                                    min={STORAGE_LIMITS.RETENTION_DAYS.min}
-                                    max={STORAGE_LIMITS.RETENTION_DAYS.max}
-                                    step={1}
-                                    onChange={(_, value) => handleSettingChange('retentionDays', value)}
-                                />
-                            </ListItemSecondaryAction>
-                        </ListItem>
-
-                        <ListItem>
-                            <ListItemText
-                                primary="Max File Size (MB)"
-                                secondary={`Skip files larger than ${settings?.maxFileSize ?? 100} MB`}
-                            />
-                            <ListItemSecondaryAction sx={{ width: '50%' }}>
-                                <Slider
-                                    value={settings?.maxFileSize ?? DEFAULT_SETTINGS.maxFileSize}
-                                    min={STORAGE_LIMITS.FILE_SIZE.min}
-                                    max={STORAGE_LIMITS.FILE_SIZE.max}
-                                    step={1}
-                                    onChange={(_, value) => handleSettingChange('maxFileSize', value)}
                                 />
                             </ListItemSecondaryAction>
                         </ListItem>
@@ -336,7 +200,7 @@ export default function App() {
                     <DialogTitle>Clear Data</DialogTitle>
                     <DialogContent>
                         <Typography>
-                            Are you sure you want to delete all collected source maps?
+                            Are you sure you want to delete all data?
                             This action cannot be undone.
                         </Typography>
                     </DialogContent>
@@ -346,49 +210,6 @@ export default function App() {
                     </DialogActions>
                 </Dialog>
 
-                <Dialog
-                    open={exportDialogOpen}
-                    onClose={() => setExportDialogOpen(false)}
-                >
-                    <DialogTitle>Export Data</DialogTitle>
-                    <DialogContent>
-                        <Typography>
-                            Export all collected source maps and settings to a JSON file?
-                        </Typography>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setExportDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleExportData} color="primary">Export</Button>
-                    </DialogActions>
-                </Dialog>
-
-                <Dialog
-                    open={importDialogOpen}
-                    onClose={() => setImportDialogOpen(false)}
-                >
-                    <DialogTitle>Import Data</DialogTitle>
-                    <DialogContent>
-                        <Typography gutterBottom>
-                            Import source maps and settings from a JSON file.
-                            This will merge with your existing data.
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            component="label"
-                        >
-                            Choose File
-                            <input
-                                type="file"
-                                accept=".json"
-                                hidden
-                                onChange={handleImportData}
-                            />
-                        </Button>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setImportDialogOpen(false)}>Cancel</Button>
-                    </DialogActions>
-                </Dialog>
             </Box>
         </ThemeProvider>
     );

@@ -339,23 +339,8 @@ async function handleGetFileData(data: { url: string }) {
 async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css'; originalContent: string }): Promise<{ success: boolean; reason?: string }> {
     return dbLock.withLock('sourceMap', async () => {
         try {
-            const settings = await db.getSettings();
-
-            // Check file type collection settings
-            if (
-                (data.fileType === FILE_TYPES.JS && !settings.collectJs) ||
-                (data.fileType === FILE_TYPES.CSS && !settings.collectCss)
-            ) {
-                return { success: false, reason: 'File type not collected' };
-            }
-
             const content = await fetchSourceMapContent(data.sourceUrl, data.mapUrl);
             if (!content) return { success: false, reason: 'Failed to fetch content' };
-
-            // Check file size
-            if (content.size > settings.maxFileSize * 1024 * 1024) {
-                return { success: false, reason: 'File too large' };
-            }
 
             // Check existing file
             const existingFile = await db.sourceMapFiles.where('url').equals(data.sourceUrl).first();
@@ -409,11 +394,7 @@ async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; 
             // Associate with page
             await db.addSourceMapToPage(data.pageUrl, data.pageTitle, sourceMapFile);
 
-            // Check storage cleanup
-            if (settings.autoCleanup) {
-                await checkAndCleanStorage(settings);
-            }
-
+            checkAndCleanStorage();
             // Update badge after storing new source map
             await updateBadge(data.pageUrl);
 
@@ -558,14 +539,15 @@ async function handleClearHistory() {
 }
 
 // 检查并清理存储
-async function checkAndCleanStorage(settings: AppSettings) {
+async function checkAndCleanStorage() {
     try {
+        const settings = await db.getSettings();
         const stats = await db.getStorageStats();
         if (stats.totalSize > settings.cleanupThreshold * 1024 * 1024) {
-            const cutoffDate = Date.now() - settings.retentionDays * 24 * 60 * 60 * 1000;
+            // Delete oldest files first
             await db.sourceMapFiles
-                .where('timestamp')
-                .below(cutoffDate)
+                .orderBy('timestamp')
+                .limit(100)
                 .delete();
         }
     } catch (error) {

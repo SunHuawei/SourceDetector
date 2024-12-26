@@ -74,23 +74,5 @@ export const SETTINGS = {
 export const STORAGE_LIMITS = SETTINGS.STORAGE;
 
 export const DEFAULT_SETTINGS: AppSettings = {
-    darkMode: false,
-    autoCollect: true,
-    autoCleanup: false,
-    cleanupThreshold: 1000,
-    retentionDays: 30,
-    collectJs: true,
-    collectCss: true,
-    maxFileSize: 10 * 1024 * 1024,
-    maxTotalSize: 100 * 1024 * 1024,
-    maxFiles: 1000
+    cleanupThreshold: 1000
 };
-
-// Helper to get settings with system preference
-export function getDefaultSettingsWithSystemPreference(): AppSettings {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    return {
-        ...DEFAULT_SETTINGS,
-        darkMode: prefersDark
-    };
-}

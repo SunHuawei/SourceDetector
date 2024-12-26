@@ -54,17 +54,7 @@ export interface StorageStats {
 }
 
 export interface AppSettings {
-    id?: string;
-    darkMode: boolean;
-    autoCollect: boolean;
-    autoCleanup: boolean;
     cleanupThreshold: number;
-    retentionDays: number;
-    collectJs: boolean;
-    collectCss: boolean;
-    maxFileSize: number;
-    maxTotalSize: number;
-    maxFiles: number;
 }
 
 export interface Message<T = unknown> {
