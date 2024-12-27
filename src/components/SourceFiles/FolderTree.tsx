@@ -1,184 +1,231 @@
-import {
-    Article,
-    Code,
-    Language
-} from '@mui/icons-material';
+import { Article, Code, Language } from '@mui/icons-material';
 import { Box, Button, CircularProgress, Typography } from '@mui/material';
-import {
-    SimpleTreeView,
-    TreeItem
-} from '@mui/x-tree-view';
+import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
+import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import { useEffect, useState } from 'react';
 
 interface Domain {
-  id: number;
-  domain: string;
+    id: number;
+    domain: string;
 }
 
 interface Page {
-  id: number;
-  url: string;
+    id: number;
+    url: string;
 }
 
 interface SourceMap {
-  id: number;
-  fileName: string;
+    id: number;
+    url: string;
 }
+
+type DomainMap = Map<number, Domain>;
+type PageMap = Map<number, Map<number, Page>>;
+type SourceMapMap = Map<number, Map<number, SourceMap>>;
+type LoadingMap = Map<string, boolean>;
+type HasMoreMap = Map<string, boolean>;
+type PageNumberMap = Map<string, number>;
 
 const PAGE_SIZE = 20;
 
 const FolderTree = () => {
-  const [domains, setDomains] = useState<Domain[]>([]);
-  const [pages, setPages] = useState<Record<string, Page[]>>({});
-  const [sourceMaps, setSourceMaps] = useState<Record<string, SourceMap[]>>({});
-  const [loading, setLoading] = useState<Record<string, boolean>>({});
-  const [hasMore, setHasMore] = useState<Record<string, boolean>>({});
-  const [pageNumbers, setPageNumbers] = useState<Record<string, number>>({});
+    const [domains, setDomains] = useState<DomainMap>(new Map());
+    const [pages, setPages] = useState<PageMap>(new Map());
+    const [sourceMaps, setSourceMaps] = useState<SourceMapMap>(new Map());
+    const [loading, setLoading] = useState<LoadingMap>(new Map());
+    const [hasMore, setHasMore] = useState<HasMoreMap>(new Map());
+    const [pageNumbers, setPageNumbers] = useState<PageNumberMap>(new Map());
+    const [isInitialized, setIsInitialized] = useState(false);
 
-  const loadDomains = async (offset: number = 0) => {
-    setLoading(prev => ({ ...prev, domains: true }));
-    try {
-      const response = await window.database.getDomains(offset, PAGE_SIZE);
-      if (response.success && response.data?.domains) {
-        const { domains: newDomains, hasMore } = response.data;
-        setDomains(prev => [...prev, ...newDomains]);
-        setHasMore(prev => ({ ...prev, domains: hasMore }));
-        setPageNumbers(prev => ({ ...prev, domains: (prev.domains || 0) + 1 }));
-      } else if (response.error) {
-        console.error('Error loading domains:', response.error);
-      }
-    } catch (error) {
-      console.error('Error loading domains:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, domains: false }));
-    }
-  };
+    const loadDomains = async (offset: number = 0) => {
+        if (loading.get('domains')) return;
 
-  const loadPages = async (domainId: number, offset: number = 0) => {
-    const loadingKey = `pages-${domainId}`;
-    setLoading(prev => ({ ...prev, [loadingKey]: true }));
-    try {
-      const response = await window.database.getPages(domainId, offset, PAGE_SIZE);
-      if (response.success && response.data?.pages && response.data?.hasMore !== undefined) {
-        const { pages: newPages, hasMore } = response.data;
-        setPages(prev => ({
-          ...prev,
-          [domainId]: [...(prev[domainId] || []), ...newPages]
-        }));
-        setHasMore(prev => ({ ...prev, [loadingKey]: hasMore }));
-        setPageNumbers(prev => ({ ...prev, [loadingKey]: (prev[loadingKey] || 0) + 1 }));
-      } else if (response.error) {
-        console.error('Error loading pages:', response.error);
-      }
-    } catch (error) {
-      console.error('Error loading pages:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, [loadingKey]: false }));
-    }
-  };
-
-  const loadSourceMaps = async (pageId: number, offset: number = 0) => {
-    const loadingKey = `sourcemaps-${pageId}`;
-    setLoading(prev => ({ ...prev, [loadingKey]: true }));
-    try {
-      const response = await window.database.getSourceMaps(pageId, offset, PAGE_SIZE);
-      if (response.success && response.data?.sourceMaps && response.data?.hasMore !== undefined) {
-        const { sourceMaps: newSourceMaps, hasMore } = response.data;
-        setSourceMaps(prev => ({
-          ...prev,
-          [pageId]: [...(prev[pageId] || []), ...newSourceMaps]
-        }));
-        setHasMore(prev => ({ ...prev, [loadingKey]: hasMore }));
-        setPageNumbers(prev => ({ ...prev, [loadingKey]: (prev[loadingKey] || 0) + 1 }));
-      } else if (response.error) {
-        console.error('Error loading source maps:', response.error);
-      }
-    } catch (error) {
-      console.error('Error loading source maps:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, [loadingKey]: false }));
-    }
-  };
-
-  useEffect(() => {
-    loadDomains();
-  }, []);
-
-  const renderLoadMoreButton = (key: string, loadMore: () => void) => {
-    if (!hasMore[key]) return null;
-    
-    return (
-      <Button
-        disabled={loading[key]}
-        onClick={loadMore}
-        sx={{ mt: 1, ml: 3 }}
-        size="small"
-        startIcon={loading[key] ? <CircularProgress size={16} /> : null}
-      >
-        {loading[key] ? 'Loading...' : 'Load More'}
-      </Button>
-    );
-  };
-
-  return (
-    <Box sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
-      <SimpleTreeView
-        aria-label="source files"
-        sx={{ flexGrow: 1, overflowY: 'auto' }}
-      >
-        {domains.map(domain => (
-          <TreeItem
-            key={`domain-${domain.id}`}
-            itemId={`domain-${domain.id}`}
-            label={
-              <Box component="div" sx={{ display: 'flex', alignItems: 'center', py: 0.5 }}>
-                <Language sx={{ mr: 1 }} />
-                <Typography variant="body2">{domain.domain}</Typography>
-              </Box>
+        setLoading(prev => new Map(prev).set('domains', true));
+        try {
+            const response = await window.database.getDomains(offset, PAGE_SIZE);
+            if (response.success && response.data?.domains) {
+                const { domains: newDomains, hasMore } = response.data;
+                await Promise.all(newDomains.map(domain => loadPages(domain.id, 0)));
+                
+                setDomains(prev => {
+                    const next = offset === 0 ? new Map() : new Map(prev);
+                    newDomains.forEach(domain => next.set(domain.id, domain));
+                    return next;
+                });
+                
+                setHasMore(prev => new Map(prev).set('domains', hasMore));
+                setPageNumbers(prev => new Map(prev).set('domains', (prev.get('domains') || 0) + 1));
+                if (offset === 0) setIsInitialized(true);
+            } else if (response.error) {
+                console.error('Error loading domains:', response.error);
             }
-          >
-            {pages[domain.id]?.map(page => (
-              <TreeItem
-                key={`page-${page.id}`}
-                itemId={`page-${page.id}`}
-                label={
-                  <Box component="div" sx={{ display: 'flex', alignItems: 'center', py: 0.5 }}>
-                    <Article sx={{ mr: 1 }} />
-                    <Typography variant="body2">{page.url}</Typography>
-                  </Box>
-                }
-              >
-                {sourceMaps[page.id]?.map(sourceMap => (
-                  <TreeItem
-                    key={`sourcemap-${sourceMap.id}`}
-                    itemId={`sourcemap-${sourceMap.id}`}
-                    label={
-                      <Box component="div" sx={{ display: 'flex', alignItems: 'center', py: 0.5 }}>
-                        <Code sx={{ mr: 1 }} />
-                        <Typography variant="body2">{sourceMap.fileName}</Typography>
-                      </Box>
+        } catch (error) {
+            console.error('Error loading domains:', error);
+        } finally {
+            setLoading(prev => new Map(prev).set('domains', false));
+        }
+    };
+
+    const loadPages = async (domainId: number, offset: number = 0) => {
+        const loadingKey = `pages-${domainId}`;
+        setLoading(prev => new Map(prev).set(loadingKey, true));
+        try {
+            const response = await window.database.getPages(domainId, offset, PAGE_SIZE);
+            if (response.success && response.data?.pages && response.data?.hasMore !== undefined) {
+                const { pages: newPages, hasMore } = response.data;
+                
+                setPages(prev => {
+                    const next = new Map(prev);
+                    const domainPages = new Map(next.get(domainId) || new Map());
+                    newPages.forEach(page => domainPages.set(page.id, page));
+                    next.set(domainId, domainPages);
+                    return next;
+                });
+                
+                setHasMore(prev => new Map(prev).set(loadingKey, hasMore));
+                setPageNumbers(prev => new Map(prev).set(loadingKey, (prev.get(loadingKey) || 0) + 1));
+            } else if (response.error) {
+                console.error('Error loading pages:', response.error);
+            }
+        } catch (error) {
+            console.error('Error loading pages:', error);
+        } finally {
+            setLoading(prev => new Map(prev).set(loadingKey, false));
+        }
+    };
+
+    const loadSourceMaps = async (pageId: number, offset: number = 0) => {
+        const loadingKey = `sourcemaps-${pageId}`;
+        setLoading(prev => new Map(prev).set(loadingKey, true));
+        try {
+            const response = await window.database.getSourceMaps(pageId, offset, PAGE_SIZE);
+            if (response.success && response.data?.sourceMaps && response.data?.hasMore !== undefined) {
+                const { sourceMaps: newSourceMaps, hasMore } = response.data;
+                
+                setSourceMaps(prev => {
+                    const next = new Map(prev);
+                    const pageSourceMaps = new Map(next.get(pageId) || new Map());
+                    newSourceMaps.forEach(sourceMap => pageSourceMaps.set(sourceMap.id, sourceMap));
+                    next.set(pageId, pageSourceMaps);
+                    return next;
+                });
+                
+                setHasMore(prev => new Map(prev).set(loadingKey, hasMore));
+                setPageNumbers(prev => new Map(prev).set(loadingKey, (prev.get(loadingKey) || 0) + 1));
+            } else if (response.error) {
+                console.error('Error loading source maps:', response.error);
+            }
+        } catch (error) {
+            console.error('Error loading source maps:', error);
+        } finally {
+            setLoading(prev => new Map(prev).set(loadingKey, false));
+        }
+    };
+
+    useEffect(() => {
+        if (!isInitialized) {
+            loadDomains();
+        }
+    }, [isInitialized]);
+
+    const renderLoadMoreButton = (key: string, loadMore: () => void) => {
+        if (!hasMore.get(key)) return null;
+
+        return (
+            <Button
+                disabled={loading.get(key)}
+                onClick={loadMore}
+                sx={{ mt: 1, ml: 3 }}
+                size="small"
+                startIcon={loading.get(key) ? <CircularProgress size={16} /> : null}
+            >
+                {loading.get(key) ? 'Loading...' : 'Load More'}
+            </Button>
+        );
+    };
+
+    return (
+        <Box sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
+            <SimpleTreeView
+                expansionTrigger="iconContainer"
+                defaultExpandedItems={[]}
+                onItemExpansionToggle={(event, itemId, isExpanded) => {
+                    if (isExpanded && itemId.startsWith('page-')) {
+                        const pageId = parseInt(itemId.replace('page-', ''), 10);
+                        if (!sourceMaps.has(pageId)) {
+                            loadSourceMaps(pageId, 0);
+                        }
                     }
-                  />
+                }}
+            >
+                {Array.from(domains.values()).map(domain => (
+                    <TreeItem
+                        key={`domain-${domain.id}`}
+                        itemId={`domain-${domain.id}`}
+                        label={
+                            <Box component="div" sx={{ display: 'flex', alignItems: 'center', py: 0.5 }}>
+                                <Language sx={{ mr: 1 }} />
+                                <Typography variant="body2">{domain.domain}</Typography>
+                            </Box>
+                        }
+                    >
+                        {Array.from(pages.get(domain.id)?.values() || []).map(page => (
+                            <TreeItem
+                                key={`page-${page.id}`}
+                                itemId={`page-${page.id}`}
+                                label={
+                                    <Box component="div" sx={{ display: 'flex', alignItems: 'center', py: 0.5 }}>
+                                        <Article sx={{ mr: 1 }} />
+                                        <Typography variant="body2">{page.url}</Typography>
+                                    </Box>
+                                }
+                            >
+                                {loading.get(`sourcemaps-${page.id}`) ? (
+                                    <TreeItem
+                                        key={`loading-${page.id}`}
+                                        itemId={`loading-${page.id}`}
+                                        label={
+                                            <Box component="div" sx={{ display: 'flex', alignItems: 'center', py: 0.5 }}>
+                                                <CircularProgress size={16} sx={{ mr: 1 }} />
+                                                <Typography variant="body2">Loading...</Typography>
+                                            </Box>
+                                        }
+                                    />
+                                ) : (
+                                    <>
+                                        {Array.from(sourceMaps.get(page.id)?.values() || []).map(sourceMap => (
+                                            <TreeItem
+                                                key={`sourcemap-${sourceMap.id}:${page.id}`}
+                                                itemId={`sourcemap-${sourceMap.id}:${page.id}`}
+                                                label={
+                                                    <Box component="div" sx={{ display: 'flex', alignItems: 'center', py: 0.5 }}>
+                                                        <Code sx={{ mr: 1 }} />
+                                                        <Typography variant="body2">{sourceMap.url}</Typography>
+                                                    </Box>
+                                                }
+                                            />
+                                        ))}
+                                        {renderLoadMoreButton(
+                                            `sourcemaps-${page.id}`,
+                                            () => loadSourceMaps(page.id, (pageNumbers.get(`sourcemaps-${page.id}`) || 0) * PAGE_SIZE)
+                                        )}
+                                    </>
+                                )}
+                            </TreeItem>
+                        ))}
+                        {renderLoadMoreButton(
+                            `pages-${domain.id}`,
+                            () => loadPages(domain.id, (pageNumbers.get(`pages-${domain.id}`) || 0) * PAGE_SIZE)
+                        )}
+                    </TreeItem>
                 ))}
-                {renderLoadMoreButton(
-                  `sourcemaps-${page.id}`,
-                  () => loadSourceMaps(page.id, (pageNumbers[`sourcemaps-${page.id}`] || 0) * PAGE_SIZE)
-                )}
-              </TreeItem>
-            ))}
+            </SimpleTreeView>
             {renderLoadMoreButton(
-              `pages-${domain.id}`,
-              () => loadPages(domain.id, (pageNumbers[`pages-${domain.id}`] || 0) * PAGE_SIZE)
+                'domains',
+                () => loadDomains((pageNumbers.get('domains') || 0) * PAGE_SIZE)
             )}
-          </TreeItem>
-        ))}
-      </SimpleTreeView>
-      {renderLoadMoreButton(
-        'domains',
-        () => loadDomains((pageNumbers.domains || 0) * PAGE_SIZE)
-      )}
-    </Box>
-  );
+        </Box>
+    );
 };
 
 export default FolderTree; 

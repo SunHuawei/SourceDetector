@@ -53,6 +53,6 @@ interface Window {
         // Source Tree
         getDomains: (offset: number, limit: number) => Promise<{ success: boolean; data?: { domains: Array<{ id: number; domain: string; }>; hasMore: boolean; }; error?: string; }>;
         getPages: (domainId: number, offset: number, limit: number) => Promise<{ success: boolean; data?: { pages: Array<{ id: number; url: string; }>; hasMore: boolean; }; error?: string; }>;
-        getSourceMaps: (pageId: number, offset: number, limit: number) => Promise<{ success: boolean; data?: { sourceMaps: Array<{ id: number; fileName: string; }>; hasMore: boolean; }; error?: string; }>;
+        getSourceMaps: (pageId: number, offset: number, limit: number) => Promise<{ success: boolean; data?: { sourceMaps: Array<{ id: number; url: string; }>; hasMore: boolean; }; error?: string; }>;
     };
 }

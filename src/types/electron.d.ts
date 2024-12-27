@@ -45,7 +45,7 @@ interface DatabaseAPI {
   getSourceMaps: (pageId: number, offset: number, limit: number) => Promise<{
     success: boolean;
     data?: {
-      sourceMaps: Array<{ id: number; fileName: string }>;
+      sourceMaps: Array<{ id: number; url: string }>;
       hasMore: boolean;
     };
     error?: string;

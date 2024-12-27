@@ -39,10 +39,7 @@ export function setupIpcHandlers(dbOps: DatabaseOperations) {
             return {
                 success: true,
                 data: {
-                    pages: pages.map(page => ({
-                        id: page.id.toString(),
-                        url: page.url
-                    })),
+                    pages,
                     hasMore: offset + limit < total
                 }
             };
@@ -58,10 +55,7 @@ export function setupIpcHandlers(dbOps: DatabaseOperations) {
             return {
                 success: true,
                 data: {
-                    sourceMaps: sourceMaps.map(sourceMap => ({
-                        id: sourceMap.id.toString(),
-                        fileName: sourceMap.url
-                    })),
+                    sourceMaps,
                     hasMore: offset + limit < total
                 }
             };
@@ -211,5 +205,5 @@ interface PageRow {
 
 interface SourceMapRow {
   id: number;
-  fileName: string;
+  url: string;
 }
