@@ -28,18 +28,15 @@ contextBridge.exposeInMainWorld('database', {
     getPath: async () => ipcRenderer.invoke('database:getPath'),
 
     // Source Map Files
-    addSourceMapFile: async (file: any) => ipcRenderer.invoke('sourceMapFile:add', file),
     getSourceMapFile: async (id: string) => ipcRenderer.invoke('sourceMapFile:get', id),
     getSourceMapFileByUrl: async (url: string) => ipcRenderer.invoke('sourceMapFile:getByUrl', url),
     getLatestSourceMapFiles: async () => ipcRenderer.invoke('sourceMapFile:getLatest'),
 
     // Pages
-    addPage: async (page: any) => ipcRenderer.invoke('page:add', page),
     getPage: async (id: string) => ipcRenderer.invoke('page:get', id),
     getPageByUrl: async (url: string) => ipcRenderer.invoke('page:getByUrl', url),
 
     // Page Source Maps
-    addPageSourceMap: async (map: any) => ipcRenderer.invoke('pageSourceMap:add', map),
     getPageSourceMaps: async (pageId: string) => ipcRenderer.invoke('pageSourceMap:getByPageId', pageId),
 
     // Settings
@@ -47,10 +44,8 @@ contextBridge.exposeInMainWorld('database', {
     updateSettings: async (settings: any) => ipcRenderer.invoke('settings:update', settings),
 
     // CRX Files
-    addCrxFile: async (file: any) => ipcRenderer.invoke('crxFile:add', file),
     getCrxFile: async (id: string) => ipcRenderer.invoke('crxFile:get', id),
     getCrxFileByUrl: async (url: string) => ipcRenderer.invoke('crxFile:getByUrl', url),
-    updateCrxFile: async (file: any) => ipcRenderer.invoke('crxFile:update', file),
 
     // Stats
     getStorageStats: async () => ipcRenderer.invoke('stats:get')

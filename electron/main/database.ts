@@ -14,74 +14,62 @@ const migrations: Migration[] = [
     {
         version: 1,
         sql: `
-            CREATE TABLE IF NOT EXISTS source_map_files (
-                id TEXT PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS sourceMapFiles (
+                id INTEGER PRIMARY KEY,
                 url TEXT NOT NULL,
-                source_map_url TEXT NOT NULL,
+                sourceMapUrl TEXT NOT NULL,
                 content TEXT NOT NULL,
-                original_content TEXT NOT NULL,
-                file_type TEXT CHECK(file_type IN ('js', 'css')) NOT NULL,
+                originalContent TEXT NOT NULL,
+                fileType TEXT NOT NULL,
                 size INTEGER NOT NULL,
                 timestamp INTEGER NOT NULL,
                 version INTEGER NOT NULL,
                 hash TEXT NOT NULL,
-                is_latest BOOLEAN NOT NULL
+                isLatest INTEGER NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS pages (
-                id TEXT PRIMARY KEY,
+                id INTEGER PRIMARY KEY,
                 url TEXT NOT NULL,
                 title TEXT NOT NULL,
                 timestamp INTEGER NOT NULL
             );
 
-            CREATE TABLE IF NOT EXISTS page_source_maps (
-                id TEXT PRIMARY KEY,
-                page_id TEXT NOT NULL,
-                source_map_id TEXT NOT NULL,
+            CREATE TABLE IF NOT EXISTS pageSourceMaps (
+                id INTEGER PRIMARY KEY,
+                pageId INTEGER NOT NULL,
+                sourceMapId INTEGER NOT NULL,
                 timestamp INTEGER NOT NULL,
-                FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE,
-                FOREIGN KEY (source_map_id) REFERENCES source_map_files(id) ON DELETE CASCADE
+                FOREIGN KEY (pageId) REFERENCES pages(id),
+                FOREIGN KEY (sourceMapId) REFERENCES sourceMapFiles(id)
             );
 
             CREATE TABLE IF NOT EXISTS settings (
-                cleanup_threshold INTEGER NOT NULL DEFAULT 1000
+                cleanupThreshold INTEGER NOT NULL
             );
 
-            CREATE TABLE IF NOT EXISTS crx_files (
-                id TEXT PRIMARY KEY,
-                page_url TEXT NOT NULL,
-                page_title TEXT NOT NULL,
-                crx_url TEXT NOT NULL,
+            CREATE TABLE IF NOT EXISTS crxFiles (
+                id INTEGER PRIMARY KEY,
+                pageUrl TEXT NOT NULL UNIQUE,
+                pageTitle TEXT NOT NULL,
+                crxUrl TEXT NOT NULL,
                 blob BLOB NOT NULL,
                 size INTEGER NOT NULL,
                 timestamp INTEGER NOT NULL,
-                count INTEGER NOT NULL DEFAULT 0
+                count INTEGER NOT NULL DEFAULT 1,
+                contentHash TEXT NOT NULL
             );
 
-            CREATE INDEX IF NOT EXISTS idx_source_map_files_url ON source_map_files(url);
-            CREATE INDEX IF NOT EXISTS idx_source_map_files_timestamp ON source_map_files(timestamp);
+            CREATE INDEX IF NOT EXISTS idx_sourceMapFiles_url ON sourceMapFiles(url);
+            CREATE INDEX IF NOT EXISTS idx_sourceMapFiles_timestamp ON sourceMapFiles(timestamp);
             CREATE INDEX IF NOT EXISTS idx_pages_url ON pages(url);
             CREATE INDEX IF NOT EXISTS idx_pages_timestamp ON pages(timestamp);
-            CREATE INDEX IF NOT EXISTS idx_page_source_maps_page_id ON page_source_maps(page_id);
-            CREATE INDEX IF NOT EXISTS idx_page_source_maps_source_map_id ON page_source_maps(source_map_id);
-            CREATE INDEX IF NOT EXISTS idx_crx_files_page_url ON crx_files(page_url);
-        `
-    },
-    {
-        version: 2,
-        sql: `
-            CREATE TABLE IF NOT EXISTS sync_status (
-                table_name TEXT PRIMARY KEY,
-                timestamp INTEGER NOT NULL
-            );
-
-            -- Initialize sync status for all tables
-            INSERT OR IGNORE INTO sync_status (table_name, timestamp) VALUES
-                ('sourceMapFiles', 0),
-                ('pages', 0),
-                ('pageSourceMaps', 0),
-                ('crxFiles', 0);
+            CREATE INDEX IF NOT EXISTS idx_pageSourceMaps_pageId ON pageSourceMaps(pageId);
+            CREATE INDEX IF NOT EXISTS idx_pageSourceMaps_sourceMapId ON pageSourceMaps(sourceMapId);
+            CREATE INDEX IF NOT EXISTS idx_pageSourceMaps_timestamp ON pageSourceMaps(timestamp);
+            CREATE INDEX IF NOT EXISTS idx_crxFiles_pageUrl ON crxFiles(pageUrl);
+            CREATE INDEX IF NOT EXISTS idx_crxFiles_timestamp ON crxFiles(timestamp);
+            CREATE INDEX IF NOT EXISTS idx_crxFiles_contentHash ON crxFiles(contentHash);
         `
     }
 ];
@@ -105,19 +93,57 @@ export function initDatabase(): Database.Database {
 
     dbPath = path.join(dbDir, 'source-detector.sqlite');
     
-    // Initialize database
-    db = new Database(dbPath, {
-        verbose: process.env.NODE_ENV === 'development' ? console.log : undefined
-    });
+    try {
+        // Check if database file exists and is accessible
+        if (fs.existsSync(dbPath)) {
+            try {
+                // Try to read the file to check if it's corrupted
+                fs.accessSync(dbPath, fs.constants.R_OK | fs.constants.W_OK);
+                
+                // Try to open the database
+                db = new Database(dbPath);
+                
+                // Test database connection
+                db.prepare('SELECT 1').get();
+            } catch (error) {
+                console.error('Database file is corrupted or inaccessible:', error);
+                
+                // Backup corrupted file
+                const backupPath = `${dbPath}.corrupted.${Date.now()}`;
+                try {
+                    fs.copyFileSync(dbPath, backupPath);
+                    console.log(`Corrupted database backed up to ${backupPath}`);
+                } catch (backupError) {
+                    console.error('Failed to backup corrupted database:', backupError);
+                }
+                
+                // Delete corrupted file
+                fs.unlinkSync(dbPath);
+                
+                // Create new database
+                db = new Database(dbPath);
+            }
+        } else {
+            // Create new database if it doesn't exist
+            db = new Database(dbPath);
+        }
 
-    // Enable foreign keys and WAL mode for better performance
-    db.pragma('foreign_keys = ON');
-    db.pragma('journal_mode = WAL');
+        // Enable foreign keys and WAL mode for better performance
+        db.pragma('foreign_keys = ON');
+        db.pragma('journal_mode = WAL');
+        db.pragma('synchronous = NORMAL');
+        db.pragma('temp_store = MEMORY');
+        db.pragma('mmap_size = 30000000000');
+        db.pragma('page_size = 32768');
 
-    // Run migrations
-    runMigrations(db);
+        // Run migrations
+        runMigrations(db);
 
-    return db;
+        return db;
+    } catch (error) {
+        console.error('Failed to initialize database:', error);
+        throw error;
+    }
 }
 
 function runMigrations(db: Database.Database) {

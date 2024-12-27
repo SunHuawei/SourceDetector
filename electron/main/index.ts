@@ -105,7 +105,6 @@ async function createWindow() {
   try {
     const db = initDatabase()
     const dbOps = new DatabaseOperations(db)
-    await dbOps.initializeSyncTable()
 
     server = await createServer(dbOps)
   } catch (err) {

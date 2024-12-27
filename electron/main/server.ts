@@ -1,5 +1,6 @@
 import Fastify, { FastifyInstance } from 'fastify'
 import cors from '@fastify/cors'
+import compress from '@fastify/compress'
 import 'dotenv/config'
 import { DatabaseOperations } from './database-operations'
 import { app } from 'electron'
@@ -25,21 +26,35 @@ type TableName = typeof SUPPORTED_TABLES[number];
 
 interface SyncRequest {
     table: TableName;
-    lastSyncTimestamp: number;
+    lastId: number;
     data: any[];
+}
+
+interface SyncResult {
+    success: boolean;
+    failedRecords: any[];
+    lastSuccessId: number;
 }
 
 export async function createServer(dbOps: DatabaseOperations): Promise<FastifyInstance> {
     const fastify = Fastify({
         logger: {
+            level: 'error',
             file: logFile
-        }
+        },
+        bodyLimit: 1024 * 1024 * 1024, // 1GB limit
+        maxParamLength: 1000
     })
 
     // Register CORS
     await fastify.register(cors, {
         origin: true,
         methods: ['GET', 'POST']
+    })
+
+    // Register compression
+    await fastify.register(compress, {
+        encodings: ['gzip', 'deflate']
     })
 
     // Health check endpoint
@@ -57,75 +72,98 @@ export async function createServer(dbOps: DatabaseOperations): Promise<FastifyIn
     })
 
     // Universal sync endpoint
-    fastify.post<{ Body: SyncRequest }>('/sync', async (request) => {
+    fastify.post<{ Body: SyncRequest }>('/sync', async (request, reply) => {
+        const { table, lastId, data } = request.body;
+
+        const results = {
+            success: true,
+            failedRecords: [] as any[],
+            lastSuccessId: lastId
+        };
+
         try {
-            const { table, lastSyncTimestamp, data } = request.body;
-
-            if (!SUPPORTED_TABLES.includes(table)) {
-                throw new Error(`Unsupported table: ${table}`);
-            }
-
-            // Process data based on table type
             switch (table) {
                 case 'sourceMapFiles':
                     for (const file of data) {
-                        await dbOps.addSourceMapFile({
-                            url: file.url,
-                            sourceMapUrl: file.sourceMapUrl,
-                            content: file.content,
-                            originalContent: file.originalContent,
-                            fileType: file.fileType,
-                            size: file.size,
-                            hash: file.hash,
-                            timestamp: file.timestamp,
-                            version: file.version || 1,
-                            isLatest: file.isLatest || true
-                        });
+                        try {
+                            dbOps.addSourceMapFile(file);
+                            results.lastSuccessId = Math.max(results.lastSuccessId, file.id);
+                        } catch (error) {
+                            results.failedRecords.push({
+                                id: file.id,
+                                error: String(error)
+                            });
+                        }
                     }
                     break;
 
                 case 'pages':
                     for (const page of data) {
-                        await dbOps.addPage({
-                            url: page.url,
-                            title: page.title,
-                            timestamp: page.timestamp
-                        });
+                        try {
+                            dbOps.addPage(page);
+                            results.lastSuccessId = Math.max(results.lastSuccessId, page.id);
+                        } catch (error) {
+                            results.failedRecords.push({
+                                id: page.id,
+                                error: String(error)
+                            });
+                        }
                     }
                     break;
 
                 case 'pageSourceMaps':
                     for (const relation of data) {
-                        await dbOps.addPageSourceMap({
-                            sourceMapId: relation.sourceMapId,
-                            pageId: relation.pageId,
-                            timestamp: relation.timestamp
-                        });
+                        try {
+                            // Check if both page and source map exist
+                            const page = dbOps.getPage(relation.pageId);
+                            const sourceMap = dbOps.getSourceMapFile(relation.sourceMapId);
+
+                            if (!page || !sourceMap) {
+                                throw new Error(
+                                    `Dependencies not found for pageSourceMap: ` +
+                                    `page ${relation.pageId} (${page ? 'found' : 'missing'}), ` +
+                                    `sourceMap ${relation.sourceMapId} (${sourceMap ? 'found' : 'missing'})`
+                                );
+                            }
+
+                            dbOps.addPageSourceMap(relation);
+                            results.lastSuccessId = Math.max(results.lastSuccessId, relation.id);
+                        } catch (error) {
+                            results.failedRecords.push({
+                                id: relation.id,
+                                error: String(error)
+                            });
+                        }
                     }
                     break;
 
                 case 'crxFiles':
                     for (const file of data) {
-                        await dbOps.addCrxFile({
-                            pageUrl: file.pageUrl,
-                            pageTitle: file.pageTitle,
-                            crxUrl: file.crxUrl,
-                            blob: Buffer.from(file.blob, 'base64'),
-                            size: file.size,
-                            timestamp: file.timestamp,
-                            count: file.count
-                        });
+                        try {
+                            // Convert base64 blob back to Buffer
+                            const blob = Buffer.from(file.blob, 'base64');
+                            dbOps.addCrxFile({
+                                ...file,
+                                blob
+                            });
+                            results.lastSuccessId = Math.max(results.lastSuccessId, file.id);
+                        } catch (error) {
+                            results.failedRecords.push({
+                                id: file.id,
+                                error: String(error)
+                            });
+                        }
                     }
                     break;
+
+                default:
+                    return reply.status(400).send({ success: false, error: 'Invalid table name' });
             }
 
-            // Update sync timestamp
-            await dbOps.updateSyncTimestamp(table, Date.now());
-
-            return { success: true };
+            return reply.send(results);
         } catch (error) {
-            console.error('Error syncing data:', error);
-            throw error;
+            console.error('Error in sync endpoint:', error);
+            return reply.status(500).send({ success: false, error: String(error) });
         }
     });
 
