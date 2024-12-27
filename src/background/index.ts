@@ -597,8 +597,8 @@ const SERVER_CONFIG = {
 };
 
 const SERVER_URL = `http://${SERVER_CONFIG.host}:${SERVER_CONFIG.port}`;
-const HEARTBEAT_INTERVAL = 1000; // 1 second
-const SYNC_CHECK_INTERVAL = 30 * 1000; // Check every 30 seconds
+const HEARTBEAT_INTERVAL = 5000; // 5 seconds
+const SYNC_CHECK_INTERVAL = 60 * 1000; // 1 minute
 
 // Tables to sync
 const TableChunkSizeMap = {
@@ -721,19 +721,25 @@ async function syncDataToServer() {
     }
 }
 
+let inSync = false;
 // Function to check server status and trigger sync
 async function checkServerAndSync() {
+    if (inSync) {
+        return;
+    }
+    inSync = true;
     console.log('checkServerAndSync');
     if (await checkServerHealth()) {
         console.log('checkServerAndSync2');
         await syncDataToServer();
     }
+    inSync = false;
 }
 
 // Start heartbeat and sync
 setInterval(checkServerStatus, HEARTBEAT_INTERVAL);
 setInterval(checkServerAndSync, SYNC_CHECK_INTERVAL);
 
-// // Initial checks
-// checkServerStatus();
-// checkServerAndSync();
+// Initial checks
+checkServerStatus();
+checkServerAndSync();
