@@ -1,39 +1,17 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
 // --------- Expose some API to the Renderer process ---------
-contextBridge.exposeInMainWorld('ipcRenderer', {
-  on(...args: Parameters<typeof ipcRenderer.on>) {
-    const [channel, listener] = args
-    return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
-  },
-  off(...args: Parameters<typeof ipcRenderer.off>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.off(channel, ...omit)
-  },
-  send(...args: Parameters<typeof ipcRenderer.send>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.send(channel, ...omit)
-  },
-  invoke(...args: Parameters<typeof ipcRenderer.invoke>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.invoke(channel, ...omit)
-  },
-
-  // You can expose other APTs you need here.
-  // ...
-})
-
 contextBridge.exposeInMainWorld('database', {
     // Database Info
     getPath: async () => ipcRenderer.invoke('database:getPath'),
 
     // Source Map Files
-    getSourceMapFile: async (id: string) => ipcRenderer.invoke('sourceMapFile:get', id),
+    getSourceMapFile: async (id: number) => ipcRenderer.invoke('sourceMapFile:get', id),
     getSourceMapFileByUrl: async (url: string) => ipcRenderer.invoke('sourceMapFile:getByUrl', url),
     getLatestSourceMapFiles: async () => ipcRenderer.invoke('sourceMapFile:getLatest'),
 
     // Pages
-    getPage: async (id: string) => ipcRenderer.invoke('page:get', id),
+    getPage: async (id: number) => ipcRenderer.invoke('page:get', id),
     getPageByUrl: async (url: string) => ipcRenderer.invoke('page:getByUrl', url),
 
     // Page Source Maps
@@ -44,11 +22,23 @@ contextBridge.exposeInMainWorld('database', {
     updateSettings: async (settings: any) => ipcRenderer.invoke('settings:update', settings),
 
     // CRX Files
-    getCrxFile: async (id: string) => ipcRenderer.invoke('crxFile:get', id),
+    getCrxFile: async (id: number) => ipcRenderer.invoke('crxFile:get', id),
     getCrxFileByUrl: async (url: string) => ipcRenderer.invoke('crxFile:getByUrl', url),
 
     // Stats
-    getStorageStats: async () => ipcRenderer.invoke('stats:get')
+    getStorageStats: async () => ipcRenderer.invoke('stats:get'),
+
+    // Source Tree
+    getDomains: async (offset: number, limit: number) => ipcRenderer.invoke('getDomains', offset, limit),
+    getPages: async (domainId: number, offset: number, limit: number) => ipcRenderer.invoke('getPages', domainId, offset, limit),
+    getSourceMaps: async (pageId: number, offset: number, limit: number) => ipcRenderer.invoke('getSourceMaps', pageId, offset, limit),
+});
+
+// For demo purposes
+contextBridge.exposeInMainWorld('demo', {
+    on: (channel: string, func: (...args: any[]) => void) => {
+        ipcRenderer.on(channel, (event, ...args) => func(...args));
+    }
 });
 
 // --------- Preload scripts loading ---------

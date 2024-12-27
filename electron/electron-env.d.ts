@@ -25,34 +25,34 @@ declare namespace NodeJS {
 interface Window {
     database: {
         // Database Info
-        getPath: () => Promise<{ success: boolean; data: string | null; error?: string }>;
+        getPath: () => Promise<{ success: boolean; data?: string; error?: string; }>;
 
         // Source Map Files
-        addSourceMapFile: (file: any) => Promise<{ success: boolean; data?: any; error?: string }>;
-        getSourceMapFile: (id: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-        getSourceMapFileByUrl: (url: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-        getLatestSourceMapFiles: () => Promise<{ success: boolean; data?: any[]; error?: string }>;
+        getSourceMapFile: (id: number) => Promise<{ success: boolean; data?: any; error?: string; }>;
+        getSourceMapFileByUrl: (url: string) => Promise<{ success: boolean; data?: any; error?: string; }>;
+        getLatestSourceMapFiles: () => Promise<{ success: boolean; data?: any; error?: string; }>;
 
         // Pages
-        addPage: (page: any) => Promise<{ success: boolean; data?: any; error?: string }>;
-        getPage: (id: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-        getPageByUrl: (url: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+        getPage: (id: number) => Promise<{ success: boolean; data?: any; error?: string; }>;
+        getPageByUrl: (url: string) => Promise<{ success: boolean; data?: any; error?: string; }>;
 
         // Page Source Maps
-        addPageSourceMap: (map: any) => Promise<{ success: boolean; data?: any; error?: string }>;
-        getPageSourceMaps: (pageId: string) => Promise<{ success: boolean; data?: any[]; error?: string }>;
+        getPageSourceMaps: (pageId: string) => Promise<{ success: boolean; data?: any; error?: string; }>;
 
         // Settings
-        getSettings: () => Promise<{ success: boolean; data?: any; error?: string }>;
-        updateSettings: (settings: any) => Promise<{ success: boolean; error?: string }>;
+        getSettings: () => Promise<{ success: boolean; data?: any; error?: string; }>;
+        updateSettings: (settings: any) => Promise<{ success: boolean; data?: any; error?: string; }>;
 
         // CRX Files
-        addCrxFile: (file: any) => Promise<{ success: boolean; data?: any; error?: string }>;
-        getCrxFile: (id: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-        getCrxFileByUrl: (url: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-        updateCrxFile: (file: any) => Promise<{ success: boolean; error?: string }>;
+        getCrxFile: (id: number) => Promise<{ success: boolean; data?: any; error?: string; }>;
+        getCrxFileByUrl: (url: string) => Promise<{ success: boolean; data?: any; error?: string; }>;
 
         // Stats
-        getStorageStats: () => Promise<{ success: boolean; data?: any; error?: string }>;
+        getStorageStats: () => Promise<{ success: boolean; data?: any; error?: string; }>;
+
+        // Source Tree
+        getDomains: (offset: number, limit: number) => Promise<{ success: boolean; data?: { domains: Array<{ id: number; domain: string; }>; hasMore: boolean; }; error?: string; }>;
+        getPages: (domainId: number, offset: number, limit: number) => Promise<{ success: boolean; data?: { pages: Array<{ id: number; url: string; }>; hasMore: boolean; }; error?: string; }>;
+        getSourceMaps: (pageId: number, offset: number, limit: number) => Promise<{ success: boolean; data?: { sourceMaps: Array<{ id: number; fileName: string; }>; hasMore: boolean; }; error?: string; }>;
     };
 }

@@ -148,7 +148,7 @@ async function createWindow() {
   update(win)
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Initialize database
   const db = initDatabase()
   const dbOps = new DatabaseOperations(db)

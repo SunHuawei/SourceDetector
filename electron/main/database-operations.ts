@@ -30,6 +30,11 @@ export interface SourceMapFile {
     isLatest: boolean;
 }
 
+export interface Domain {
+    id: number;
+    domain: string;
+}
+
 export interface Page {
     id: number;
     url: string;
@@ -78,6 +83,9 @@ export class DatabaseOperations {
         getCrxFiles: Statement;
         getSettings: Statement;
         updateSettings: Statement;
+        insertDomain: Statement;
+        getDomain: Statement;
+        getDomains: Statement;
     };
 
     constructor(private db: BetterSqlite3.Database) {
@@ -101,8 +109,8 @@ export class DatabaseOperations {
 
             insertPage: this.db.prepare(`
                 INSERT INTO pages (
-                    id, url, title, timestamp
-                ) VALUES (?, ?, ?, ?)
+                    id, url, title, domainId, timestamp
+                ) VALUES (?, ?, ?, ?, ?)
             `),
             getPage: this.db.prepare('SELECT * FROM pages WHERE id = ?'),
             getPageByUrl: this.db.prepare('SELECT * FROM pages WHERE url = ?'),
@@ -132,7 +140,11 @@ export class DatabaseOperations {
             getCrxFiles: this.db.prepare('SELECT * FROM crxFiles'),
 
             getSettings: this.db.prepare('SELECT * FROM settings LIMIT 1'),
-            updateSettings: this.db.prepare('UPDATE settings SET cleanupThreshold = ?')
+            updateSettings: this.db.prepare('UPDATE settings SET cleanupThreshold = ?'),
+
+            insertDomain: this.db.prepare('INSERT INTO domains (domain, timestamp) VALUES (?, ?)'),
+            getDomain: this.db.prepare('SELECT * FROM domains WHERE domain = ?'),
+            getDomains: this.db.prepare('SELECT * FROM domains'),
         };
     }
 
@@ -248,11 +260,24 @@ export class DatabaseOperations {
         }));
     }
 
+    addDomain(domain: string): number {
+        const foundDomain = this.statements.getDomain.get(domain) as Domain | undefined;
+        if (foundDomain) {
+            return foundDomain.id;
+        }
+        this.statements.insertDomain.run(domain, Date.now());
+        return (this.statements.getDomain.get(domain) as Domain).id;
+    }
+
     addPage(page: Page): void {
         if (this.statements.getPage.get(page.id)) {
             return;
         }
-        this.statements.insertPage.run(page.id, page.url, page.title, page.timestamp);
+
+        const domain = new URL(page.url).hostname;
+        const domainId = this.addDomain(domain);
+
+        this.statements.insertPage.run(page.id, page.url, page.title, domainId, page.timestamp);
     }
 
     getPage(id: number): Page | undefined {
@@ -347,5 +372,70 @@ export class DatabaseOperations {
             }));
         }
         return results;
+    }
+
+    // Source Tree Methods
+    getDomains(offset: number, limit: number): { domains: Domain[]; total: number } {
+        const stmt = this.db.prepare<[number, number], { id: number; domain: string }>(
+            `SELECT id, domain
+             FROM domains
+             ORDER BY domain
+             LIMIT ? OFFSET ?`
+        );
+        const results = stmt.all(limit, offset);
+        const domains = results.map(row => ({
+            id: row.id,
+            domain: row.domain
+        }));
+
+        const totalStmt = this.db.prepare<[], { total: number }>(
+            `SELECT COUNT(*) as total FROM domains`
+        );
+        const [totalRow] = totalStmt.all();
+
+        return { domains, total: totalRow.total };
+    }
+
+    getPagesByDomain(domainId: number, offset: number, limit: number): { pages: Page[]; total: number } {
+        const stmt = this.db.prepare<[number, number, number], Page>(
+            `SELECT id, url, title, timestamp
+             FROM pages
+             WHERE domainId = ?
+             ORDER BY timestamp DESC
+             LIMIT ? OFFSET ?`
+        );
+        const pages = stmt.all(domainId, limit, offset);
+
+        const totalStmt = this.db.prepare<[number], { total: number }>(
+            `SELECT COUNT(*) as total
+             FROM pages
+             WHERE domainId = ?`
+        );
+        const [totalRow] = totalStmt.all(domainId);
+
+        return { pages, total: totalRow.total };
+    }
+
+    getSourceMapsByPage(pageId: string, offset: number, limit: number): { sourceMaps: SourceMapFile[]; total: number } {
+        const stmt = this.db.prepare<[string, number, number], SourceMapFile>(
+            `SELECT sm.id, sm.url, sm.sourceMapUrl, sm.content, sm.originalContent, sm.fileType,
+                    sm.size, sm.timestamp, sm.version, sm.hash, sm.isLatest
+             FROM sourceMapFiles sm
+             JOIN pageSourceMaps psm ON sm.id = psm.sourceMapId
+             WHERE psm.pageId = ?
+             ORDER BY sm.timestamp DESC
+             LIMIT ? OFFSET ?`
+        );
+        const sourceMaps = stmt.all(pageId, limit, offset);
+
+        const totalStmt = this.db.prepare<[string], { total: number }>(
+            `SELECT COUNT(*) as total
+             FROM sourceMapFiles sm
+             JOIN pageSourceMaps psm ON sm.id = psm.sourceMapId
+             WHERE psm.pageId = ?`
+        );
+        const [totalRow] = totalStmt.all(pageId);
+
+        return { sourceMaps, total: totalRow.total };
     }
 } 

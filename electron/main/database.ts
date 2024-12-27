@@ -28,11 +28,19 @@ const migrations: Migration[] = [
                 isLatest INTEGER NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS domains (
+                id INTEGER PRIMARY KEY,
+                domain TEXT NOT NULL,
+                timestamp INTEGER NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS pages (
                 id INTEGER PRIMARY KEY,
                 url TEXT NOT NULL,
                 title TEXT NOT NULL,
-                timestamp INTEGER NOT NULL
+                domainId INTEGER NOT NULL,
+                timestamp INTEGER NOT NULL,
+                FOREIGN KEY (domainId) REFERENCES domains(id)
             );
 
             CREATE TABLE IF NOT EXISTS pageSourceMaps (
@@ -70,6 +78,8 @@ const migrations: Migration[] = [
             CREATE INDEX IF NOT EXISTS idx_crxFiles_pageUrl ON crxFiles(pageUrl);
             CREATE INDEX IF NOT EXISTS idx_crxFiles_timestamp ON crxFiles(timestamp);
             CREATE INDEX IF NOT EXISTS idx_crxFiles_contentHash ON crxFiles(contentHash);
+            CREATE INDEX IF NOT EXISTS idx_domains_domain ON domains(domain);
+            CREATE INDEX IF NOT EXISTS idx_pages_domainId ON pages(domainId);
         `
     }
 ];

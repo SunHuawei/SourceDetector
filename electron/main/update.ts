@@ -9,6 +9,10 @@ import type {
 const { autoUpdater } = createRequire(import.meta.url)('electron-updater');
 
 export function update(win: Electron.BrowserWindow) {
+  // Skip update in development mode
+  if (process.env.VITE_DEV_SERVER_URL) {
+    return;
+  }
 
   // When set to false, the update download will be triggered through the API
   autoUpdater.autoDownload = false
