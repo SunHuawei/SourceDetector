@@ -6,10 +6,10 @@ const DB_VERSION = 1;
 const DB_NAME = 'SourceDetectorDB';
 
 export class SourceDetectorDB extends Dexie {
-    sourceMapFiles!: Dexie.Table<SourceMapFile, string>;
-    pages!: Dexie.Table<Page, string>;
-    pageSourceMaps!: Dexie.Table<PageSourceMap, string>;
-    settings!: Dexie.Table<AppSettings, number>;
+    sourceMapFiles!: Dexie.Table<SourceMapFile, number>;
+    pages!: Dexie.Table<Page, number>;
+    pageSourceMaps!: Dexie.Table<PageSourceMap, number>;
+    settings!: Dexie.Table<AppSettings, string>;
     crxFiles!: Dexie.Table<CrxFile, number>;
     syncStatus!: Dexie.Table<SyncStatus, string>;
 
@@ -17,19 +17,33 @@ export class SourceDetectorDB extends Dexie {
         super(DB_NAME);
 
         this.version(DB_VERSION).stores({
-            sourceMapFiles: 'id, url, timestamp, fileType, isLatest, hash, size',
-            pages: 'id, url, timestamp',
-            pageSourceMaps: 'id, pageId, sourceMapId, timestamp',
-            settings: '',
-            crxFiles: 'id, pageUrl, pageTitle, crxUrl, blob, size, timestamp, count',
-            syncStatus: 'table, timestamp'
+            sourceMapFiles: '++id, url, timestamp, fileType, isLatest, hash, size',
+            pages: '++id, url, timestamp',
+            pageSourceMaps: '++id, pageId, sourceMapId, timestamp',
+            settings: 'id',
+            crxFiles: '++id, pageUrl, pageTitle, crxUrl, blob, size, timestamp, count, contentHash',
+            syncStatus: 'tableName'
         });
     }
 
-    async addCrxFile(crxFile: CrxFile & { version?: number }): Promise<CrxFile> {
-        const fileWithId = { ...crxFile, id: crypto.randomUUID() };
-        await this.crxFiles.add(fileWithId);
-        return fileWithId;
+    async addPage(page: Omit<Page, 'id'>): Promise<Page> {
+        const id = await this.pages.add(page as any);
+        return { ...page, id };
+    }
+
+    async addPageSourceMap(relation: Omit<PageSourceMap, 'id'>): Promise<PageSourceMap> {
+        const id = await this.pageSourceMaps.add(relation as any);
+        return { ...relation, id };
+    }
+
+    async addSourceMapFile(file: Omit<SourceMapFile, 'id'>): Promise<SourceMapFile> {
+        const id = await this.sourceMapFiles.add(file as any);
+        return { ...file, id };
+    }
+
+    async addCrxFile(file: Omit<CrxFile, 'id'>): Promise<CrxFile> {
+        const id = await this.crxFiles.add(file as any);
+        return { ...file, id };
     }
 
     async updateCrxFile(crxFile: CrxFile): Promise<void> {
@@ -47,9 +61,8 @@ export class SourceDetectorDB extends Dexie {
         try {
             const settings = await this.settings.toArray();
             if (settings.length === 0) {
-                const defaultSettings = DEFAULT_SETTINGS;
-                await this.settings.add(defaultSettings);
-                return defaultSettings;
+                await this.settings.add(DEFAULT_SETTINGS);
+                return DEFAULT_SETTINGS;
             }
             return settings[0];
         } catch (error) {
@@ -63,10 +76,10 @@ export class SourceDetectorDB extends Dexie {
             const currentSettings = await this.getSettings();
             const updatedSettings = {
                 ...currentSettings,
-                ...settings
+                ...settings,
+                id: 'settings'
             };
-            await this.settings.clear();
-            await this.settings.add(updatedSettings);
+            await this.settings.put(updatedSettings);
         } catch (error) {
             console.error('Error in updateSettings:', error);
             throw error;
@@ -99,11 +112,11 @@ export class SourceDetectorDB extends Dexie {
 
             this.pages
                 .orderBy('url')
-                .eachPrimaryKey(url => {
+                .each(page => {
                     try {
-                        uniqueSites.add(new URL(url).hostname);
+                        uniqueSites.add(new URL(page.url).hostname);
                     } catch {
-                        uniqueSites.add(url);
+                        uniqueSites.add(page.url);
                     }
                 })
         ]);
@@ -137,23 +150,57 @@ export class SourceDetectorDB extends Dexie {
     async addSourceMapToPage(pageUrl: string, pageTitle: string, sourceMap: SourceMapFile): Promise<void> {
         // Get or create page
         let page = await this.pages.where('url').equals(pageUrl).first();
+
         if (!page) {
-            page = {
-                id: crypto.randomUUID(),
+            page = await this.addPage({
                 url: pageUrl,
                 title: pageTitle,
                 timestamp: Date.now()
-            };
-            await this.pages.add(page);
+            });
+        }
+
+        // Check for existing relation
+        const existingRelation = await this.pageSourceMaps
+            .where('pageId').equals(page.id)
+            .and(psm => psm.sourceMapId === sourceMap.id)
+            .first();
+        if (existingRelation) {
+            return;
         }
 
         // Create page-sourcemap relation
-        const pageSourceMap: PageSourceMap = {
-            id: crypto.randomUUID(),
+        await this.addPageSourceMap({
             pageId: page.id,
             sourceMapId: sourceMap.id,
             timestamp: Date.now()
+        });
+    }
+
+    // Sync status methods
+    async getLastSyncId(table: string): Promise<number> {
+        const status = await this.syncStatus.get(table);
+        return status?.lastId || 0;
+    }
+
+    async updateLastSyncId(table: string, id: number): Promise<void> {
+        await this.syncStatus.put({ tableName: table, lastId: id });
+    }
+
+    async getModifiedData(table: string, lastId: number, chunkSize: number): Promise<any[]> {
+        const tableMap = {
+            sourceMapFiles: this.sourceMapFiles,
+            pages: this.pages,
+            pageSourceMaps: this.pageSourceMaps,
+            crxFiles: this.crxFiles
         };
-        await this.pageSourceMaps.add(pageSourceMap);
+
+        const dbTable = tableMap[table as keyof typeof tableMap];
+        if (!dbTable) return [];
+
+        return await dbTable
+            .where('id')
+            .above(lastId)
+            .limit(chunkSize)
+            .toArray();
     }
 } 

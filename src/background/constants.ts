@@ -74,5 +74,6 @@ export const SETTINGS = {
 export const STORAGE_LIMITS = SETTINGS.STORAGE;
 
 export const DEFAULT_SETTINGS: AppSettings = {
+    id: 'settings',
     cleanupThreshold: 1000
 };

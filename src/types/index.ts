@@ -1,21 +1,21 @@
 import JSZip from 'jszip';
 
 export interface Page {
-    id: string;
+    id: number;
     url: string;
     title: string;
     timestamp: number;
 }
 
 export interface PageSourceMap {
-    id: string;
-    pageId: string;
-    sourceMapId: string;
+    id: number;
+    pageId: number;
+    sourceMapId: number;
     timestamp: number;
 }
 
 export interface SourceMapFile {
-    id: string;
+    id: number;
     url: string;
     sourceMapUrl: string;
     content: string;
@@ -54,6 +54,7 @@ export interface StorageStats {
 }
 
 export interface AppSettings {
+    id: string;
     cleanupThreshold: number;
 }
 
@@ -63,7 +64,7 @@ export interface Message<T = unknown> {
 } 
 
 export interface CrxFile {
-    id?: string;
+    id: number;
     pageUrl: string;
     pageTitle: string;
     crxUrl: string;
@@ -71,6 +72,7 @@ export interface CrxFile {
     size: number;
     timestamp: number;
     count: number;
+    contentHash: string;
 }
 
 export interface ParsedCrxFile {
@@ -82,6 +84,6 @@ export interface ParsedCrxFile {
 }
 
 export interface SyncStatus {
-    table: string;
-    timestamp: number;
+    tableName: string;
+    lastId: number;
 }

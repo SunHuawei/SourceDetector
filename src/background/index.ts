@@ -1,9 +1,9 @@
 import { SourceDetectorDB } from '@/storage/database';
-import { AppSettings, PageData, CrxFile } from '@/types';
-import { FILE_TYPES, MESSAGE_TYPES } from './constants';
-import { createHash } from './utils';
-import { parseCrxFile } from '@/utils/parseCrxFile';
+import { AppSettings, CrxFile, PageData } from '@/types';
 import { isExtensionPage } from '@/utils/isExtensionPage';
+import { parseCrxFile } from '@/utils/parseCrxFile';
+import { MESSAGE_TYPES } from './constants';
+import { createHash } from './utils';
 
 const db = new SourceDetectorDB();
 
@@ -137,21 +137,32 @@ async function updateCrxPage(tab: chrome.tabs.Tab) {
         // check if the file exists
         let crxFile = await db.getCrxFileByPageUrl(url);
         if (!crxFile) {
+            // Create empty content hash for new file
+            const emptyBlob = new Blob();
+
             // save to db
             crxFile = await db.addCrxFile({
                 pageUrl: url,
                 pageTitle: tab.title || '',
                 crxUrl: crxUrl,
-                blob: new Blob(),
+                blob: emptyBlob,
                 size: 0,
                 timestamp: Date.now(),
-                count: 0
+                count: 0,
+                contentHash: ''
             });
         }
 
         const result = await parseCrxFile(crxUrl);
         console.log('result', result);
         if (result && result.count > 0) {
+            // Create content hash from blob
+            const arrayBuffer = await result.blob.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            const contentHash = await createHash('SHA-256')
+                .update(Array.from(uint8Array).map(b => String.fromCharCode(b)).join(''))
+                .digest('hex');
+
             await db.updateCrxFile({
                 id: crxFile.id,
                 pageUrl: url,
@@ -161,6 +172,7 @@ async function updateCrxPage(tab: chrome.tabs.Tab) {
                 size: result.blob.size,
                 count: result.count,
                 timestamp: Date.now(),
+                contentHash,
             });
             console.log('updateCrxFile', crxFile);
             // update badge
@@ -344,18 +356,18 @@ class TaskQueue {
         try {
             // Create a new task that waits for the current task to complete
             const newTask = currentTask.then(task, task);
-            
+
             // Update the queue with the new task
             this.queue.set(key, newTask);
-            
+
             // Wait for the task to complete and return its result
             const result = await newTask;
-            
+
             // Clean up if this was the last task in the queue
             if (this.queue.get(key) === newTask) {
                 this.queue.delete(key);
             }
-            
+
             return result;
         } catch (error) {
             // Clean up on error
@@ -373,6 +385,7 @@ const taskQueue = new TaskQueue();
 async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css'; originalContent: string }): Promise<{ success: boolean; reason?: string }> {
     return taskQueue.enqueue('sourceMap', async () => {
         try {
+            // Fetch content
             const content = await fetchSourceMapContent(data.sourceUrl, data.mapUrl);
             if (!content) return { success: false, reason: 'Failed to fetch content' };
 
@@ -409,7 +422,6 @@ async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; 
 
             // Create new source map record
             const sourceMapFile = {
-                id: content.hash,
                 url: data.sourceUrl,
                 sourceMapUrl: data.mapUrl,
                 content: content.content,
@@ -419,14 +431,14 @@ async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; 
                 timestamp: Date.now(),
                 version: latestVersion + 1,
                 hash: content.hash,
-                isLatest: true
+                isLatest: true,
             };
 
             // Store source map
-            await db.sourceMapFiles.add(sourceMapFile);
+            const savedSourceMapFile = await db.addSourceMapFile(sourceMapFile);
 
             // Associate with page
-            await db.addSourceMapToPage(data.pageUrl, data.pageTitle, sourceMapFile);
+            await db.addSourceMapToPage(data.pageUrl, data.pageTitle, savedSourceMapFile);
 
             checkAndCleanStorage();
             // Update badge after storing new source map
@@ -585,12 +597,16 @@ const SERVER_CONFIG = {
 };
 
 const SERVER_URL = `http://${SERVER_CONFIG.host}:${SERVER_CONFIG.port}`;
-const HEARTBEAT_INTERVAL = 5000; // 5 seconds
-const SYNC_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
+const HEARTBEAT_INTERVAL = 1000; // 1 second
+const SYNC_CHECK_INTERVAL = 30 * 1000; // Check every 30 seconds
 
 // Tables to sync
-const TABLES = ['sourceMapFiles', 'pages', 'pageSourceMaps', 'crxFiles'] as const;
-type TableName = typeof TABLES[number];
+const TableChunkSizeMap = {
+    crxFiles: 1,
+    sourceMapFiles: 1,
+    pages: 100,
+    pageSourceMaps: 100
+} as const;
 
 let serverStatus = false;
 
@@ -619,61 +635,83 @@ async function checkServerStatus() {
     chrome.runtime.sendMessage({
         type: MESSAGE_TYPES.SERVER_STATUS_CHANGED,
         data: { isOnline: serverStatus }
-    }).catch(() => {}); // Ignore errors if no listeners
+    }).catch(() => { }); // Ignore errors if no listeners
 }
 
 // Function to convert Blob to base64
 async function blobToBase64(blob: Blob): Promise<string> {
     const arrayBuffer = await blob.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
-    
+
     // Process the array in chunks to avoid call stack size exceeded
     const chunkSize = 0x8000; // 32KB chunks
     let result = '';
-    
+
     for (let i = 0; i < uint8Array.length; i += chunkSize) {
         const chunk = uint8Array.slice(i, i + chunkSize);
         result += String.fromCharCode.apply(null, Array.from(chunk));
     }
-    
+
     return btoa(result);
 }
 
 // Function to sync data to server
 async function syncDataToServer() {
     try {
-        for (const table of TABLES) {
+        for (const table of Object.keys(TableChunkSizeMap)) {
             console.log('syncDataToServer', table);
-            const lastSync = await getLastSyncTimestamp(table);
-            console.log('lastSync', lastSync);
-            const modifiedData = await getModifiedData(table, lastSync);
+            let lastId = await db.getLastSyncId(table);
+            console.log('lastId', lastId);
+            let modifiedData = await db.getModifiedData(table, lastId, TableChunkSizeMap[table as keyof typeof TableChunkSizeMap]);
             console.log('modifiedData', modifiedData);
-            if (modifiedData.length > 0) {
-                // Convert Blob to base64 string for CRX files
-                const processedData = table === 'crxFiles' 
-                    ? await Promise.all(modifiedData.map(async (file) => {
-                        const crxFile = file as CrxFile;
-                        return {
-                            ...crxFile,
-                            blob: await blobToBase64(crxFile.blob)
-                        };
-                    }))
-                    : modifiedData;
 
-                const response = await fetch(`${SERVER_URL}/sync`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        table,
-                        lastSyncTimestamp: lastSync,
-                        data: processedData
-                    })
-                });
+            while (modifiedData.length > 0) {
+                try {
+                    let processedChunk = table === 'crxFiles'
+                        ? await Promise.all(modifiedData.map(async (file) => {
+                            const crxFile = file as CrxFile;
+                            return {
+                                ...crxFile,
+                                blob: await blobToBase64(crxFile.blob)
+                            };
+                        }))
+                        : modifiedData;
 
-                if (response.ok) {
-                    await updateSyncTimestamp(table, Date.now());
-                    console.log(`Synced ${modifiedData.length} records for ${table}`);
+                    const response = await fetch(`${SERVER_URL}/sync`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            table,
+                            lastId,
+                            data: processedChunk
+                        })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+
+                        // Log failed records for debugging
+                        if (result.failedRecords?.length > 0) {
+                            console.log(`Failed records for ${table}:`, result.failedRecords);
+                        }
+
+                        // Update last synced ID to the last successful record's ID
+                        if (result.lastSuccessId > lastId) {
+                            lastId = result.lastSuccessId;
+                            await db.updateLastSyncId(table, lastId);
+                        }
+
+                        console.log(`Synced ${modifiedData.length} records for ${table}`);
+                    } else {
+                        console.log(`Failed to sync chunk: ${response.statusText}`);
+                        break;
+                    }
+                } catch (error) {
+                    console.log('error', error);
                 }
+
+                modifiedData = await db.getModifiedData(table, lastId, TableChunkSizeMap[table as keyof typeof TableChunkSizeMap]);
+                console.log('modifiedData2', modifiedData);
             }
         }
 
@@ -696,33 +734,6 @@ async function checkServerAndSync() {
 setInterval(checkServerStatus, HEARTBEAT_INTERVAL);
 setInterval(checkServerAndSync, SYNC_CHECK_INTERVAL);
 
-// Initial checks
-checkServerStatus();
-checkServerAndSync();
-
-// Function to get last sync timestamp for a table
-async function getLastSyncTimestamp(table: TableName): Promise<number> {
-    const syncRecord = await db.syncStatus.where('table').equals(table).first();
-    return syncRecord?.timestamp || 0;
-}
-
-// Function to update sync timestamp
-async function updateSyncTimestamp(table: TableName, timestamp: number): Promise<void> {
-    await db.syncStatus.put({ table, timestamp });
-}
-
-// Function to get data modified since last sync
-async function getModifiedData(table: TableName, lastSync: number) {
-    switch (table) {
-        case 'sourceMapFiles':
-            return await db.sourceMapFiles.where('timestamp').above(lastSync).toArray();
-        case 'pages':
-            return await db.pages.where('timestamp').above(lastSync).toArray();
-        case 'pageSourceMaps':
-            return await db.pageSourceMaps.where('timestamp').above(lastSync).toArray();
-        case 'crxFiles':
-            return await db.crxFiles.where('timestamp').above(lastSync).toArray();
-        default:
-            return [];
-    }
-}
+// // Initial checks
+// checkServerStatus();
+// checkServerAndSync();
