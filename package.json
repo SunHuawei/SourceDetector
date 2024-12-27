@@ -29,17 +29,21 @@
     "@fastify/cors": "^10.0.1",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
+    "@monaco-editor/react": "^4.6.0",
     "@mui/icons-material": "5.15.11",
     "@mui/lab": "^6.0.0-beta.18",
     "@mui/material": "^6.1.10",
     "@mui/x-tree-view": "^7.23.2",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "better-sqlite3": "11.6.0",
     "dexie": "^4.0.10",
     "dotenv": "^16.4.7",
     "electron-store": "^10.0.0",
     "electron-updater": "^6.3.9",
     "fastify": "^5.2.0",
-    "react-router-dom": "^7.1.1"
+    "monaco-editor": "^0.52.2",
+    "react-router-dom": "^7.1.1",
+    "react-syntax-highlighter": "^15.6.1"
   },
   "devDependencies": {
     "@fastify/type-provider-typebox": "^5.1.0",

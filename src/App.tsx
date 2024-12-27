@@ -3,6 +3,7 @@ import { Box, CssBaseline } from '@mui/material';
 import Sidebar from './components/Layout/Sidebar';
 import Home from './pages/Home';
 import SourceFiles from './pages/SourceFiles';
+import './App.css';
 
 function App() {
   return (

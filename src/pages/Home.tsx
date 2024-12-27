@@ -2,7 +2,7 @@ import { Box, Typography, Paper, Container } from '@mui/material';
 
 const Home = () => {
   return (
-    <Container maxWidth="lg">
+    <Container>
       <Box sx={{ mt: 4, mb: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Welcome to Source Detector
