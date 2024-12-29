@@ -28,9 +28,7 @@ const ParsedSourceFileTree = ({ onFileSelect, files, selectedNodePath }: MockFol
                 </Box>
             }
             onClick={() => {
-                if (!node.isDirectory) {
-                    onFileSelect(node);
-                }
+                onFileSelect(node);
             }}
         >
             {Object.values(node.children).map((child) => renderTree(child))}

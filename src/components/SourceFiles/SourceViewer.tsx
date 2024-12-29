@@ -41,7 +41,11 @@ const SourceViewer = ({ sourceFiles }: SourceViewerProps) => {
     }, [sourceFiles]);
 
     const handleFileSelect = (file: FileNode) => {
-        setSelectedFile(file);
+        if (file.isDirectory) {
+            // TODO: expand the directory
+        } else {
+            setSelectedFile(file);
+        }
     };
 
     return (
