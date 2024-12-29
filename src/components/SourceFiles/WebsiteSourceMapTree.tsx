@@ -2,7 +2,7 @@ import { Article, Code, Language } from '@mui/icons-material';
 import { Box, Button, CircularProgress, Typography } from '@mui/material';
 import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface Domain {
     id: number;
@@ -19,6 +19,10 @@ interface SourceMap {
     url: string;
 }
 
+interface FolderTreeProps {
+    onSourceMapSelect: (sourceMapId: number) => void;
+}
+
 type DomainMap = Map<number, Domain>;
 type PageMap = Map<number, Map<number, Page>>;
 type SourceMapMap = Map<number, Map<number, SourceMap>>;
@@ -28,7 +32,7 @@ type PageNumberMap = Map<string, number>;
 
 const PAGE_SIZE = 20;
 
-const FolderTree = () => {
+const WebsiteSourceMapTree = ({ onSourceMapSelect }: FolderTreeProps) => {
     const [domains, setDomains] = useState<DomainMap>(new Map());
     const [pages, setPages] = useState<PageMap>(new Map());
     const [sourceMaps, setSourceMaps] = useState<SourceMapMap>(new Map());
@@ -36,6 +40,8 @@ const FolderTree = () => {
     const [hasMore, setHasMore] = useState<HasMoreMap>(new Map());
     const [pageNumbers, setPageNumbers] = useState<PageNumberMap>(new Map());
     const [isInitialized, setIsInitialized] = useState(false);
+    const [defaultExpandedItems, setDefaultExpandedItems] = useState<string[]>([]);
+    console.log('defaultExpandedItems', defaultExpandedItems);
 
     const loadDomains = async (offset: number = 0) => {
         if (loading.get('domains')) return;
@@ -55,7 +61,7 @@ const FolderTree = () => {
                 
                 setHasMore(prev => new Map(prev).set('domains', hasMore));
                 setPageNumbers(prev => new Map(prev).set('domains', (prev.get('domains') || 0) + 1));
-                if (offset === 0) setIsInitialized(true);
+                return newDomains;
             } else if (response.error) {
                 console.error('Error loading domains:', response.error);
             }
@@ -84,6 +90,7 @@ const FolderTree = () => {
                 
                 setHasMore(prev => new Map(prev).set(loadingKey, hasMore));
                 setPageNumbers(prev => new Map(prev).set(loadingKey, (prev.get(loadingKey) || 0) + 1));
+                return newPages;
             } else if (response.error) {
                 console.error('Error loading pages:', response.error);
             }
@@ -112,6 +119,7 @@ const FolderTree = () => {
                 
                 setHasMore(prev => new Map(prev).set(loadingKey, hasMore));
                 setPageNumbers(prev => new Map(prev).set(loadingKey, (prev.get(loadingKey) || 0) + 1));
+                return newSourceMaps;
             } else if (response.error) {
                 console.error('Error loading source maps:', response.error);
             }
@@ -122,9 +130,25 @@ const FolderTree = () => {
         }
     };
 
+    const loadAll = async () => {
+        const domains = await loadDomains();
+        if (domains && domains.length > 0) {
+            const pages = await loadPages(domains[0].id, 0);
+            if (pages && pages.length > 0) {
+                const sourceMaps = await loadSourceMaps(pages[0].id, 0);
+                if (sourceMaps && sourceMaps.length > 0) {
+                    const sourceMap = sourceMaps[0];
+                    onSourceMapSelect(sourceMap.id);
+                    setDefaultExpandedItems([`domain-${domains[0].id}`, `page-${pages[0].id}`, `sourcemap-${sourceMaps[0].id}:${pages[0].id}`]);
+                    setIsInitialized(true);
+                }
+            }
+        }
+    }
+
     useEffect(() => {
         if (!isInitialized) {
-            loadDomains();
+            loadAll();
         }
     }, [isInitialized]);
 
@@ -144,11 +168,20 @@ const FolderTree = () => {
         );
     };
 
+    const handleSourceMapClick = (sourceMapId: number) => {
+        onSourceMapSelect(sourceMapId);
+    };
+
+    if (!isInitialized) {
+        return 'loading...'
+    }
+
     return (
         <Box sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
             <SimpleTreeView
                 expansionTrigger="iconContainer"
-                defaultExpandedItems={[]}
+                defaultExpandedItems={defaultExpandedItems}
+                defaultSelectedItems={defaultExpandedItems[defaultExpandedItems.length - 1]}
                 onItemExpansionToggle={(event, itemId, isExpanded) => {
                     if (isExpanded && itemId.startsWith('page-')) {
                         const pageId = parseInt(itemId.replace('page-', ''), 10);
@@ -182,7 +215,6 @@ const FolderTree = () => {
                             >
                                 {loading.get(`sourcemaps-${page.id}`) ? (
                                     <TreeItem
-                                        key={`loading-${page.id}`}
                                         itemId={`loading-${page.id}`}
                                         label={
                                             <Box component="div" sx={{ display: 'flex', alignItems: 'center', py: 0.5 }}>
@@ -198,7 +230,22 @@ const FolderTree = () => {
                                                 key={`sourcemap-${sourceMap.id}:${page.id}`}
                                                 itemId={`sourcemap-${sourceMap.id}:${page.id}`}
                                                 label={
-                                                    <Box component="div" sx={{ display: 'flex', alignItems: 'center', py: 0.5 }}>
+                                                    <Box 
+                                                        component="div" 
+                                                        sx={{ 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            py: 0.5,
+                                                            cursor: 'pointer',
+                                                            '&:hover': {
+                                                                bgcolor: 'action.hover'
+                                                            }
+                                                        }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleSourceMapClick(sourceMap.id);
+                                                        }}
+                                                    >
                                                         <Code sx={{ mr: 1 }} />
                                                         <Typography variant="body2">{sourceMap.url}</Typography>
                                                     </Box>
@@ -228,4 +275,4 @@ const FolderTree = () => {
     );
 };
 
-export default FolderTree; 
+export default WebsiteSourceMapTree; 

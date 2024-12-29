@@ -1,52 +1,72 @@
 import { Box } from '@mui/material';
-import FolderTree from '../components/SourceFiles/FolderTree';
-import MockFolderTree from '../components/SourceFiles/MockFolderTree';
+import WebsiteSourceMapTree from '../components/SourceFiles/WebsiteSourceMapTree';
 import { useState } from 'react';
-import FileViewer from '../components/SourceFiles/FileViewer';
-
-interface FileContent {
-    id: string;
-    content: string;
-    language: string;
-}
+import { SourceMapConsumer } from 'source-map-js';
+import { FileNode } from '../types/files';
+import SourceViewer from '../components/SourceFiles/SourceViewer';
 
 const SourceFiles = () => {
-    const [selectedFile, setSelectedFile] = useState<FileContent | null>(null);
+    const [sourceFiles, setSourceFiles] = useState<FileNode[]>([]);
+    const handleSourceMapSelect = async (sourceMapId: number) => {
+        try {
+            const response = await window.database.getSourceMapFile({ id: sourceMapId });
+            if (response.success && response.data) {
+                const sourceMap = response.data;
+                // Parse the source map
+                const rawSourceMap = JSON.parse(sourceMap.content);
+                const consumer = new SourceMapConsumer(rawSourceMap);
+                
+                // Create root node
+                const root: FileNode = {
+                    name: 'root',
+                    path: '/',
+                    isDirectory: true,
+                    children: {}
+                };
 
-    // Mock data for testing
-    const mockFileContent: Record<string, FileContent> = {
-        'file1.js': {
-            id: 'file1.js',
-            content: `function hello() {
-  console.log("Hello, World!");
-}`,
-            language: 'javascript'
-        },
-        'styles.css': {
-            id: 'styles.css',
-            content: `.container {
-  display: flex;
-  background-color: #f0f0f0;
-}`,
-            language: 'css'
-        },
-        'index.html': {
-            id: 'index.html',
-            content: `<!DOCTYPE html>
-<html>
-  <head>
-    <title>Test Page</title>
-  </head>
-  <body>
-    <h1>Hello World</h1>
-  </body>
-</html>`,
-            language: 'html'
+
+                // Process each source file
+                consumer.sources.forEach((sourcePath) => {
+                    const sourceContent = consumer.sourceContentFor(sourcePath);
+                    if (sourceContent) {
+                        // Split path into segments and create folder structure
+                        const pathSegments = sourcePath.split('/');
+                        let currentNode = root;
+
+                        // Process all segments except the last one (file name)
+                        for (let i = 0; i < pathSegments.length - 1; i++) {
+                            const segment = pathSegments[i];
+                            if (!segment) continue; // Skip empty segments
+
+                            if (!currentNode.children[segment]) {
+                                currentNode.children[segment] = {
+                                    name: segment,
+                                    path: pathSegments.slice(0, i + 1).join('/'),
+                                    isDirectory: true,
+                                    children: {}
+                                };
+                            }
+                            currentNode = currentNode.children[segment];
+                        }
+
+                        // Add the file
+                        const fileName = pathSegments[pathSegments.length - 1];
+                        currentNode.children[fileName] = {
+                            name: fileName,
+                            path: sourcePath,
+                            size: sourceContent.length,
+                            isDirectory: false,
+                            children: {},
+                            content: sourceContent
+                        };
+                    }
+                });
+
+                setSourceFiles(Object.values(root.children));
+            }
+        } catch (error) {
+            console.error('Error loading source map:', error);
         }
-    };
-
-    const handleFileSelect = (fileId: string) => {
-        setSelectedFile(mockFileContent[fileId] || null);
     };
 
     return (
@@ -65,36 +85,13 @@ const SourceFiles = () => {
                 overflow: 'auto',
                 flexShrink: 0
             }}>
-                <FolderTree />
+                <WebsiteSourceMapTree 
+                    onSourceMapSelect={handleSourceMapSelect}
+                />
             </Box>
 
-            {/* Right side - VSCode-like interface */}
-            <Box sx={{
-                display: 'flex',
-                flex: 1,
-                overflow: 'hidden',
-                minWidth: 0 // This prevents flex items from overflowing
-            }}>
-                {/* Explorer */}
-                <Box sx={{
-                    width: 300,
-                    borderRight: 1,
-                    borderColor: 'divider',
-                    overflow: 'auto',
-                    flexShrink: 0
-                }}>
-                    <MockFolderTree onFileSelect={handleFileSelect} />
-                </Box>
-
-                {/* File content */}
-                <Box sx={{
-                    flex: 1,
-                    overflow: 'auto',
-                    minWidth: 0 // This prevents flex items from overflowing
-                }}>
-                    <FileViewer file={selectedFile} />
-                </Box>
-            </Box>
+            {/* Right side - Source Viewer */}
+            <SourceViewer sourceFiles={sourceFiles} />
         </Box>
     );
 };

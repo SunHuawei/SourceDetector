@@ -1,58 +1,68 @@
 import { Box, Typography } from '@mui/material';
 import SyntaxHighlighter from 'react-syntax-highlighter';
-import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
-
-interface FileContent {
-  id: string;
-  content: string;
-  language: string;
-}
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { FileNode } from '../../types/files';
 
 interface FileViewerProps {
-  file: FileContent | null;
+    file: FileNode | null;
 }
 
-const FileViewer = ({ file }: FileViewerProps) => {
-  if (!file) {
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100%',
-        color: 'text.secondary',
-        bgcolor: 'background.default'
-      }}>
-        <Typography variant="body1">
-          Select a file to view its content
-        </Typography>
-      </Box>
-    );
-  }
+// @ts-ignore
+const HighlighterComponent = SyntaxHighlighter as unknown as React.ComponentType<any>;
 
-  return (
-    <Box sx={{ 
-      height: '100%', 
-      overflow: 'auto',
-      bgcolor: 'background.default'
-    }}>
-      <SyntaxHighlighter
-        language={file.language}
-        style={vs2015}
-        customStyle={{
-          margin: 0,
-          padding: '1rem',
-          minHeight: '100%',
-          fontSize: '0.875rem',
-          lineHeight: '1.5'
-        }}
-        showLineNumbers
-        wrapLongLines
-      >
-        {file.content}
-      </SyntaxHighlighter>
-    </Box>
-  );
+const FileViewer = ({ file }: FileViewerProps) => {
+    if (!file) {
+        return (
+            <Box sx={{ p: 2 }}>
+                <Typography>No file selected</Typography>
+            </Box>
+        );
+    }
+
+    if (file.isDirectory) {
+        return (
+            <Box sx={{ p: 2 }}>
+                <Typography>Selected item is a directory</Typography>
+            </Box>
+        );
+    }
+
+    const getLanguage = (fileName: string) => {
+        const ext = fileName.split('.').pop()?.toLowerCase();
+        switch (ext) {
+            case 'js':
+            case 'jsx':
+            case 'ts':
+            case 'tsx':
+                return 'javascript';
+            case 'css':
+                return 'css';
+            case 'html':
+                return 'html';
+            default:
+                return 'javascript';
+        }
+    };
+
+    return (
+        <Box sx={{ p: 2 }} >
+            <Typography variant="h6" gutterBottom>
+                {file.name}
+            </Typography>
+            <HighlighterComponent
+                language={getLanguage(file.name)}
+                style={vscDarkPlus}
+                showLineNumbers
+                customStyle={{
+                    height: 'calc(100vh - 70px)',
+                    fontSize: '14px',
+                }}
+                wrapLongLines={true}
+            >
+                {file.content || ''}
+            </HighlighterComponent>
+        </Box>
+    );
 };
 
 export default FileViewer; 

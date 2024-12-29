@@ -6,13 +6,13 @@ contextBridge.exposeInMainWorld('database', {
     getPath: async () => ipcRenderer.invoke('database:getPath'),
 
     // Source Map Files
-    getSourceMapFile: async (id: number) => ipcRenderer.invoke('sourceMapFile:get', id),
-    getSourceMapFileByUrl: async (url: string) => ipcRenderer.invoke('sourceMapFile:getByUrl', url),
-    getLatestSourceMapFiles: async () => ipcRenderer.invoke('sourceMapFile:getLatest'),
+    getSourceMapFile: (params: { id: number }) => ipcRenderer.invoke('sourceMapFile:get', params),
+    getSourceMapFileByUrl: (url: string) => ipcRenderer.invoke('getSourceMapFileByUrl', { url }),
+    getLatestSourceMapFiles: () => ipcRenderer.invoke('getLatestSourceMapFiles'),
 
     // Pages
-    getPage: async (id: number) => ipcRenderer.invoke('page:get', id),
-    getPageByUrl: async (url: string) => ipcRenderer.invoke('page:getByUrl', url),
+    getPage: (id: number) => ipcRenderer.invoke('getPage', { id }),
+    getPageByUrl: (url: string) => ipcRenderer.invoke('getPageByUrl', { url }),
 
     // Page Source Maps
     getPageSourceMaps: async (pageId: string) => ipcRenderer.invoke('pageSourceMap:getByPageId', pageId),
