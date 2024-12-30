@@ -7,6 +7,9 @@ interface DatabaseAPI {
   getSourceMapFileByUrl: (url: string) => Promise<{ success: boolean; data?: any; error?: string }>;
   getLatestSourceMapFiles: () => Promise<{ success: boolean; data?: any[]; error?: string }>;
 
+  // Parsed Source Files
+  getParsedSourceFiles: (params: { sourceMapFileId: number }) => Promise<{ success: boolean; data?: Array<{ id: number; path: string; content: string; sourceMapFileId: number; timestamp: number; }>; error?: string }>;
+
   // Pages
   getPage: (id: number) => Promise<{ success: boolean; data?: any; error?: string }>;
   getPageByUrl: (url: string) => Promise<{ success: boolean; data?: any; error?: string }>;

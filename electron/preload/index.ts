@@ -10,6 +10,10 @@ contextBridge.exposeInMainWorld('database', {
     getSourceMapFileByUrl: (url: string) => ipcRenderer.invoke('getSourceMapFileByUrl', { url }),
     getLatestSourceMapFiles: () => ipcRenderer.invoke('getLatestSourceMapFiles'),
 
+    // Parsed Source Files
+    getParsedSourceFiles: (params: { sourceMapFileId: number }) => 
+        ipcRenderer.invoke('parsedSourceFiles:getBySourceMapId', params),
+
     // Pages
     getPage: (id: number) => ipcRenderer.invoke('getPage', { id }),
     getPageByUrl: (url: string) => ipcRenderer.invoke('getPageByUrl', { url }),

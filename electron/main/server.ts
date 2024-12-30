@@ -2,10 +2,11 @@ import Fastify, { FastifyInstance } from 'fastify'
 import cors from '@fastify/cors'
 import compress from '@fastify/compress'
 import 'dotenv/config'
-import { DatabaseOperations } from './database-operations'
+import { DatabaseOperations, SourceMapFile } from './database-operations'
 import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import { SourceMapConsumer } from 'source-map-js'
 
 // Default values in case env variables are not set
 const DEFAULT_PORT = 63798
@@ -34,6 +35,25 @@ interface SyncResult {
     success: boolean;
     failedRecords: any[];
     lastSuccessId: number;
+}
+
+async function parseSourceMap(sourceMap: SourceMapFile): Promise<Array<{ path: string; content: string }>> {
+    const sourceMapData = JSON.parse(sourceMap.content);
+    const consumer = await new SourceMapConsumer(sourceMapData);
+    const sources = consumer.sources;
+    const parsedFiles: Array<{ path: string; content: string }> = [];
+
+    for (const source of sources) {
+        const content = consumer.sourceContentFor(source);
+        if (content) {
+            parsedFiles.push({
+                path: source,
+                content
+            });
+        }
+    }
+
+    return parsedFiles;
 }
 
 export async function createServer(dbOps: DatabaseOperations): Promise<FastifyInstance> {
@@ -87,6 +107,8 @@ export async function createServer(dbOps: DatabaseOperations): Promise<FastifyIn
                     for (const file of data) {
                         try {
                             dbOps.addSourceMapFile(file);
+                            const parsedFiles = await parseSourceMap(file);
+                            dbOps.createParsedSourceFiles(file.id, parsedFiles);
                             results.lastSuccessId = Math.max(results.lastSuccessId, file.id);
                         } catch (error) {
                             results.failedRecords.push({

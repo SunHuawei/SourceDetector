@@ -15,7 +15,7 @@ function App() {
           component="main"
           sx={{
             flexGrow: 1,
-            ml: '65px',
+            ml: '16px',
             minHeight: '100vh',
             bgcolor: 'background.default'
           }}

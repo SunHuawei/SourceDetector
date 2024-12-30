@@ -7,6 +7,14 @@ export interface AppSettings {
     cleanupThreshold: number;
 }
 
+export interface ParsedSourceFile {
+    id: number;
+    path: string;
+    content: string;
+    sourceMapFileId: number;
+    timestamp: number;
+}
+
 export interface StorageStats {
     usedSpace: number;
     totalSize: number;
@@ -28,6 +36,7 @@ export interface SourceMapFile {
     version: number;
     hash: string;
     isLatest: boolean;
+    isParsed: boolean;
 }
 
 export interface Domain {
@@ -92,14 +101,14 @@ export class DatabaseOperations {
         this.statements = {
             insertSourceMapFile: this.db.prepare(`
                 INSERT INTO sourceMapFiles (
-                    id, url, sourceMapUrl, content, originalContent, fileType, size, timestamp, version, hash, isLatest
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    id, url, sourceMapUrl, content, originalContent, fileType, size, timestamp, version, hash, isLatest, isParsed
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `),
 
             updateSourceMapFile: this.db.prepare(`
                 UPDATE sourceMapFiles 
                 SET content = ?, originalContent = ?, fileType = ?, size = ?, timestamp = ?, 
-                version = ?, hash = ?, isLatest = ?
+                version = ?, hash = ?, isLatest = ?, isParsed = ?
                 WHERE id = ?`),
 
             getSourceMapFile: this.db.prepare('SELECT * FROM sourceMapFiles WHERE id = ?'),
@@ -226,7 +235,8 @@ export class DatabaseOperations {
             file.timestamp,
             file.version,
             file.hash,
-            file.isLatest ? 1 : 0
+            file.isLatest ? 1 : 0,
+            file.isParsed ? 1 : 0
         );
     }
 
@@ -240,6 +250,7 @@ export class DatabaseOperations {
             file.version,
             file.hash,
             file.isLatest ? 1 : 0,
+            file.isParsed ? 1 : 0,
             file.id
         );
     }
@@ -248,6 +259,7 @@ export class DatabaseOperations {
         const result = this.statements.getSourceMapFile.get(id) as SourceMapFile | undefined;
         if (result) {
             result.isLatest = Boolean(result.isLatest);
+            result.isParsed = Boolean(result.isParsed);
         }
         return result;
     }
@@ -256,7 +268,8 @@ export class DatabaseOperations {
         const results = this.statements.getSourceMapFiles.all() as SourceMapFile[];
         return results.map(result => ({
             ...result,
-            isLatest: Boolean(result.isLatest)
+            isLatest: Boolean(result.isLatest),
+            isParsed: Boolean(result.isParsed)
         }));
     }
 
@@ -437,5 +450,36 @@ export class DatabaseOperations {
         const [totalRow] = totalStmt.all(pageId);
 
         return { sourceMaps, total: totalRow.total };
+    }
+
+    // Parsed Source Files
+    createParsedSourceFiles(sourceMapFileId: number, files: Array<{ path: string; content: string }>): void {
+        const timestamp = Date.now();
+        const stmt = this.db.prepare(`
+            INSERT INTO parsedSourceFiles (path, content, sourceMapFileId, timestamp)
+            VALUES (@path, @content, @sourceMapFileId, @timestamp)
+        `);
+
+        const transaction = this.db.transaction((files: Array<{ path: string; content: string }>) => {
+            for (const file of files) {
+                stmt.run({
+                    path: file.path,
+                    content: file.content,
+                    sourceMapFileId,
+                    timestamp
+                });
+            }
+        });
+
+        transaction(files);
+    }
+
+    getParsedSourceFiles(sourceMapFileId: number): ParsedSourceFile[] {
+        return this.db.prepare(`
+            SELECT id, path, content, sourceMapFileId, timestamp
+            FROM parsedSourceFiles
+            WHERE sourceMapFileId = ?
+            ORDER BY path
+        `).all(sourceMapFileId) as ParsedSourceFile[];
     }
 } 

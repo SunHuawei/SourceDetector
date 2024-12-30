@@ -77,6 +77,18 @@ export function setupIpcHandlers(dbOps: DatabaseOperations) {
         }
     });
 
+
+    // Get parsed source files by source map file ID
+    ipcMain.handle('parsedSourceFiles:getBySourceMapId', async (_, { sourceMapFileId }: { sourceMapFileId: number }) => {
+        try {
+            const files = dbOps.getParsedSourceFiles(sourceMapFileId);
+            return { success: true, data: files };
+        } catch (error) {
+            console.error('Error getting parsed source files:', error);
+            return { success: false, error: String(error) };
+        }
+    });
+
     // Get source map file by URL
     ipcMain.handle('getSourceMapFileByUrl', async (_, { url }: { url: string }) => {
         try {

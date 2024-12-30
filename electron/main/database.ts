@@ -25,7 +25,17 @@ const migrations: Migration[] = [
                 timestamp INTEGER NOT NULL,
                 version INTEGER NOT NULL,
                 hash TEXT NOT NULL,
-                isLatest INTEGER NOT NULL
+                isLatest INTEGER NOT NULL,
+                isParsed INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS parsedSourceFiles (
+                id INTEGER PRIMARY KEY,
+                path TEXT NOT NULL,
+                content TEXT NOT NULL,
+                sourceMapFileId INTEGER NOT NULL,
+                timestamp INTEGER NOT NULL,
+                FOREIGN KEY (sourceMapFileId) REFERENCES sourceMapFiles(id)
             );
 
             CREATE TABLE IF NOT EXISTS domains (
@@ -70,6 +80,9 @@ const migrations: Migration[] = [
 
             CREATE INDEX IF NOT EXISTS idx_sourceMapFiles_url ON sourceMapFiles(url);
             CREATE INDEX IF NOT EXISTS idx_sourceMapFiles_timestamp ON sourceMapFiles(timestamp);
+            CREATE INDEX IF NOT EXISTS idx_parsedSourceFiles_sourceMapFileId ON parsedSourceFiles(sourceMapFileId);
+            CREATE INDEX IF NOT EXISTS idx_parsedSourceFiles_path ON parsedSourceFiles(path);
+            CREATE INDEX IF NOT EXISTS idx_parsedSourceFiles_timestamp ON parsedSourceFiles(timestamp);
             CREATE INDEX IF NOT EXISTS idx_pages_url ON pages(url);
             CREATE INDEX IF NOT EXISTS idx_pages_timestamp ON pages(timestamp);
             CREATE INDEX IF NOT EXISTS idx_pageSourceMaps_pageId ON pageSourceMaps(pageId);

@@ -1,7 +1,6 @@
 import { Box } from '@mui/material';
 import WebsiteSourceMapTree from '../components/SourceFiles/WebsiteSourceMapTree';
 import { useState } from 'react';
-import { SourceMapConsumer } from 'source-map-js';
 import { FileNode } from '../types/files';
 import SourceViewer from '../components/SourceFiles/SourceViewer';
 
@@ -11,13 +10,10 @@ const SourceFiles = () => {
     const handleSourceMapSelect = async (sourceMapId: number) => {
         setSelectedSourceMapId(sourceMapId);
         try {
-            const response = await window.database.getSourceMapFile({ id: sourceMapId });
+            const response = await window.database.getParsedSourceFiles({ sourceMapFileId: sourceMapId });
             if (response.success && response.data) {
-                const sourceMap = response.data;
-                // Parse the source map
-                const rawSourceMap = JSON.parse(sourceMap.content);
-                const consumer = new SourceMapConsumer(rawSourceMap);
-
+                const parsedFiles = response.data;
+                console.log('=====>', parsedFiles);
                 // Create root node
                 const root: FileNode = {
                     name: 'root',
@@ -26,42 +22,38 @@ const SourceFiles = () => {
                     children: {}
                 };
 
-
                 // Process each source file
-                consumer.sources.forEach((sourcePath) => {
-                    const sourceContent = consumer.sourceContentFor(sourcePath);
-                    if (sourceContent) {
-                        // Split path into segments and create folder structure
-                        const pathSegments = sourcePath.split('/');
-                        let currentNode = root;
+                parsedFiles.forEach((file) => {
+                    // Split path into segments and create folder structure
+                    const pathSegments = file.path.split('/');
+                    let currentNode = root;
 
-                        // Process all segments except the last one (file name)
-                        for (let i = 0; i < pathSegments.length - 1; i++) {
-                            const segment = pathSegments[i];
-                            if (!segment) continue; // Skip empty segments
+                    // Process all segments except the last one (file name)
+                    for (let i = 0; i < pathSegments.length - 1; i++) {
+                        const segment = pathSegments[i];
+                        if (!segment) continue; // Skip empty segments
 
-                            if (!currentNode.children[segment]) {
-                                currentNode.children[segment] = {
-                                    name: segment,
-                                    path: pathSegments.slice(0, i + 1).join('/'),
-                                    isDirectory: true,
-                                    children: {}
-                                };
-                            }
-                            currentNode = currentNode.children[segment];
+                        if (!currentNode.children[segment]) {
+                            currentNode.children[segment] = {
+                                name: segment,
+                                path: pathSegments.slice(0, i + 1).join('/'),
+                                isDirectory: true,
+                                children: {}
+                            };
                         }
-
-                        // Add the file
-                        const fileName = pathSegments[pathSegments.length - 1];
-                        currentNode.children[fileName] = {
-                            name: fileName,
-                            path: sourcePath,
-                            size: sourceContent.length,
-                            isDirectory: false,
-                            children: {},
-                            content: sourceContent
-                        };
+                        currentNode = currentNode.children[segment];
                     }
+
+                    // Add the file
+                    const fileName = pathSegments[pathSegments.length - 1];
+                    currentNode.children[fileName] = {
+                        name: fileName,
+                        path: file.path,
+                        size: file.content.length,
+                        isDirectory: false,
+                        children: {},
+                        content: file.content
+                    };
                 });
 
                 setSourceFiles(Object.values(root.children));

@@ -26,7 +26,8 @@ interface Database {
   getDomains: (offset: number, limit: number) => Promise<{ success: boolean; data?: { domains: Array<{ id: number; domain: string }>; hasMore: boolean; }; error?: string; }>;
   getPages: (domainId: number, offset: number, limit: number) => Promise<{ success: boolean; data?: { pages: Array<{ id: number; url: string }>; hasMore: boolean; }; error?: string; }>;
   getSourceMaps: (pageId: number, offset: number, limit: number) => Promise<{ success: boolean; data?: { sourceMaps: Array<{ id: number; url: string }>; hasMore: boolean; }; error?: string; }>;
-  getSourceMapFile: (params: { id: number }) => Promise<{ success: boolean; data?: { id: number; fileType: string; content: string; url: string; }; error?: string; }>;
+  getSourceMapFile: (params: { id: number }) => Promise<{ success: boolean; data?: { id: number; fileType: string; content: string; url: string; isParsed: boolean; }; error?: string; }>;
+  getParsedSourceFiles: (params: { sourceMapFileId: number }) => Promise<{ success: boolean; data?: Array<{ id: number; path: string; content: string; sourceMapFileId: number; timestamp: number; }>; error?: string; }>;
 }
 
 interface Window {
