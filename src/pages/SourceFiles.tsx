@@ -7,7 +7,9 @@ import SourceViewer from '../components/SourceFiles/SourceViewer';
 
 const SourceFiles = () => {
     const [sourceFiles, setSourceFiles] = useState<FileNode[]>([]);
+    const [selectedSourceMapId, setSelectedSourceMapId] = useState<number | null>(null);
     const handleSourceMapSelect = async (sourceMapId: number) => {
+        setSelectedSourceMapId(sourceMapId);
         try {
             const response = await window.database.getSourceMapFile({ id: sourceMapId });
             if (response.success && response.data) {
@@ -15,7 +17,7 @@ const SourceFiles = () => {
                 // Parse the source map
                 const rawSourceMap = JSON.parse(sourceMap.content);
                 const consumer = new SourceMapConsumer(rawSourceMap);
-                
+
                 // Create root node
                 const root: FileNode = {
                     name: 'root',
@@ -85,7 +87,7 @@ const SourceFiles = () => {
                 overflow: 'auto',
                 flexShrink: 0
             }}>
-                <WebsiteSourceMapTree 
+                <WebsiteSourceMapTree
                     onSourceMapSelect={handleSourceMapSelect}
                 />
             </Box>

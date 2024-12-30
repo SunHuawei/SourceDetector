@@ -49,12 +49,13 @@ const SourceViewer = ({ sourceFiles }: SourceViewerProps) => {
     };
 
     return (
-        <Box sx={{
-            display: 'flex',
-            flex: 1,
-            overflow: 'hidden',
-            minWidth: 0
-        }}>
+        <Box
+            sx={{
+                display: 'flex',
+                flex: 1,
+                overflow: 'hidden',
+                minWidth: 0
+            }}>
             {/* Explorer */}
             <Box sx={{
                 width: 300,
