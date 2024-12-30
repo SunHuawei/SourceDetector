@@ -28,7 +28,19 @@ interface DatabaseAPI {
   getParsedCrxFiles: (params: { crxFileId: number }) => Promise<{ success: boolean; data: any[] }>;
 
   // Stats
-  getStorageStats: () => Promise<{ success: boolean; data?: any; error?: string }>;
+  getStorageStats: () => Promise<{
+    success: boolean;
+    data?: {
+      usedSpace: number;
+      totalSize: number;
+      fileCount: number;
+      crxFileCount: number;
+      uniqueSiteCount: number;
+      pagesCount: number;
+      oldestTimestamp: number;
+    };
+    error?: string;
+  }>;
 
   // Source Tree
   getDomains: (offset: number, limit: number) => Promise<{
@@ -55,6 +67,9 @@ interface DatabaseAPI {
     };
     error?: string;
   }>;
+
+  // Events
+  onSelectFile: (callback: (event: Electron.IpcRendererEvent, data: { url: string; type: 'crx' | 'sourcemap' }) => void) => void;
 }
 
 declare global {

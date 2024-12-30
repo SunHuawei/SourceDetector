@@ -25,11 +25,11 @@
 - [ ] Website 
 
 ## Known Issues
-- [ ] 
+- [ ] Select file on clicking on the extension
 
 ## Future
 - [ ] AI explanation
 - [ ] AI prompt generation
-- [ ] Statistics
+- [ ] Statistics/visualization
 - [ ] Diff
 - [ ] Support multiple clients

@@ -1,12 +1,39 @@
 import { Box } from '@mui/material';
 import WebsiteSourceMapTree from '../components/SourceFiles/WebsiteSourceMapTree';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileNode } from '../types/files';
 import SourceViewer from '../components/SourceFiles/SourceViewer';
+import { IpcRendererEvent } from 'electron';
+
+interface SelectFileData {
+    url: string;
+    type: 'crx' | 'sourcemap';
+}
 
 const SourceFiles = () => {
     const [sourceFiles, setSourceFiles] = useState<FileNode[]>([]);
     const [selectedSourceMapId, setSelectedSourceMapId] = useState<number | null>(null);
+
+    useEffect(() => {
+        // Listen for file selection events from the main process
+        window.database.onSelectFile((event: IpcRendererEvent, data: SelectFileData) => {
+            if (data.type === 'sourcemap') {
+                // Find the source map file by URL and select it
+                const findAndSelectFile = async () => {
+                    try {
+                        const response = await window.database.getSourceMapFileByUrl(data.url);
+                        if (response.success && response.data) {
+                            setSelectedSourceMapId(response.data.id);
+                        }
+                    } catch (error) {
+                        console.error('Error finding source map file:', error);
+                    }
+                };
+                findAndSelectFile();
+            }
+        });
+    }, []);
+
     const handleSourceMapSelect = async (sourceMapId: number) => {
         setSelectedSourceMapId(sourceMapId);
         try {

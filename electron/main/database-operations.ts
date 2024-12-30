@@ -28,6 +28,7 @@ export interface StorageStats {
     usedSpace: number;
     totalSize: number;
     fileCount: number;
+    crxFileCount: number;
     uniqueSiteCount: number;
     pagesCount: number;
     oldestTimestamp: number;
@@ -208,12 +209,20 @@ export class DatabaseOperations {
     getStorageStats(): StorageStats {
         const sourceMapFiles = this.getSourceMapFiles();
         const pages = this.getPages();
+        const crxFiles = this.getCrxFiles();
         
         let totalSize = 0;
         let oldestTimestamp = Date.now();
         const uniqueSites = new Set<string>();
 
         for (const file of sourceMapFiles) {
+            totalSize += file.size;
+            if (file.timestamp < oldestTimestamp) {
+                oldestTimestamp = file.timestamp;
+            }
+        }
+
+        for (const file of crxFiles) {
             totalSize += file.size;
             if (file.timestamp < oldestTimestamp) {
                 oldestTimestamp = file.timestamp;
@@ -232,6 +241,7 @@ export class DatabaseOperations {
             usedSpace: totalSize,
             totalSize,
             fileCount: sourceMapFiles.length,
+            crxFileCount: crxFiles.length,
             uniqueSiteCount: uniqueSites.size,
             pagesCount: pages.length,
             oldestTimestamp

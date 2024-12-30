@@ -211,7 +211,7 @@ export function setupIpcHandlers(dbOps: DatabaseOperations) {
     });
 
     // Get storage stats
-    ipcMain.handle('getStorageStats', async () => {
+    ipcMain.handle('stats:get', async () => {
         try {
             const stats = dbOps.getStorageStats();
             return { success: true, data: stats };

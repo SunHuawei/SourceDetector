@@ -62,6 +62,7 @@ if (!gotTheLock) {
 if (process.platform === 'win32') {
   // Keep only command line / deep linked arguments
   const deeplinkingUrl = process.argv.find(arg => arg.startsWith('source-detector://'))
+    console.log('deeplinkingUrl', deeplinkingUrl)
   if (deeplinkingUrl) {
     handleProtocolUrl(deeplinkingUrl)
   }
@@ -72,18 +73,43 @@ const preload = path.join(__dirname, '../preload/index.mjs')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
 // Handle the protocol. In this case, we choose to show the home page.
-function handleProtocolUrl(url: string) {
+async function handleProtocolUrl(url: string) {
+  console.log('handleProtocolUrl', url)
   if (!win) return
   
   const urlObj = new URL(url)
   if (urlObj.protocol !== 'source-detector:') return
   
-  const route = urlObj.pathname || '/home'
-  console.log('route', urlObj)
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(`${VITE_DEV_SERVER_URL}#${route}`)
+  const route = urlObj.hostname || ''
+  const fileUrl = urlObj.searchParams.get('url')
+  
+  // If there's a URL parameter, we need to query the database to get the file info
+  if (fileUrl) {
+    try {
+      // Wait for the window to finish loading before sending the selection message
+      await win.webContents.loadURL(`${VITE_DEV_SERVER_URL}${route}`)
+      
+      // Send a message to the renderer to select the file
+      win.webContents.send('select-file', {
+        url: fileUrl,
+        type: route === 'crx-files' ? 'crx' : 'sourcemap'
+      })
+    } catch (error) {
+      console.error('Error handling protocol URL:', error)
+      // If there's an error, just navigate to the page without selection
+      if (VITE_DEV_SERVER_URL) {
+        win.loadURL(`${VITE_DEV_SERVER_URL}${route}`)
+      } else {
+        win.loadFile(indexHtml, { hash: `${route}` })
+      }
+    }
   } else {
-    win.loadFile(indexHtml, { hash: route })
+    // If there's no URL parameter, just navigate to the page
+    if (VITE_DEV_SERVER_URL) {
+      win.loadURL(`${VITE_DEV_SERVER_URL}${route}`)
+    } else {
+      win.loadFile(indexHtml, { hash: `${route}` })
+    }
   }
 }
 
@@ -124,6 +150,9 @@ async function createWindow() {
       // contextIsolation: false,
     },
   })
+
+  // Maximize the window by default
+  win.maximize()
 
   if (VITE_DEV_SERVER_URL) { // #298
     win.loadURL(VITE_DEV_SERVER_URL)
@@ -171,10 +200,11 @@ app.on('second-instance', (event, commandLine) => {
   if (win) {
     if (win.isMinimized()) win.restore()
     win.focus()
-    
+
     // Handle protocol url if present in second instance
     // Protocol handler for Windows
     const deeplinkingUrl = commandLine.find(arg => arg.startsWith('source-detector://'))
+    console.log('deeplinkingUrl', deeplinkingUrl)
     if (deeplinkingUrl) handleProtocolUrl(deeplinkingUrl)
   }
 })
@@ -199,7 +229,7 @@ ipcMain.handle('open-win', (_, arg) => {
   })
 
   if (VITE_DEV_SERVER_URL) {
-    childWindow.loadURL(`${VITE_DEV_SERVER_URL}#${arg}`)
+    childWindow.loadURL(`${VITE_DEV_SERVER_URL}${arg}`)
   } else {
     childWindow.loadFile(indexHtml, { hash: arg })
   }

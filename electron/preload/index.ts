@@ -1,4 +1,4 @@
-import { ipcRenderer, contextBridge } from 'electron'
+import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('database', {
@@ -41,6 +41,10 @@ contextBridge.exposeInMainWorld('database', {
     getDomains: async (offset: number, limit: number) => ipcRenderer.invoke('getDomains', offset, limit),
     getPages: async (domainId: number, offset: number, limit: number) => ipcRenderer.invoke('getPages', domainId, offset, limit),
     getSourceMaps: async (pageId: number, offset: number, limit: number) => ipcRenderer.invoke('getSourceMaps', pageId, offset, limit),
+
+    // Events
+    onMainProcessMessage: (callback: (event: IpcRendererEvent, message: any) => void) => ipcRenderer.on('main-process-message', callback),
+    onSelectFile: (callback: (event: IpcRendererEvent, data: { url: string; type: 'crx' | 'sourcemap' }) => void) => ipcRenderer.on('select-file', callback),
 });
 
 // For demo purposes
