@@ -40,7 +40,6 @@ const SourceFiles = () => {
             const response = await window.database.getParsedSourceFiles({ sourceMapFileId: sourceMapId });
             if (response.success && response.data) {
                 const parsedFiles = response.data;
-                console.log('=====>', parsedFiles);
                 // Create root node
                 const root: FileNode = {
                     name: 'root',
@@ -90,6 +89,71 @@ const SourceFiles = () => {
         }
     };
 
+    const handlePageSelect = async (pageId: number) => {
+        try {
+            // Get all source maps for this page
+            const response = await window.database.getSourceMaps(pageId, 0, 1000); // Large limit to get all
+            if (response.success && response.data?.sourceMaps) {
+                // Create a root node for all files
+                const root: FileNode = {
+                    name: 'root',
+                    path: '/',
+                    isDirectory: true,
+                    children: {}
+                };
+
+                // Process each source map
+                for (const sourceMap of response.data.sourceMaps) {
+                    const filesResponse = await window.database.getParsedSourceFiles({ sourceMapFileId: sourceMap.id });
+                    if (filesResponse.success && filesResponse.data) {
+                        // Process each source file
+                        filesResponse.data.forEach((file) => {
+                            // Split path into segments and create folder structure
+                            const pathSegments = file.path.split('/');
+                            let currentNode = root;
+
+                            // Process all segments except the last one (file name)
+                            for (let i = 0; i < pathSegments.length - 1; i++) {
+                                const segment = pathSegments[i];
+                                if (!segment) continue; // Skip empty segments
+
+                                if (!currentNode.children[segment]) {
+                                    currentNode.children[segment] = {
+                                        name: segment,
+                                        path: pathSegments.slice(0, i + 1).join('/'),
+                                        isDirectory: true,
+                                        children: {}
+                                    };
+                                }
+                                currentNode = currentNode.children[segment];
+                            }
+
+                            // Add the file
+                            const fileName = pathSegments[pathSegments.length - 1];
+                            // If file already exists, append source map ID to make it unique
+                            const uniqueFileName = currentNode.children[fileName] 
+                                ? `${fileName} (${sourceMap.id})`
+                                : fileName;
+                            
+                            currentNode.children[uniqueFileName] = {
+                                name: uniqueFileName,
+                                path: file.path,
+                                size: file.content.length,
+                                isDirectory: false,
+                                children: {},
+                                content: file.content
+                            };
+                        });
+                    }
+                }
+
+                setSourceFiles(Object.values(root.children));
+            }
+        } catch (error) {
+            console.error('Error loading page source maps:', error);
+        }
+    };
+
     return (
         <Box sx={{
             display: 'flex',
@@ -104,10 +168,12 @@ const SourceFiles = () => {
                 borderRight: 1,
                 borderColor: 'divider',
                 overflow: 'auto',
-                flexShrink: 0
+                flexShrink: 0,
+                backgroundColor: 'background.paper'
             }}>
                 <WebsiteSourceMapTree
                     onSourceMapSelect={handleSourceMapSelect}
+                    onPageSelect={handlePageSelect}
                 />
             </Box>
 

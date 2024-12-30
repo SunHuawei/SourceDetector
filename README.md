@@ -22,7 +22,10 @@
 - [ ] Max screen size by default
 - [ ] CICD
 - [ ] Release/publish
-- [ ] Website 
+- [ ] Website
+- [ ] Login
+- [ ] Signup
+- [ ] Pro
 
 ## Known Issues
 - [ ] Select file on clicking on the extension

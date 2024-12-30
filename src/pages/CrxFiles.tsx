@@ -116,7 +116,7 @@ const CrxFiles = () => {
             width: '100%',
             height: '100vh',
             bgcolor: 'background.default',
-            color: 'text.primary'
+            color: 'text.primary',
         }}>
             {/* Left side - CRX Files List */}
             <Box sx={{
@@ -126,7 +126,8 @@ const CrxFiles = () => {
                 overflow: 'auto',
                 flexShrink: 0,
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                backgroundColor: 'background.paper'
             }}>
                 <List>
                     {crxFiles.map((file) => (

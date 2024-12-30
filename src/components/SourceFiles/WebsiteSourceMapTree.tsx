@@ -21,6 +21,7 @@ interface SourceMap {
 
 interface FolderTreeProps {
     onSourceMapSelect: (sourceMapId: number) => void;
+    onPageSelect: (pageId: number) => void;
 }
 
 type DomainMap = Map<number, Domain>;
@@ -32,7 +33,7 @@ type PageNumberMap = Map<string, number>;
 
 const PAGE_SIZE = 20;
 
-const WebsiteSourceMapTree = ({ onSourceMapSelect }: FolderTreeProps) => {
+const WebsiteSourceMapTree = ({ onSourceMapSelect, onPageSelect }: FolderTreeProps) => {
     const [domains, setDomains] = useState<DomainMap>(new Map());
     const [pages, setPages] = useState<PageMap>(new Map());
     const [sourceMaps, setSourceMaps] = useState<SourceMapMap>(new Map());
@@ -172,6 +173,11 @@ const WebsiteSourceMapTree = ({ onSourceMapSelect }: FolderTreeProps) => {
         onSourceMapSelect(sourceMapId);
     };
 
+    const handlePageClick = (pageId: number, event: React.MouseEvent) => {
+        event.stopPropagation();
+        onPageSelect(pageId);
+    };
+
     if (!isInitialized) {
         return 'loading...'
     }
@@ -207,7 +213,19 @@ const WebsiteSourceMapTree = ({ onSourceMapSelect }: FolderTreeProps) => {
                                 key={`page-${page.id}`}
                                 itemId={`page-${page.id}`}
                                 label={
-                                    <Box component="div" sx={{ display: 'flex', alignItems: 'center', py: 0.5 }}>
+                                    <Box 
+                                        component="div" 
+                                        sx={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            py: 0.5,
+                                            cursor: 'pointer',
+                                            '&:hover': {
+                                                bgcolor: 'action.hover'
+                                            }
+                                        }}
+                                        onClick={(e) => handlePageClick(page.id, e)}
+                                    >
                                         <Article sx={{ mr: 1 }} />
                                         <Typography variant="body2">{page.url}</Typography>
                                     </Box>
