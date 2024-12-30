@@ -8,19 +8,20 @@ export type DesktopAction =
     | 'handleOpenDesktopApp';
 
 const getDesktopAppUrl = (type: DesktopAction, options?: any) => {
-    let url = '';
+    let desktopUrl = '';
     switch (type) {
         case 'handleVersionMenuOpen':
-            url = `${PROTOCOL}source-map/${options.sourceMapId}/${options.version}`;
+            desktopUrl = `${PROTOCOL}source-files?url=${encodeURIComponent(options.url)}`;
             break;
         case 'handleViewAllPages':
-            url = `${PROTOCOL}pages/${options.pageId}`;
+            desktopUrl = `${PROTOCOL}`;
             break;
         case 'handleOpenDesktopApp':
-            url = `${PROTOCOL}home`;
+            const { type, url } = options;
+            desktopUrl = `${PROTOCOL}${type}?url=${encodeURIComponent(url)}`;
             break;
     }
-    return url;
+    return desktopUrl;
 }
 
 export async function openInDesktop(type: DesktopAction, serverStatus: boolean, options: object) {

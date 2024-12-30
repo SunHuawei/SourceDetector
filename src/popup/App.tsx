@@ -116,7 +116,7 @@ export default function App() {
     };
 
     const handleViewAllPages = () => {
-        openInDesktop('handleViewAllPages', serverStatus,{});
+        openInDesktop('handleViewAllPages', serverStatus, {});
     };
 
     const handleDownload = async (file: SourceMapFile) => {
@@ -255,7 +255,10 @@ export default function App() {
 
     const handleOpenDesktopApp = () => {
         // Use the existing openInDesktop function which handles fallback
-        openInDesktop('handleOpenDesktopApp', serverStatus,{});
+        openInDesktop('handleOpenDesktopApp', serverStatus, {
+            type: crxFile ? 'crx-files' : 'source-files',
+            url: crxFile ? crxFile.crxUrl : pageData?.url
+        });
     };
 
     if (loading) {
