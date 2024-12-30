@@ -24,6 +24,8 @@ interface DatabaseAPI {
   // CRX Files
   getCrxFile: (id: number) => Promise<{ success: boolean; data?: any; error?: string }>;
   getCrxFileByUrl: (url: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+  getCrxFiles: () => Promise<{ success: boolean; data: any[] }>;
+  getParsedCrxFiles: (params: { crxFileId: number }) => Promise<{ success: boolean; data: any[] }>;
 
   // Stats
   getStorageStats: () => Promise<{ success: boolean; data?: any; error?: string }>;

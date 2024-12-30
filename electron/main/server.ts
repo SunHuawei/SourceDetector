@@ -7,6 +7,8 @@ import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { SourceMapConsumer } from 'source-map-js'
+import JSZip from 'jszip'
+import type { JSZipObject } from 'jszip'
 
 // Default values in case env variables are not set
 const DEFAULT_PORT = 63798
@@ -168,6 +170,30 @@ export async function createServer(dbOps: DatabaseOperations): Promise<FastifyIn
                                 ...file,
                                 blob
                             });
+
+                            // Parse and save CRX files
+                            const jszip = await JSZip.loadAsync(blob);
+                            const parsedFiles: Array<{ path: string; content: string; size: number }> = [];
+
+                            // Process each file in the zip
+                            for (const [path, zipFile] of Object.entries<JSZipObject>(jszip.files)) {
+                                if (!zipFile.dir) {
+                                    try {
+                                        const content = await zipFile.async('string');
+                                        parsedFiles.push({
+                                            path,
+                                            content,
+                                            size: content.length
+                                        });
+                                    } catch (error) {
+                                        console.error(`Error processing file ${path}:`, error);
+                                    }
+                                }
+                            }
+
+                            // Save parsed files
+                            dbOps.createParsedCrxFiles(file.id, parsedFiles);
+
                             results.lastSuccessId = Math.max(results.lastSuccessId, file.id);
                         } catch (error) {
                             results.failedRecords.push({

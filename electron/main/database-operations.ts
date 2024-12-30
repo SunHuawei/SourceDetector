@@ -15,6 +15,15 @@ export interface ParsedSourceFile {
     timestamp: number;
 }
 
+export interface ParsedCrxFile {
+    id: number;
+    path: string;
+    content: string;
+    crxFileId: number;
+    size: number;
+    timestamp: number;
+}
+
 export interface StorageStats {
     usedSpace: number;
     totalSize: number;
@@ -95,6 +104,8 @@ export class DatabaseOperations {
         insertDomain: Statement;
         getDomain: Statement;
         getDomains: Statement;
+        insertParsedCrxFile: Statement;
+        getParsedCrxFiles: Statement;
     };
 
     constructor(private db: BetterSqlite3.Database) {
@@ -154,6 +165,13 @@ export class DatabaseOperations {
             insertDomain: this.db.prepare('INSERT INTO domains (domain, timestamp) VALUES (?, ?)'),
             getDomain: this.db.prepare('SELECT * FROM domains WHERE domain = ?'),
             getDomains: this.db.prepare('SELECT * FROM domains'),
+
+            insertParsedCrxFile: this.db.prepare(`
+                INSERT INTO parsedCrxFiles (
+                    path, content, crxFileId, size, timestamp
+                ) VALUES (?, ?, ?, ?, ?)
+            `),
+            getParsedCrxFiles: this.db.prepare('SELECT * FROM parsedCrxFiles WHERE crxFileId = ?'),
         };
     }
 
@@ -481,5 +499,36 @@ export class DatabaseOperations {
             WHERE sourceMapFileId = ?
             ORDER BY path
         `).all(sourceMapFileId) as ParsedSourceFile[];
+    }
+
+    createParsedCrxFiles(crxFileId: number, files: Array<{ path: string; content: string; size: number }>): void {
+        const timestamp = Date.now();
+        const stmt = this.db.prepare(`
+            INSERT INTO parsedCrxFiles (path, content, crxFileId, size, timestamp)
+            VALUES (@path, @content, @crxFileId, @size, @timestamp)
+        `);
+
+        const transaction = this.db.transaction((files: Array<{ path: string; content: string; size: number }>) => {
+            for (const file of files) {
+                stmt.run({
+                    path: file.path,
+                    content: file.content,
+                    crxFileId,
+                    size: file.size,
+                    timestamp
+                });
+            }
+        });
+
+        transaction(files);
+    }
+
+    getParsedCrxFiles(crxFileId: number): ParsedCrxFile[] {
+        return this.db.prepare(`
+            SELECT id, path, content, crxFileId, size, timestamp
+            FROM parsedCrxFiles
+            WHERE crxFileId = ?
+            ORDER BY path
+        `).all(crxFileId) as ParsedCrxFile[];
     }
 } 

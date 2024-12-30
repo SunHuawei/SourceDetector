@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Box, Drawer, List, ListItem, ListItemIcon, ListItemText, IconButton, ListItemButton } from '@mui/material';
-import { Home, Description, ChevronLeft, ChevronRight } from '@mui/icons-material';
+import { Home, Description, ChevronLeft, ChevronRight, Extension } from '@mui/icons-material';
 import { useState } from 'react';
 
 const drawerWidth = 240;
@@ -19,6 +19,11 @@ const Sidebar = () => {
       text: 'Source Files',
       path: '/source-files',
       icon: <Description />
+    },
+    {
+      text: 'CRX Files',
+      path: '/crx-files',
+      icon: <Extension />
     }
   ];
 

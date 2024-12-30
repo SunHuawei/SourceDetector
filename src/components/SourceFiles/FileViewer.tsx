@@ -1,6 +1,7 @@
 import { Box, Typography } from '@mui/material';
 import SyntaxHighlighter from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { a11yDark as style } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+
 import { FileNode } from '../../types/files';
 
 interface FileViewerProps {
@@ -30,6 +31,8 @@ const FileViewer = ({ file }: FileViewerProps) => {
     const getLanguage = (fileName: string) => {
         const ext = fileName.split('.').pop()?.toLowerCase();
         switch (ext) {
+            case 'json':
+                return 'json';
             case 'js':
             case 'jsx':
             case 'ts':
@@ -40,9 +43,11 @@ const FileViewer = ({ file }: FileViewerProps) => {
             case 'html':
                 return 'html';
             default:
-                return 'javascript';
+                return 'plaintext';
         }
     };
+
+    console.log('=======>', getLanguage(file.name));
 
     return (
         <Box sx={{ p: 2 }} >
@@ -51,13 +56,13 @@ const FileViewer = ({ file }: FileViewerProps) => {
             </Typography>
             <HighlighterComponent
                 language={getLanguage(file.name)}
-                style={vscDarkPlus}
+                style={style}
                 showLineNumbers
                 customStyle={{
-                    height: 'calc(100vh - 70px)',
+                    height: 'calc(100vh - 100px)',
                     fontSize: '14px',
+                    background: 'rgb(26 26 26)'
                 }}
-                wrapLongLines={true}
             >
                 {file.content || ''}
             </HighlighterComponent>

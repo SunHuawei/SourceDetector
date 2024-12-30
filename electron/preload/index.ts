@@ -14,6 +14,10 @@ contextBridge.exposeInMainWorld('database', {
     getParsedSourceFiles: (params: { sourceMapFileId: number }) => 
         ipcRenderer.invoke('parsedSourceFiles:getBySourceMapId', params),
 
+    // Parsed CRX Files
+    getParsedCrxFiles: (params: { crxFileId: number }) =>
+        ipcRenderer.invoke('parsedCrxFiles:getByCrxId', params),
+
     // Pages
     getPage: (id: number) => ipcRenderer.invoke('getPage', { id }),
     getPageByUrl: (url: string) => ipcRenderer.invoke('getPageByUrl', { url }),
@@ -28,6 +32,7 @@ contextBridge.exposeInMainWorld('database', {
     // CRX Files
     getCrxFile: async (id: number) => ipcRenderer.invoke('crxFile:get', id),
     getCrxFileByUrl: async (url: string) => ipcRenderer.invoke('crxFile:getByUrl', url),
+    getCrxFiles: async () => ipcRenderer.invoke('crxFiles:getAll'),
 
     // Stats
     getStorageStats: async () => ipcRenderer.invoke('stats:get'),

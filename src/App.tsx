@@ -3,6 +3,7 @@ import { Box, CssBaseline } from '@mui/material';
 import Sidebar from './components/Layout/Sidebar';
 import Home from './pages/Home';
 import SourceFiles from './pages/SourceFiles';
+import CrxFiles from './pages/CrxFiles';
 import './App.css';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/source-files" element={<SourceFiles />} />
+            <Route path="/crx-files" element={<CrxFiles />} />
           </Routes>
         </Box>
       </Box>

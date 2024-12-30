@@ -38,6 +38,16 @@ const migrations: Migration[] = [
                 FOREIGN KEY (sourceMapFileId) REFERENCES sourceMapFiles(id)
             );
 
+            CREATE TABLE IF NOT EXISTS parsedCrxFiles (
+                id INTEGER PRIMARY KEY,
+                path TEXT NOT NULL,
+                content TEXT NOT NULL,
+                crxFileId INTEGER NOT NULL,
+                size INTEGER NOT NULL,
+                timestamp INTEGER NOT NULL,
+                FOREIGN KEY (crxFileId) REFERENCES crxFiles(id)
+            );
+
             CREATE TABLE IF NOT EXISTS domains (
                 id INTEGER PRIMARY KEY,
                 domain TEXT NOT NULL,

@@ -89,6 +89,17 @@ export function setupIpcHandlers(dbOps: DatabaseOperations) {
         }
     });
 
+    // Get parsed CRX files by CRX file ID
+    ipcMain.handle('parsedCrxFiles:getByCrxId', async (_, { crxFileId }: { crxFileId: number }) => {
+        try {
+            const files = dbOps.getParsedCrxFiles(crxFileId);
+            return { success: true, data: files };
+        } catch (error) {
+            console.error('Error getting parsed CRX files:', error);
+            return { success: false, error: String(error) };
+        }
+    });
+
     // Get source map file by URL
     ipcMain.handle('getSourceMapFileByUrl', async (_, { url }: { url: string }) => {
         try {
@@ -184,6 +195,17 @@ export function setupIpcHandlers(dbOps: DatabaseOperations) {
             return { success: true, data: file };
         } catch (error) {
             console.error('Error getting CRX file by URL:', error);
+            return { success: false, error: String(error) };
+        }
+    });
+
+    // Get all CRX files
+    ipcMain.handle('crxFiles:getAll', async () => {
+        try {
+            const files = dbOps.getCrxFiles();
+            return { success: true, data: files };
+        } catch (error) {
+            console.error('Error getting CRX files:', error);
             return { success: false, error: String(error) };
         }
     });
