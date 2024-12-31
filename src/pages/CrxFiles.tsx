@@ -113,8 +113,9 @@ const CrxFiles = () => {
     return (
         <Box sx={{
             display: 'flex',
+            position: 'relative',
+            height: '100%',
             width: '100%',
-            height: '100vh',
             bgcolor: 'background.default',
             color: 'text.primary',
         }}>

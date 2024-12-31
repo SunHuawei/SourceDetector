@@ -47,8 +47,6 @@ const FileViewer = ({ file }: FileViewerProps) => {
         }
     };
 
-    console.log('=======>', getLanguage(file.name));
-
     return (
         <Box sx={{ p: 2 }} >
             <Typography variant="h6" gutterBottom>
@@ -59,7 +57,7 @@ const FileViewer = ({ file }: FileViewerProps) => {
                 style={style}
                 showLineNumbers
                 customStyle={{
-                    height: 'calc(100vh - 100px)',
+                    height: 'calc(100vh - 160px)',
                     fontSize: '14px',
                     background: 'rgb(26 26 26)'
                 }}

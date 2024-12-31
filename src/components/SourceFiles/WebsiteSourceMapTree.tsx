@@ -42,7 +42,6 @@ const WebsiteSourceMapTree = ({ onSourceMapSelect, onPageSelect }: FolderTreePro
     const [pageNumbers, setPageNumbers] = useState<PageNumberMap>(new Map());
     const [isInitialized, setIsInitialized] = useState(false);
     const [defaultExpandedItems, setDefaultExpandedItems] = useState<string[]>([]);
-    console.log('defaultExpandedItems', defaultExpandedItems);
 
     const loadDomains = async (offset: number = 0) => {
         if (loading.get('domains')) return;

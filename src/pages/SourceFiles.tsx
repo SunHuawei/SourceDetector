@@ -131,18 +131,17 @@ const SourceFiles = () => {
                             // Add the file
                             const fileName = pathSegments[pathSegments.length - 1];
                             // If file already exists, append source map ID to make it unique
-                            const uniqueFileName = currentNode.children[fileName] 
-                                ? `${fileName} (${sourceMap.id})`
-                                : fileName;
-                            
-                            currentNode.children[uniqueFileName] = {
-                                name: uniqueFileName,
-                                path: file.path,
-                                size: file.content.length,
-                                isDirectory: false,
-                                children: {},
-                                content: file.content
-                            };
+                            const existingFiles = Object.values(currentNode.children).filter(child => child.name === fileName);
+                            if (existingFiles.length === 0) {
+                                currentNode.children[fileName] = {
+                                    name: fileName,
+                                    path: file.path,
+                                    size: file.content.length,
+                                    isDirectory: false,
+                                    children: {},
+                                    content: file.content
+                                };
+                            }
                         });
                     }
                 }
@@ -157,8 +156,9 @@ const SourceFiles = () => {
     return (
         <Box sx={{
             display: 'flex',
+            position: 'relative',
+            height: '100%',
             width: '100%',
-            height: '100vh',
             bgcolor: 'background.default',
             color: 'text.primary'
         }}>

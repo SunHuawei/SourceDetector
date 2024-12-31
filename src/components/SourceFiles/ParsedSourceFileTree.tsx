@@ -12,11 +12,10 @@ interface MockFolderTreeProps {
 }
 
 const ParsedSourceFileTree = ({ onFileSelect, files, selectedNodePath }: MockFolderTreeProps) => {
-    console.log('selectedNodePath', selectedNodePath, selectedNodePath[selectedNodePath.length - 1]);
     const renderTree = (node: FileNode) => (
         <TreeItem
-            key={node.path}
-            itemId={node.path}
+            key={node.path + ':' + node.name}
+            itemId={node.path + ':' + node.name}
             label={
                 <Box sx={{ display: 'flex', alignItems: 'center', p: 0.5, pr: 0 }}>
                     {node.isDirectory ? (
@@ -31,7 +30,7 @@ const ParsedSourceFileTree = ({ onFileSelect, files, selectedNodePath }: MockFol
                 onFileSelect(node);
             }}
         >
-            {Object.values(node.children).map((child) => renderTree(child))}
+            {Object.values(node.children).sort((a, b) => a.name.localeCompare(b.name)).map((child) => renderTree(child))}
         </TreeItem>
     );
 

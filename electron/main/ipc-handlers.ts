@@ -69,7 +69,6 @@ export function setupIpcHandlers(dbOps: DatabaseOperations) {
     ipcMain.handle('sourceMapFile:get', async (_, { id }: { id: number }) => {
         try {
             const file = await dbOps.getSourceMapFile(id);
-            console.log('file ======', file?.url, id);
             return { success: true, data: file };
         } catch (error) {
             console.error('Error getting source map file:', error);

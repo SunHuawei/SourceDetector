@@ -75,17 +75,9 @@ const Home = () => {
         <Typography variant="h4" component="h1" gutterBottom>
           Welcome to Source Detector
         </Typography>
-        <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
-          <Typography variant="body1">
-            This is your dashboard for managing and analyzing source files. Use the sidebar navigation to explore different sections of the application.
-          </Typography>
-        </Paper>
 
         {stats && (
           <Box sx={{ mt: 4 }}>
-            <Typography variant="h5" gutterBottom>
-              Overview
-            </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6} md={3}>
                 <StatCard
