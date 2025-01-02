@@ -13,12 +13,7 @@
         "declarativeNetRequest"
     ],
     "host_permissions": [
-        "<all_urls>",
-        "*://clients2.google.com/service/update2/crx*",
-        "*://clients2.googleusercontent.com/crx/download/*",
-        "*://*.google.com/webstore/*",
-        "*://*.chromewebstore.google.com/*",
-        "chrome-extension://*/*"
+        "<all_urls>"
     ],
     "declarative_net_request": {
         "rule_resources": [

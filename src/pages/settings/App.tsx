@@ -147,7 +147,7 @@ export default function App() {
                     </Toolbar>
                 </AppBar>
 
-                <Box p={2} sx={{ overflowY: 'auto' }}>
+                <Box p={2} sx={{ overflowY: 'auto', width: '960px', margin: '0 auto' }}>
                     <Toast
                         open={!!message}
                         message={message?.text || ''}
@@ -181,7 +181,7 @@ export default function App() {
                         </ListItem>
                     </List>
 
-                    <Box mt={4} display="flex" justifyContent="space-between">
+                    <Box mt={4} display="flex" justifyContent="space-between" flexDirection="row-reverse">
                         <Button
                             variant="outlined"
                             color="error"

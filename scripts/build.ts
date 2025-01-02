@@ -28,6 +28,7 @@ async function build(isWatch = false) {
                 'background/index': resolve(SRC_DIR, 'background/index.ts'),
                 'popup/index': resolve(SRC_DIR, 'popup/index.tsx'),
                 'pages/settings/index': resolve(SRC_DIR, 'pages/settings/index.tsx'),
+                'pages/desktop/index': resolve(SRC_DIR, 'pages/desktop/index.tsx'),
             },
             bundle: true,
             format: 'iife',
@@ -71,6 +72,10 @@ async function build(isWatch = false) {
         await fs.copy(
             resolve(SRC_DIR, 'pages/settings/index.html'),
             resolve(BUILD_DIR, 'pages/settings/index.html')
+        );
+        await fs.copy(
+            resolve(SRC_DIR, 'pages/desktop/index.html'),
+            resolve(BUILD_DIR, 'pages/desktop/index.html')
         );
 
         // Read and modify manifest

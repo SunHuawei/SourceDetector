@@ -310,7 +310,7 @@ export default function App() {
                                 )}
                             </IconButton>
                         </Tooltip>
-                        {(groupedFiles.length > 0 || crxFile) && (
+                        {((groupedFiles.length > 0 && groupedFiles.map(g => g.versions[0]).reduce((sum, file) => sum + file.size, 0) > 0) || (crxFile && (parsed?.size || 0 + crxFile.size) > 0)) && (
                             <Tooltip title={crxFile ?
                                 `Download all files (${formatBytes(parsed?.size || 0 + crxFile.size)})` :
                                 `Download latest versions of all source maps (${getBundleSize(groupedFiles.map(g => g.versions[0]))})`
