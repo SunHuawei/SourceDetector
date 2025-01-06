@@ -26,7 +26,7 @@
     "@emotion/react": "11.11.3",
     "@emotion/styled": "11.11.0",
     "@fastify/compress": "^8.0.1",
-    "@fastify/cors": "^10.0.1",
+    "@fastify/cors": "^10.0.2",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
     "@monaco-editor/react": "^4.6.0",
