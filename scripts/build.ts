@@ -177,16 +177,13 @@ async function build(isWatch = false, browser = 'chrome') {
                 }
             });
         } else {
-            console.log('>>>>>>1 ')
             await ctx.dispose();
         }
 
         // Add zip creation after build
         if (!isWatch) {
-            console.log('>>>>>>2')
             await createExtensionZip();
         }
-        console.log('>>>>>>3 ')
 
         const duration = Date.now() - buildStart;
         console.log(`✅ Build completed successfully! (${formatDuration(duration)})`);
@@ -197,7 +194,7 @@ async function build(isWatch = false, browser = 'chrome') {
 }
 
 async function createExtensionZip() {
-    const zipPath = resolve('dist/source-collector.zip');
+    const zipPath = resolve('dist/source-detector.zip');
 
     // Remove existing zip if it exists
     if (await fs.pathExists(zipPath)) {
@@ -233,7 +230,7 @@ async function createExtensionZip() {
         // Add the dist directory contents to the zip, excluding the zip file itself
         archive.glob('**/*', {
             cwd: BUILD_DIR,
-            ignore: ['source-collector.zip']
+            ignore: ['source-detector.zip']
         });
 
         archive.finalize();

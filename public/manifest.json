@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Source Detector",
     "version": "1.0.0",
-    "description": "A powerful tool for developers to automatically detect, collect, and analyze source maps and CRX files from websites. Makes debugging and development easier by providing easy access to source files.",
+    "description": "A powerful tool for developers to automatically detect, collect, and analyze source maps and CRX files from websites",
     "permissions": [
         "storage",
         "activeTab",
