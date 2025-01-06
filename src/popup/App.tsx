@@ -26,6 +26,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CrxFileTree } from './components/CrxFileTree';
 import { SourceMapTable } from './components/SourceMapTable';
 import { openInDesktop } from '@/utils/desktopApp';
+import { browserAPI } from '@/utils/browser-polyfill';
 
 // Helper function to format bundle size
 function getBundleSize(files: SourceMapFile[]): string {
@@ -58,7 +59,7 @@ export default function App() {
 
     useEffect(() => {
         // Check initial server status
-        chrome.runtime.sendMessage({
+        browserAPI.runtime.sendMessage({
             type: MESSAGE_TYPES.GET_SERVER_STATUS
         }).then(response => {
             if (response.success) {
@@ -72,19 +73,19 @@ export default function App() {
                 setServerStatus(message.data.isOnline);
             }
         };
-        chrome.runtime.onMessage.addListener(listener);
-        return () => chrome.runtime.onMessage.removeListener(listener);
+        browserAPI.runtime.onMessage.addListener(listener);
+        return () => browserAPI.runtime.onMessage.removeListener(listener);
     }, []);
 
     const loadData = async () => {
         try {
             console.log('loadData')
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            const [tab] = await browserAPI.tabs.query({ active: true, currentWindow: true });
             console.log('tab.url', tab.url)
             if (!tab.url) return;
             if (isExtensionPage(tab.url)) {
                 console.log('isExtensionPage', tab.url)
-                const response = await chrome.runtime.sendMessage({
+                const response = await browserAPI.runtime.sendMessage({
                     type: MESSAGE_TYPES.GET_CRX_FILE,
                     data: { url: tab.url }
                 });
@@ -96,14 +97,14 @@ export default function App() {
                 }
             } else {
                 console.log('is not extension page', tab.url)
-                const response = await chrome.runtime.sendMessage({
+                const response = await browserAPI.runtime.sendMessage({
                     type: MESSAGE_TYPES.GET_PAGE_DATA,
                     data: { url: tab.url }
                 });
                 console.log('response', response)
                 setPageData(response.data);
             }
-            const statsResponse = await chrome.runtime.sendMessage({
+            const statsResponse = await browserAPI.runtime.sendMessage({
                 type: MESSAGE_TYPES.GET_STORAGE_STATS
             });
             console.log('statsResponse', statsResponse)
@@ -337,7 +338,7 @@ export default function App() {
                                 <ListAltIcon />
                             </IconButton>
                         </Tooltip>
-                        <IconButton onClick={() => chrome.runtime.openOptionsPage()}>
+                        <IconButton onClick={() => browserAPI.runtime.openOptionsPage()}>
                             <SettingsIcon />
                         </IconButton>
                     </Box>

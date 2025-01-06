@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "node --watch --import tsx scripts/build.ts --watch",
     "build": "tsx scripts/build.ts",
+    "build:chrome": "tsx scripts/build.ts --browser=chrome",
+    "build:firefox": "tsx scripts/build.ts --browser=firefox",
+    "build:all": "npm run build:chrome && npm run build:firefox",
     "clean": "rimraf dist"
   },
   "dependencies": {
@@ -28,6 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
+    "@types/archiver": "^6.0.3",
     "@types/chrome": "^0.0.287",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.10.1",
@@ -35,6 +39,7 @@
     "@types/react-dom": "^18.3.2",
     "@typescript-eslint/eslint-plugin": "^8.17.0",
     "@typescript-eslint/parser": "^8.17.0",
+    "archiver": "^5.3.1",
     "esbuild": "^0.20.1",
     "eslint": "^9.16.0",
     "eslint-plugin-react-hooks": "^5.0.0",
@@ -43,6 +48,7 @@
     "globals": "^15.12.0",
     "prettier": "^3.4.2",
     "rimraf": "^5.0.5",
+    "sharp": "^0.33.5",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.15.0"

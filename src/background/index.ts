@@ -4,6 +4,7 @@ import { isExtensionPage } from '@/utils/isExtensionPage';
 import { parseCrxFile } from '@/utils/parseCrxFile';
 import { MESSAGE_TYPES } from './constants';
 import { createHash } from './utils';
+import { browserAPI } from '@/utils/browser-polyfill';
 
 const db = new SourceDetectorDB();
 
@@ -57,12 +58,10 @@ async function updateBadge(url: string, isCrx: boolean = false) {
         if (isCrx) {
             const crxFile = await db.getCrxFileByPageUrl(url);
             if (crxFile) {
-                console.log('updateBadge', url, crxFile.count)
-                await chrome.action.setBadgeText({ text: String(crxFile.count) });
-                await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+                await browserAPI.action.setBadgeText({ text: String(crxFile.count) });
+                await browserAPI.action.setBadgeBackgroundColor({ color: '#4CAF50' });
             } else {
-                console.log('updateBadge', url, 0)
-                await chrome.action.setBadgeText({ text: '' });
+                await browserAPI.action.setBadgeText({ text: '' });
             }
         } else {
             // Get source maps for current page using the new schema
@@ -71,24 +70,22 @@ async function updateBadge(url: string, isCrx: boolean = false) {
 
             // Update badge text and color
             if (latestFiles.length > 0) {
-                console.log('updateBadge', url, latestFiles.length)
-                await chrome.action.setBadgeText({ text: String(latestFiles.length) });
-                await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' }); // Green color
+                await browserAPI.action.setBadgeText({ text: String(latestFiles.length) });
+                await browserAPI.action.setBadgeBackgroundColor({ color: '#4CAF50' }); // Green color
             } else {
-                console.log('updateBadge', url, 0)
-                await chrome.action.setBadgeText({ text: '' });
+                await browserAPI.action.setBadgeText({ text: '' });
             }
         }
     } catch (error) {
         console.error('Error updating badge:', error);
-        await chrome.action.setBadgeText({ text: '' });
+        await browserAPI.action.setBadgeText({ text: '' });
     }
 }
 
 // Function to update current page information
 async function updateCurrentPage() {
     try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await browserAPI.tabs.query({ active: true, currentWindow: true });
         if (tab?.url && tab?.title && !isExtensionPage(tab.url)) {
             currentPage = {
                 url: tab.url,
@@ -103,7 +100,7 @@ async function updateCurrentPage() {
 }
 
 // Monitor tab updates
-chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
+browserAPI.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         console.log('tab.url', tab.url, isExtensionPage(tab.url))
         if (isExtensionPage(tab.url)) {
@@ -114,7 +111,7 @@ chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
     }
 });
 async function onTabActivated() {
-    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [activeTab] = await browserAPI.tabs.query({ active: true, currentWindow: true });
     if (isExtensionPage(activeTab?.url || '')) {
         await updateCrxPage(activeTab);
     } else {
@@ -123,12 +120,12 @@ async function onTabActivated() {
 }
 
 // Monitor tab activation
-chrome.tabs.onActivated.addListener(onTabActivated);
+browserAPI.tabs.onActivated.addListener(onTabActivated);
 
 // Monitor window focus
-chrome.windows.onFocusChanged.addListener(onTabActivated);
+browserAPI.windows.onFocusChanged.addListener(onTabActivated);
 
-async function updateCrxPage(tab: chrome.tabs.Tab) {
+async function updateCrxPage(tab: browserAPI.tabs.Tab) {
     const url = tab.url;
     if (!url) return;
     await updateBadge(url, true);
@@ -207,7 +204,7 @@ async function fetchSourceMapContent(sourceUrl: string, mapUrl: string): Promise
 }
 
 // Listen for requests to detect JS/CSS files
-chrome.webRequest.onCompleted.addListener(
+browserAPI.webRequest.onCompleted.addListener(
     (details) => {
         if (isExtensionPage(details.url)) {
             return;
@@ -256,7 +253,7 @@ chrome.webRequest.onCompleted.addListener(
 );
 
 // 监听消息
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+browserAPI.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const handleMessage = async () => {
         try {
             switch (message.type) {
@@ -566,7 +563,7 @@ async function getCrxUrl(url: string): Promise<string | null> {
         const extId = match?.[1] || url.split('/')[6]?.split('?')[0] || url.split('//')[1]?.split('/')[0];
         if (!extId || !/^[a-z]{32}$/.test(extId)) return null;
 
-        const platformInfo = await chrome.runtime.getPlatformInfo();
+        const platformInfo = await browserAPI.runtime.getPlatformInfo();
         const version = navigator.userAgent.split("Chrome/")[1]?.split(" ")[0] || '9999.0.9999.0';
 
         // Construct URL with all necessary parameters
@@ -632,7 +629,7 @@ async function checkServerStatus() {
     serverStatus = await checkServerHealth();
 
     // Broadcast status to all tabs
-    chrome.runtime.sendMessage({
+    browserAPI.runtime.sendMessage({
         type: MESSAGE_TYPES.SERVER_STATUS_CHANGED,
         data: { isOnline: serverStatus }
     }).catch(() => { }); // Ignore errors if no listeners

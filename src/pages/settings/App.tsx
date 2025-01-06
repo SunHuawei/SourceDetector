@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import React, { useEffect, useState } from 'react';
+import { browserAPI } from '@/utils/browser-polyfill';
 
 export default function App() {
     const [loading, setLoading] = useState(true);
@@ -37,7 +38,7 @@ export default function App() {
 
     const loadData = async () => {
         try {
-            const response = await chrome.runtime.sendMessage({
+            const response = await browserAPI.runtime.sendMessage({
                 type: MESSAGE_TYPES.GET_SETTINGS
             });
 
@@ -45,7 +46,7 @@ export default function App() {
                 setSettings(response.data);
             }
 
-            const statsResponse = await chrome.runtime.sendMessage({
+            const statsResponse = await browserAPI.runtime.sendMessage({
                 type: MESSAGE_TYPES.GET_STORAGE_STATS
             });
 
@@ -64,7 +65,7 @@ export default function App() {
 
         try {
             const newSettings = { ...settings, [key]: value };
-            const response = await chrome.runtime.sendMessage({
+            const response = await browserAPI.runtime.sendMessage({
                 type: MESSAGE_TYPES.UPDATE_SETTINGS,
                 data: newSettings
             });
@@ -82,7 +83,7 @@ export default function App() {
     const handleClearData = async () => {
         try {
             setLoading(true);
-            const response = await chrome.runtime.sendMessage({
+            const response = await browserAPI.runtime.sendMessage({
                 type: MESSAGE_TYPES.CLEAR_DATA
             });
 

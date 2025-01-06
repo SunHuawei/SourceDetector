@@ -1,6 +1,9 @@
 import * as esbuild from 'esbuild';
 import fs from 'fs-extra';
 import { resolve } from 'path';
+import sharp from 'sharp';
+import archiver from 'archiver';
+import { ArchiverError } from 'archiver';
 
 const BUILD_DIR = 'dist';
 const SRC_DIR = 'src';
@@ -13,9 +16,57 @@ function formatDuration(duration: number): string {
     return `${(duration / 1000).toFixed(2)}s`;
 }
 
-async function build(isWatch = false) {
+async function convertIcons() {
+    const sizes = [16, 48, 128];
+    const sourceIcon = resolve('public/icons/icon.svg');
+    const targetDir = resolve(BUILD_DIR, 'icons');
+
+    // Ensure icons directory exists
+    await fs.ensureDir(targetDir);
+
+    // Convert icons to all sizes
+    await Promise.all(sizes.map(size =>
+        sharp(sourceIcon)
+            .resize(size, size)
+            .toFile(resolve(targetDir, `icon-${size}.png`))
+    ));
+
+    console.log('📦 Generated icon files in different sizes');
+}
+
+async function build(isWatch = false, browser = 'chrome') {
     const startTime = Date.now();
-    console.log('🚀 Building extension...');
+    console.log(`🚀 Building extension for ${browser}...`);
+
+    // Add Firefox-specific manifest modifications
+    if (browser === 'firefox') {
+        const manifestContent = JSON.parse(
+            await fs.readFile(resolve('public', 'manifest.json'), 'utf-8')
+        );
+
+        // Firefox-specific changes
+        manifestContent.browser_specific_settings = {
+            "gecko": {
+                "id": "source-detector@yourdomain.com",
+                "strict_min_version": "109.0"
+            }
+        };
+
+        // Firefox uses different API namespace
+        manifestContent.background = {
+            "scripts": ["background/index.js"],
+            "type": "module"
+        };
+
+        await fs.writeFile(
+            resolve(BUILD_DIR, 'manifest.json'),
+            JSON.stringify(manifestContent, null, 2),
+            'utf-8'
+        );
+    }
+
+    // Add icon conversion before other build steps
+    await convertIcons();
 
     // Copy rules directory to dist
     await fs.copy(RULES_DIR, resolve(BUILD_DIR, RULES_DIR));
@@ -109,14 +160,12 @@ async function build(isWatch = false) {
         // Initial build
         const buildStart = Date.now();
         await ctx.rebuild();
-        const duration = Date.now() - buildStart;
-        console.log(`✅ Build completed successfully! (${formatDuration(duration)})`);
 
         if (isWatch) {
             console.log('👀 Watching for changes...');
 
             // Start watching with rebuild callback
-            await ctx.watch(async (error, result) => {
+            await ctx.watch(async (error: Error | null, result: esbuild.BuildResult | null) => {
                 const rebuildStart = Date.now();
                 try {
                     await ctx.rebuild();
@@ -128,12 +177,67 @@ async function build(isWatch = false) {
                 }
             });
         } else {
+            console.log('>>>>>>1 ')
             await ctx.dispose();
         }
+
+        // Add zip creation after build
+        if (!isWatch) {
+            console.log('>>>>>>2')
+            await createExtensionZip();
+        }
+        console.log('>>>>>>3 ')
+
+        const duration = Date.now() - buildStart;
+        console.log(`✅ Build completed successfully! (${formatDuration(duration)})`);
     } catch (err) {
         console.error('❌ Build failed:', err);
         process.exit(1);
     }
+}
+
+async function createExtensionZip() {
+    const zipPath = resolve('dist/source-collector.zip');
+
+    // Remove existing zip if it exists
+    if (await fs.pathExists(zipPath)) {
+        await fs.remove(zipPath);
+    }
+
+    return new Promise<void>((resolve, reject) => {
+        const output = fs.createWriteStream(zipPath);
+        const archive = archiver('zip', {
+            zlib: { level: 9 } // Maximum compression
+        });
+
+        output.on('close', () => {
+            console.log(`Extension packaged: ${archive.pointer()} bytes`);
+            resolve();
+        });
+
+        archive.on('warning', function (err: ArchiverError) {
+            if (err.code === 'ENOENT') {
+                console.warn('Warning during zip creation:', err);
+            } else {
+                reject(err);
+            }
+        });
+
+        archive.on('error', (err: ArchiverError) => {
+            console.error('Error during zip creation:', err);
+            reject(err);
+        });
+
+        archive.pipe(output);
+
+        // Add the dist directory contents to the zip, excluding the zip file itself
+        archive.glob('**/*', {
+            cwd: BUILD_DIR,
+            ignore: ['source-collector.zip']
+        });
+
+        archive.finalize();
+    });
 }
 
 // Handle watch mode

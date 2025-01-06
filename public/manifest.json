@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Source Detector",
     "version": "1.0.0",
-    "description": "Automatically collect and view source maps from websites",
+    "description": "A powerful tool for developers to automatically detect, collect, and analyze source maps and CRX files from websites. Makes debugging and development easier by providing easy access to source files.",
     "permissions": [
         "storage",
         "activeTab",
@@ -31,11 +31,15 @@
     "action": {
         "default_popup": "popup/index.html",
         "default_icon": {
-            "128": "icons/icon.svg"
+            "16": "icons/icon-16.png",
+            "48": "icons/icon-48.png",
+            "128": "icons/icon-128.png"
         }
     },
     "icons": {
-        "128": "icons/icon.svg"
+        "16": "icons/icon-16.png",
+        "48": "icons/icon-48.png",
+        "128": "icons/icon-128.png"
     },
     "options_page": "pages/settings/index.html",
     "web_accessible_resources": [

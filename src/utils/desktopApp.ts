@@ -1,3 +1,5 @@
+import { browserAPI } from '@/utils/browser-polyfill';
+
 // Protocol name for the Source Detector desktop app
 // This needs to be registered in the desktop app for each operating system
 const PROTOCOL = 'source-detector://';
@@ -53,7 +55,7 @@ export async function openInDesktop(type: DesktopAction, serverStatus: boolean, 
 }
 
 function openWebVersion(type: string, options?: any) {
-    chrome.tabs.create({
-        url: chrome.runtime.getURL(`pages/desktop/index.html?type=${type}${options ? `&options=${encodeURIComponent(JSON.stringify(options))}` : ''}`)
+    browserAPI.tabs.create({
+        url: browserAPI.runtime.getURL(`pages/desktop/index.html?type=${type}${options ? `&options=${encodeURIComponent(JSON.stringify(options))}` : ''}`)
     });
 }
