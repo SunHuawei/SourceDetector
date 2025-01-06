@@ -52,13 +52,13 @@ const WebsiteSourceMapTree = ({ onSourceMapSelect, onPageSelect }: FolderTreePro
             if (response.success && response.data?.domains) {
                 const { domains: newDomains, hasMore } = response.data;
                 await Promise.all(newDomains.map(domain => loadPages(domain.id, 0)));
-                
+
                 setDomains(prev => {
                     const next = offset === 0 ? new Map() : new Map(prev);
                     newDomains.forEach(domain => next.set(domain.id, domain));
                     return next;
                 });
-                
+
                 setHasMore(prev => new Map(prev).set('domains', hasMore));
                 setPageNumbers(prev => new Map(prev).set('domains', (prev.get('domains') || 0) + 1));
                 return newDomains;
@@ -79,7 +79,7 @@ const WebsiteSourceMapTree = ({ onSourceMapSelect, onPageSelect }: FolderTreePro
             const response = await window.database.getPages(domainId, offset, PAGE_SIZE);
             if (response.success && response.data?.pages && response.data?.hasMore !== undefined) {
                 const { pages: newPages, hasMore } = response.data;
-                
+
                 setPages(prev => {
                     const next = new Map(prev);
                     const domainPages = new Map(next.get(domainId) || new Map());
@@ -87,7 +87,7 @@ const WebsiteSourceMapTree = ({ onSourceMapSelect, onPageSelect }: FolderTreePro
                     next.set(domainId, domainPages);
                     return next;
                 });
-                
+
                 setHasMore(prev => new Map(prev).set(loadingKey, hasMore));
                 setPageNumbers(prev => new Map(prev).set(loadingKey, (prev.get(loadingKey) || 0) + 1));
                 return newPages;
@@ -108,7 +108,7 @@ const WebsiteSourceMapTree = ({ onSourceMapSelect, onPageSelect }: FolderTreePro
             const response = await window.database.getSourceMaps(pageId, offset, PAGE_SIZE);
             if (response.success && response.data?.sourceMaps && response.data?.hasMore !== undefined) {
                 const { sourceMaps: newSourceMaps, hasMore } = response.data;
-                
+
                 setSourceMaps(prev => {
                     const next = new Map(prev);
                     const pageSourceMaps = new Map(next.get(pageId) || new Map());
@@ -116,7 +116,7 @@ const WebsiteSourceMapTree = ({ onSourceMapSelect, onPageSelect }: FolderTreePro
                     next.set(pageId, pageSourceMaps);
                     return next;
                 });
-                
+
                 setHasMore(prev => new Map(prev).set(loadingKey, hasMore));
                 setPageNumbers(prev => new Map(prev).set(loadingKey, (prev.get(loadingKey) || 0) + 1));
                 return newSourceMaps;
@@ -143,6 +143,8 @@ const WebsiteSourceMapTree = ({ onSourceMapSelect, onPageSelect }: FolderTreePro
                     setIsInitialized(true);
                 }
             }
+        } else {
+            setIsInitialized(true);
         }
     }
 
@@ -212,11 +214,11 @@ const WebsiteSourceMapTree = ({ onSourceMapSelect, onPageSelect }: FolderTreePro
                                 key={`page-${page.id}`}
                                 itemId={`page-${page.id}`}
                                 label={
-                                    <Box 
-                                        component="div" 
-                                        sx={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
+                                    <Box
+                                        component="div"
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
                                             py: 0.5,
                                             cursor: 'pointer',
                                             '&:hover': {
@@ -247,11 +249,11 @@ const WebsiteSourceMapTree = ({ onSourceMapSelect, onPageSelect }: FolderTreePro
                                                 key={`sourcemap-${sourceMap.id}:${page.id}`}
                                                 itemId={`sourcemap-${sourceMap.id}:${page.id}`}
                                                 label={
-                                                    <Box 
-                                                        component="div" 
-                                                        sx={{ 
-                                                            display: 'flex', 
-                                                            alignItems: 'center', 
+                                                    <Box
+                                                        component="div"
+                                                        sx={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
                                                             py: 0.5,
                                                             cursor: 'pointer',
                                                             '&:hover': {

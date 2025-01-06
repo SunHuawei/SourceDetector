@@ -15,7 +15,6 @@ const FileViewer = ({ file }: FileViewerProps) => {
     if (!file) {
         return (
             <Box sx={{ p: 2 }}>
-                <Typography>No file selected</Typography>
             </Box>
         );
     }
