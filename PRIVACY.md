@@ -22,7 +22,6 @@ Source Detector is committed to protecting your privacy. This privacy policy exp
 ### Storage Duration
 - Data remains stored until you choose to delete it
 - You can clear all stored data through the extension settings
-- You can delete individual files at any time
 
 ## Data Usage
 
@@ -50,8 +49,6 @@ Source Detector is committed to protecting your privacy. This privacy policy exp
 
 ### Your Rights
 - View all stored data through the extension interface
-- Delete any stored data at any time
-- Export your data for backup
 - Clear all data with one click
 
 ### Data Security
