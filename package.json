@@ -35,7 +35,7 @@
     "@mui/material": "^6.1.10",
     "@mui/x-tree-view": "^7.23.2",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "better-sqlite3": "11.6.0",
+    "better-sqlite3": "11.7.2",
     "dexie": "^4.0.10",
     "dotenv": "^16.4.7",
     "electron-store": "^10.0.0",
