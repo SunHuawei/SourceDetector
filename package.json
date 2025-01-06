@@ -50,7 +50,7 @@
     "@fastify/type-provider-typebox": "^5.1.0",
     "@playwright/test": "^1.48.2",
     "@types/better-sqlite3": "^7.6.12",
-    "@types/node": "^22.10.2",
+    "@types/node": "^22.10.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
