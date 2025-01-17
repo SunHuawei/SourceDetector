@@ -6,7 +6,6 @@
     "permissions": [
         "storage",
         "activeTab",
-        "downloads",
         "unlimitedStorage",
         "tabs",
         "webRequest",
