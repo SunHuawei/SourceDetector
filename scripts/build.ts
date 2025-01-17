@@ -47,16 +47,24 @@ async function build(isWatch = false, browser = 'chrome') {
         // Firefox-specific changes
         manifestContent.browser_specific_settings = {
             "gecko": {
-                "id": "source-detector@yourdomain.com",
+                "id": "wavesun.org@gmail.com",
                 "strict_min_version": "109.0"
             }
         };
 
-        // Firefox uses different API namespace
+        // Firefox uses different background script format
         manifestContent.background = {
             "scripts": ["background/index.js"],
             "type": "module"
         };
+
+        console.log(manifestContent.background);
+
+        // Remove service_worker if it exists
+        if (manifestContent.background?.service_worker) {
+            delete manifestContent.background.service_worker;
+        }
+        console.log(manifestContent.background);
 
         await fs.writeFile(
             resolve(BUILD_DIR, 'manifest.json'),
@@ -182,7 +190,7 @@ async function build(isWatch = false, browser = 'chrome') {
 
         // Add zip creation after build
         if (!isWatch) {
-            await createExtensionZip();
+            await createExtensionZip(browser);
         }
 
         const duration = Date.now() - buildStart;
@@ -193,8 +201,9 @@ async function build(isWatch = false, browser = 'chrome') {
     }
 }
 
-async function createExtensionZip() {
-    const zipPath = resolve('dist/source-detector.zip');
+async function createExtensionZip(browser = 'chrome') {
+    const zipName = `source-detector-${browser}.zip`;
+    const zipPath = resolve(`dist/${zipName}`);
 
     // Remove existing zip if it exists
     if (await fs.pathExists(zipPath)) {
@@ -208,7 +217,7 @@ async function createExtensionZip() {
         });
 
         output.on('close', () => {
-            console.log(`Extension packaged: ${archive.pointer()} bytes`);
+            console.log(`Extension packaged for ${browser}: ${archive.pointer()} bytes`);
             resolve();
         });
 
@@ -227,16 +236,26 @@ async function createExtensionZip() {
 
         archive.pipe(output);
 
-        // Add the dist directory contents to the zip, excluding the zip file itself
+        // Add the dist directory contents to the zip, excluding all zip files
         archive.glob('**/*', {
             cwd: BUILD_DIR,
-            ignore: ['source-detector.zip']
+            ignore: ['*.zip']
         });
 
         archive.finalize();
     });
 }
 
-// Handle watch mode
-const isWatch = process.argv.includes('--watch');
-build(isWatch); 
+// Handle arguments
+const args = process.argv.slice(2);
+const isWatch = args.includes('--watch');
+const browserArg = args.find(arg => arg.startsWith('--browser='));
+const browser = browserArg ? browserArg.split('=')[1] : 'chrome';
+
+// Validate browser
+if (browser !== 'chrome' && browser !== 'firefox') {
+    console.error('❌ Invalid browser. Use --browser=chrome or --browser=firefox');
+    process.exit(1);
+}
+
+build(isWatch, browser);
