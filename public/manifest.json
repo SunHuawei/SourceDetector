@@ -4,9 +4,6 @@
     "version": "1.0.0",
     "description": "A powerful tool for developers to automatically detect, collect, and analyze source maps and CRX files from websites",
     "permissions": [
-        "storage",
-        "activeTab",
-        "unlimitedStorage",
         "tabs",
         "webRequest",
         "declarativeNetRequest"
