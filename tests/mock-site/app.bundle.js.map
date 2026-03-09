@@ -1,0 +1,10 @@
+{
+    "version": 3,
+    "file": "app.bundle.js",
+    "sources": ["src/mock.ts"],
+    "sourcesContent": [
+        "export const serverToken = 'sk-1234567890abcdef1234567890abcdef1234567890abcdef';\nexport const message = 'mock source map content';"
+    ],
+    "names": [],
+    "mappings": ""
+}

@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { LeakFinding } from './rules';
 
 export interface Page {
     id: number;
@@ -26,6 +27,7 @@ export interface SourceMapFile {
     version: number;
     hash: string;
     isLatest: boolean;
+    findings?: LeakFinding[];
 }
 
 export interface SourceMapFoundData {
@@ -83,7 +85,4 @@ export interface ParsedCrxFile {
     blob: Blob;
 }
 
-export interface SyncStatus {
-    tableName: string;
-    lastId: number;
-}
+export * from './rules';

@@ -1,7 +1,10 @@
 import { SourceDetectorDB } from '@/storage/database';
-import { AppSettings, CrxFile, PageData } from '@/types';
+import { AppSettings, PageData } from '@/types';
+import { getActiveRules } from '@/storage/rules';
 import { isExtensionPage } from '@/utils/isExtensionPage';
+import { scanCode } from '@/utils/leakScanner';
 import { parseCrxFile } from '@/utils/parseCrxFile';
+import { SourceMapConsumer } from 'source-map-js';
 import { MESSAGE_TYPES } from './constants';
 import { createHash } from './utils';
 import { browserAPI } from '@/utils/browser-polyfill';
@@ -67,11 +70,14 @@ async function updateBadge(url: string, isCrx: boolean = false) {
             // Get source maps for current page using the new schema
             const files = await db.getPageFiles(url);
             const latestFiles = files.filter(file => file.isLatest);
+            const hasLeakFindings = files.some((file) => (file.findings?.length ?? 0) > 0);
 
             // Update badge text and color
             if (latestFiles.length > 0) {
                 await browserAPI.action.setBadgeText({ text: String(latestFiles.length) });
-                await browserAPI.action.setBadgeBackgroundColor({ color: '#4CAF50' }); // Green color
+                await browserAPI.action.setBadgeBackgroundColor({
+                    color: hasLeakFindings ? '#F44336' : '#4CAF50'
+                });
             } else {
                 await browserAPI.action.setBadgeText({ text: '' });
             }
@@ -203,6 +209,118 @@ async function fetchSourceMapContent(sourceUrl: string, mapUrl: string): Promise
     }
 }
 
+async function getLeakFindingsFromSourceMap(content: string, originalContent: string) {
+    try {
+        const activeRules = await getActiveRules();
+        if (activeRules.length === 0) {
+            return [];
+        }
+
+        const rawSourceMap = JSON.parse(content);
+        const consumer = new SourceMapConsumer(rawSourceMap);
+        const processedSources = new Set<string>();
+        const sourceSegments: string[] = [originalContent];
+
+        consumer.sources.forEach((sourcePath) => {
+            if (processedSources.has(sourcePath)) {
+                return;
+            }
+            processedSources.add(sourcePath);
+
+            const sourceContent = consumer.sourceContentFor(sourcePath, true);
+            if (sourceContent) {
+                sourceSegments.push(sourceContent);
+            }
+        });
+
+        return scanCode(sourceSegments.join('\n'), activeRules);
+    } catch (error) {
+        console.error('Error scanning source map content:', error);
+        return [];
+    }
+}
+
+function extractSourceMapUrlFromContent(content: string): string | null {
+    // Parse from the end of file to handle trailing newlines and avoid scanning huge bundles.
+    const trailer = content.slice(Math.max(0, content.length - 4096));
+    const matches = Array.from(trailer.matchAll(/[#@]\s*sourceMappingURL=([^\s\*]+)/g));
+    if (matches.length === 0) {
+        return null;
+    }
+    return matches[matches.length - 1][1];
+}
+
+function isPageUrlCandidate(url: string): boolean {
+    if (!url || isExtensionPage(url)) {
+        return false;
+    }
+    return /^https?:\/\//.test(url) || url.startsWith('file://');
+}
+
+function getFileTypeFromUrl(url: string): 'js' | 'css' {
+    return /\.css(?:[\?#].*)?$/i.test(url) ? 'css' : 'js';
+}
+
+interface RequestPageContextDetails {
+    tabId?: number;
+    initiator?: string;
+    documentUrl?: string;
+}
+
+async function resolveRequestPageContext(details: RequestPageContextDetails): Promise<{ pageUrl: string; pageTitle: string }> {
+    if (typeof details.tabId === 'number' && details.tabId >= 0) {
+        try {
+            const tab = await browserAPI.tabs.get(details.tabId);
+            if (tab?.url && isPageUrlCandidate(tab.url)) {
+                return {
+                    pageUrl: tab.url,
+                    pageTitle: tab.title || currentPage?.title || ''
+                };
+            }
+        } catch (error) {
+            console.debug('Unable to resolve tab context for source map detection:', error);
+        }
+    }
+
+    if (typeof details.documentUrl === 'string' && isPageUrlCandidate(details.documentUrl)) {
+        return {
+            pageUrl: details.documentUrl,
+            pageTitle: currentPage?.title || ''
+        };
+    }
+
+    if (typeof details.initiator === 'string' && isPageUrlCandidate(details.initiator)) {
+        return {
+            pageUrl: details.initiator,
+            pageTitle: currentPage?.title || ''
+        };
+    }
+
+    try {
+        const [activeTab] = await browserAPI.tabs.query({ active: true, currentWindow: true });
+        if (activeTab?.url && isPageUrlCandidate(activeTab.url)) {
+            return {
+                pageUrl: activeTab.url,
+                pageTitle: activeTab.title || currentPage?.title || ''
+            };
+        }
+    } catch (error) {
+        console.debug('Unable to resolve active tab context for source map detection:', error);
+    }
+
+    if (currentPage && isPageUrlCandidate(currentPage.url)) {
+        return {
+            pageUrl: currentPage.url,
+            pageTitle: currentPage.title
+        };
+    }
+
+    return {
+        pageUrl: '',
+        pageTitle: ''
+    };
+}
+
 // Listen for requests to detect JS/CSS files
 browserAPI.webRequest.onCompleted.addListener(
     (details) => {
@@ -211,7 +329,7 @@ browserAPI.webRequest.onCompleted.addListener(
         }
 
         console.log('details', details.initiator)
-        if (!/\.(js|css)(\?.*)?$/.test(details.url)) {
+        if (!/\.(js|css)([\?#].*)?$/i.test(details.url)) {
             return;
         }
 
@@ -221,29 +339,36 @@ browserAPI.webRequest.onCompleted.addListener(
                 // Get content from cache or fetch
                 const content = await getFileContent(details.url);
 
-                // Check for source map in the last line
-                // lastLine is like this:
-                // /*# sourceMappingURL=https://example.com/path/to/map.css.map */
-                // or
-                // //# sourceMappingURL=https://example.com/path/to/map.css.map
-                const lastLine = content.split('\n').pop()?.trim() || '';
-                const sourceMapMatch = lastLine.match(/#\s*sourceMappingURL=([^\s\*]+)/);
-
-                if (sourceMapMatch) {
-                    const mapUrl = sourceMapMatch[1];
-                    const fullMapUrl = mapUrl.startsWith('http')
-                        ? mapUrl
-                        : new URL(mapUrl, details.url).toString();
-
-                    await handleSourceMapFound({
-                        pageTitle: currentPage?.title || '',
-                        pageUrl: currentPage?.url || '',
-                        sourceUrl: details.url,
-                        mapUrl: fullMapUrl,
-                        fileType: details.url.endsWith('.css') ? 'css' : 'js',
-                        originalContent: content
-                    });
+                const mapUrl = extractSourceMapUrlFromContent(content);
+                if (!mapUrl) {
+                    return;
                 }
+
+                const fullMapUrl = mapUrl.startsWith('http')
+                    ? mapUrl
+                    : new URL(mapUrl, details.url).toString();
+
+                const pageContext = await resolveRequestPageContext({
+                    tabId: details.tabId,
+                    initiator: (details as { initiator?: string }).initiator,
+                    documentUrl: (details as { documentUrl?: string }).documentUrl
+                });
+
+                console.log('sourceMapDetected', {
+                    sourceUrl: details.url,
+                    mapUrl: fullMapUrl,
+                    pageUrl: pageContext.pageUrl,
+                    initiator: (details as { initiator?: string }).initiator
+                });
+
+                await handleSourceMapFound({
+                    pageTitle: pageContext.pageTitle,
+                    pageUrl: pageContext.pageUrl,
+                    sourceUrl: details.url,
+                    mapUrl: fullMapUrl,
+                    fileType: getFileTypeFromUrl(details.url),
+                    originalContent: content
+                });
             } catch (error) {
                 console.error('Error processing response:', error);
             }
@@ -281,8 +406,6 @@ browserAPI.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                     return await handleClearData();
                 case MESSAGE_TYPES.GET_CRX_FILE:
                     return await handleGetCrxFile(message.data);
-                case MESSAGE_TYPES.GET_SERVER_STATUS:
-                    return { success: true, data: { isOnline: serverStatus } };
                 default:
                     return { success: false, reason: 'Unknown message type' };
             }
@@ -385,14 +508,19 @@ async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; 
             // Fetch content
             const content = await fetchSourceMapContent(data.sourceUrl, data.mapUrl);
             if (!content) return { success: false, reason: 'Failed to fetch content' };
+            const findings = await getLeakFindingsFromSourceMap(content.content, content.originalContent);
 
             // Check existing file
             const existingFile = await db.sourceMapFiles.where('url').equals(data.sourceUrl).first();
 
             // Check if content unchanged
             if (existingFile && existingFile.hash === content.hash) {
+                if (JSON.stringify(existingFile.findings ?? []) !== JSON.stringify(findings)) {
+                    await db.sourceMapFiles.update(existingFile.id, { findings });
+                }
                 // Even if content is unchanged, we still need to associate it with the current page
                 await db.addSourceMapToPage(data.pageUrl, data.pageTitle, existingFile);
+                await updateBadge(data.pageUrl);
                 return { success: true, reason: 'File content unchanged but added to page' };
             }
 
@@ -429,6 +557,7 @@ async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; 
                 version: latestVersion + 1,
                 hash: content.hash,
                 isLatest: true,
+                findings
             };
 
             // Store source map
@@ -586,157 +715,3 @@ async function getCrxUrl(url: string): Promise<string | null> {
         return null;
     }
 }
-
-// Server configuration
-const SERVER_CONFIG = {
-    host: '127.0.0.1',
-    port: '63798'
-};
-
-const SERVER_URL = `http://${SERVER_CONFIG.host}:${SERVER_CONFIG.port}`;
-const HEARTBEAT_INTERVAL = 5000; // 5 seconds
-const SYNC_CHECK_INTERVAL = 60 * 1000; // 1 minute
-
-// Tables to sync
-const TableChunkSizeMap = {
-    crxFiles: 1,
-    sourceMapFiles: 1,
-    pages: 100,
-    pageSourceMaps: 100
-} as const;
-
-let serverStatus = false;
-
-// Function to check server health
-async function checkServerHealth(): Promise<boolean> {
-    try {
-        const response = await fetch(`${SERVER_URL}/health`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-            }
-        });
-        const { status } = await response.json();
-        return response.ok && status === 'ok';
-    } catch (error) {
-        console.error('Error checking server health:', error);
-        return false;
-    }
-}
-
-// Heartbeat function
-async function checkServerStatus() {
-    serverStatus = await checkServerHealth();
-
-    // Broadcast status to all tabs
-    browserAPI.runtime.sendMessage({
-        type: MESSAGE_TYPES.SERVER_STATUS_CHANGED,
-        data: { isOnline: serverStatus }
-    }).catch(() => { }); // Ignore errors if no listeners
-}
-
-// Function to convert Blob to base64
-async function blobToBase64(blob: Blob): Promise<string> {
-    const arrayBuffer = await blob.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-
-    // Process the array in chunks to avoid call stack size exceeded
-    const chunkSize = 0x8000; // 32KB chunks
-    let result = '';
-
-    for (let i = 0; i < uint8Array.length; i += chunkSize) {
-        const chunk = uint8Array.slice(i, i + chunkSize);
-        result += String.fromCharCode.apply(null, Array.from(chunk));
-    }
-
-    return btoa(result);
-}
-
-// Function to sync data to server
-async function syncDataToServer() {
-    try {
-        for (const table of Object.keys(TableChunkSizeMap)) {
-            console.log('syncDataToServer', table);
-            let lastId = await db.getLastSyncId(table);
-            console.log('lastId', lastId);
-            let modifiedData = await db.getModifiedData(table, lastId, TableChunkSizeMap[table as keyof typeof TableChunkSizeMap]);
-            console.log('modifiedData', modifiedData);
-
-            while (modifiedData.length > 0) {
-                try {
-                    let processedChunk = table === 'crxFiles'
-                        ? await Promise.all(modifiedData.map(async (file) => {
-                            const crxFile = file as CrxFile;
-                            return {
-                                ...crxFile,
-                                blob: await blobToBase64(crxFile.blob)
-                            };
-                        }))
-                        : modifiedData;
-
-                    const response = await fetch(`${SERVER_URL}/sync`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            table,
-                            lastId,
-                            data: processedChunk
-                        })
-                    });
-
-                    if (response.ok) {
-                        const result = await response.json();
-
-                        // Log failed records for debugging
-                        if (result.failedRecords?.length > 0) {
-                            console.log(`Failed records for ${table}:`, result.failedRecords);
-                        }
-
-                        // Update last synced ID to the last successful record's ID
-                        if (result.lastSuccessId > lastId) {
-                            lastId = result.lastSuccessId;
-                            await db.updateLastSyncId(table, lastId);
-                        }
-
-                        console.log(`Synced ${modifiedData.length} records for ${table}`);
-                    } else {
-                        console.log(`Failed to sync chunk: ${response.statusText}`);
-                        break;
-                    }
-                } catch (error) {
-                    console.log('error', error);
-                }
-
-                modifiedData = await db.getModifiedData(table, lastId, TableChunkSizeMap[table as keyof typeof TableChunkSizeMap]);
-                console.log('modifiedData2', modifiedData);
-            }
-        }
-
-        console.log('Data sync completed successfully');
-    } catch (error) {
-        console.error('Error syncing data:', error);
-    }
-}
-
-let inSync = false;
-// Function to check server status and trigger sync
-async function checkServerAndSync() {
-    if (inSync) {
-        return;
-    }
-    inSync = true;
-    console.log('checkServerAndSync');
-    if (await checkServerHealth()) {
-        console.log('checkServerAndSync2');
-        await syncDataToServer();
-    }
-    inSync = false;
-}
-
-// Start heartbeat and sync
-setInterval(checkServerStatus, HEARTBEAT_INTERVAL);
-setInterval(checkServerAndSync, SYNC_CHECK_INTERVAL);
-
-// Initial checks
-checkServerStatus();
-checkServerAndSync();

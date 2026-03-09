@@ -5,13 +5,13 @@ import { CrxFile, PageData, ParsedCrxFile, SourceMapFile, StorageStats } from '@
 import { isExtensionPage } from '@/utils/isExtensionPage';
 import { parseCrxFile } from '@/utils/parseCrxFile';
 import { SourceMapDownloader } from '@/utils/sourceMapDownloader';
+import { GITHUB_FEEDBACK_URL } from '@/constants/links';
 import { groupSourceMapFiles } from '@/utils/sourceMapUtils';
 import {
     CloudDownload as CloudDownloadIcon,
-    ListAlt as ListAltIcon,
-    Settings as SettingsIcon,
-    CircleOutlined,
-    CheckCircle
+    GitHub as GitHubIcon,
+    OpenInNew as OpenInNewIcon,
+    Settings as SettingsIcon
 } from '@mui/icons-material';
 import {
     Box,
@@ -27,6 +27,7 @@ import { CrxFileTree } from './components/CrxFileTree';
 import { SourceMapTable } from './components/SourceMapTable';
 import { openInDesktop } from '@/utils/desktopApp';
 import { browserAPI } from '@/utils/browser-polyfill';
+import { trackEvent } from '@/utils/analytics';
 
 // Helper function to format bundle size
 function getBundleSize(files: SourceMapFile[]): string {
@@ -51,30 +52,10 @@ export default function App() {
         message: '',
         severity: 'info'
     });
-    const [serverStatus, setServerStatus] = useState(false);
 
     useEffect(() => {
         loadData();
-    }, []);
-
-    useEffect(() => {
-        // Check initial server status
-        browserAPI.runtime.sendMessage({
-            type: MESSAGE_TYPES.GET_SERVER_STATUS
-        }).then(response => {
-            if (response.success) {
-                setServerStatus(response.data.isOnline);
-            }
-        });
-
-        // Listen for server status changes
-        const listener = (message: any) => {
-            if (message.type === MESSAGE_TYPES.SERVER_STATUS_CHANGED) {
-                setServerStatus(message.data.isOnline);
-            }
-        };
-        browserAPI.runtime.onMessage.addListener(listener);
-        return () => browserAPI.runtime.onMessage.removeListener(listener);
+        void trackEvent('popup_viewed');
     }, []);
 
     const loadData = async () => {
@@ -116,10 +97,6 @@ export default function App() {
         }
     };
 
-    const handleViewAllPages = () => {
-        openInDesktop('handleViewAllPages', serverStatus, {});
-    };
-
     const handleDownload = async (file: SourceMapFile) => {
         try {
             setDownloading(prev => ({ ...prev, [file.id]: true }));
@@ -127,6 +104,10 @@ export default function App() {
                 onError: (error) => {
                     showToast(error.message, 'error');
                 }
+            });
+            void trackEvent('popup_download_single', {
+                source_map_file_id: file.id,
+                file_url: file.url
             });
             showToast('Download completed successfully', 'success');
         } catch (error) {
@@ -137,7 +118,23 @@ export default function App() {
     };
 
     const handleVersionMenuOpen = (groupUrl: string) => {
-        openInDesktop('handleVersionMenuOpen', serverStatus, { groupUrl });
+        openInDesktop('handleVersionMenuOpen', { groupUrl });
+    };
+
+    const handleOpenLeakReport = (file: SourceMapFile) => {
+        void trackEvent('popup_open_leak_report', {
+            source_map_file_id: file.id,
+            file_url: file.url,
+            findings_count: file.findings?.length ?? 0
+        });
+        openInDesktop('handleOpenDesktopApp', {
+            type: 'source-files',
+            url: pageData?.url ?? file.url,
+            sourceUrl: file.url,
+            sourceMapFileId: file.id,
+            sourceMapUrl: file.sourceMapUrl,
+            view: 'leak-findings'
+        });
     };
 
     const handleDownloadAll = async () => {
@@ -181,6 +178,7 @@ export default function App() {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
+                void trackEvent('popup_download_all_crx');
                 showToast('All files downloaded successfully', 'success');
             } catch (error) {
                 console.error('Error downloading files:', error);
@@ -196,6 +194,10 @@ export default function App() {
                     onError: (error) => {
                         showToast(error.message, 'error');
                     }
+                });
+                void trackEvent('popup_download_all_latest', {
+                    files_count: latestVersions.length,
+                    page_url: pageData.url
                 });
                 showToast('All files downloaded successfully', 'success');
             } catch (error) {
@@ -254,12 +256,25 @@ export default function App() {
         });
     }, [pageData?.files]);
 
-    const handleOpenDesktopApp = () => {
-        // Use the existing openInDesktop function which handles fallback
-        openInDesktop('handleOpenDesktopApp', serverStatus, {
+    const handleOpenSourceExplorer = () => {
+        void trackEvent('popup_open_source_explorer', {
+            resource_type: crxFile ? 'crx-files' : 'source-files',
+            page_url: crxFile ? crxFile.crxUrl : pageData?.url
+        });
+        openInDesktop('handleOpenDesktopApp', {
             type: crxFile ? 'crx-files' : 'source-files',
             url: crxFile ? crxFile.crxUrl : pageData?.url
         });
+    };
+
+    const handleOpenGithubFeedback = async () => {
+        void trackEvent('popup_open_github_feedback');
+        await browserAPI.tabs.create({ url: GITHUB_FEEDBACK_URL });
+    };
+
+    const handleOpenSettings = async () => {
+        void trackEvent('popup_open_settings');
+        await browserAPI.runtime.openOptionsPage();
     };
 
     if (loading) {
@@ -295,20 +310,16 @@ export default function App() {
             >
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Typography variant="h6">
-                        {crxFile ? 'Extension Files' : 'Source Maps'}
+                        {crxFile ? 'Extension Files' : 'Source Maps'} (v1.3.0)
                     </Typography>
                     <Box>
-                        <Tooltip title={`${serverStatus ? 'Desktop App Online - Click to open' : 'Desktop App Offline - Click to open'}`}>
+                        <Tooltip title="Open Source Explorer">
                             <IconButton
                                 size="small"
                                 sx={{ mr: 1 }}
-                                onClick={handleOpenDesktopApp}
+                                onClick={handleOpenSourceExplorer}
                             >
-                                {serverStatus ? (
-                                    <CheckCircle color="success" />
-                                ) : (
-                                    <CircleOutlined color="error" />
-                                )}
+                                <OpenInNewIcon />
                             </IconButton>
                         </Tooltip>
                         {((groupedFiles.length > 0 && groupedFiles.map(g => g.versions[0]).reduce((sum, file) => sum + file.size, 0) > 0) || (crxFile && (parsed?.size || 0 + crxFile.size) > 0)) && (
@@ -333,12 +344,16 @@ export default function App() {
                                 </span>
                             </Tooltip>
                         )}
-                        <Tooltip title="View all pages">
-                            <IconButton onClick={handleViewAllPages}>
-                                <ListAltIcon />
+                        <Tooltip title="Feedback on GitHub">
+                            <IconButton
+                                size="small"
+                                sx={{ mr: 1 }}
+                                onClick={handleOpenGithubFeedback}
+                            >
+                                <GitHubIcon />
                             </IconButton>
                         </Tooltip>
-                        <IconButton onClick={() => browserAPI.runtime.openOptionsPage()}>
+                        <IconButton onClick={handleOpenSettings}>
                             <SettingsIcon />
                         </IconButton>
                     </Box>
@@ -357,6 +372,7 @@ export default function App() {
                     <SourceMapTable
                         groupedFiles={groupedFiles}
                         onDownload={handleDownload}
+                        onOpenLeakReport={handleOpenLeakReport}
                         onVersionMenuOpen={handleVersionMenuOpen}
                         downloading={downloading}
                     />

@@ -1,12 +1,28 @@
 import JSZip from 'jszip';
 import { SourceMapConsumer } from 'source-map-js';
 import { SourceMapFile } from '@/types';
+import { getActiveRules } from '@/storage/rules';
+import { scanCode } from './leakScanner';
 
 interface DownloadOptions {
     onError?: (error: Error) => void;
 }
 
 export class SourceMapDownloader {
+    private static async updateFileFindings(file: SourceMapFile, sourceContents: string[]) {
+        try {
+            const activeRules = await getActiveRules();
+            const contentToScan = [file.originalContent, ...sourceContents]
+                .filter((chunk) => chunk.length > 0)
+                .join('\n');
+
+            file.findings = scanCode(contentToScan, activeRules);
+        } catch (error) {
+            console.error('Error scanning source map for leaks:', error);
+            file.findings = [];
+        }
+    }
+
     private static async createZipWithSourceMap(
         file: SourceMapFile,
         _zip: JSZip,
@@ -27,12 +43,14 @@ export class SourceMapDownloader {
 
         // Process source files maintaining their relative paths
         const processedPaths = new Set<string>();
+        const sourceContents: string[] = [];
         consumer.sources.forEach((sourcePath) => {
             if (processedPaths.has(sourcePath)) return;
             processedPaths.add(sourcePath);
 
-            const sourceContent = consumer.sourceContentFor(sourcePath);
+            const sourceContent = consumer.sourceContentFor(sourcePath, true);
             if (sourceContent) {
+                sourceContents.push(sourceContent);
                 // Clean up source path (remove leading slash and any '../' or './')
                 const cleanPath = sourcePath
                     .replace(/^\//, '') // Remove leading /
@@ -43,6 +61,8 @@ export class SourceMapDownloader {
                 sourceFolder.file(cleanPath, sourceContent);
             }
         });
+
+        await this.updateFileFindings(file, sourceContents);
 
         return { compiledPath, originalUrl };
     }

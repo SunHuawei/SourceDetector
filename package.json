@@ -1,7 +1,7 @@
 {
   "name": "source-detector",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.3.0",
   "type": "module",
   "scripts": {
     "dev": "node --watch --import tsx scripts/build.ts --watch --browser=chrome",
@@ -11,7 +11,9 @@
     "build:chrome": "tsx scripts/build.ts --browser=chrome",
     "build:firefox": "tsx scripts/build.ts --browser=firefox",
     "build:all": "npm run build:chrome && npm run build:firefox",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "test:unit": "node --test --import tsx \"src/**/*.test.ts\"",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@emotion/react": "^11.13.5",
@@ -33,6 +35,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
+    "@playwright/test": "latest",
     "@types/archiver": "^6.0.3",
     "@types/chrome": "^0.0.287",
     "@types/fs-extra": "^11.0.4",

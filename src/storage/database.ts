@@ -1,8 +1,8 @@
 import { DEFAULT_SETTINGS } from '@/background/constants';
-import { AppSettings, Page, PageSourceMap, SourceMapFile, CrxFile, SyncStatus } from '@/types';
+import { AppSettings, Page, PageSourceMap, SourceMapFile, CrxFile } from '@/types';
 import Dexie from 'dexie';
 
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const DB_NAME = 'SourceDetectorDB';
 
 export class SourceDetectorDB extends Dexie {
@@ -11,10 +11,18 @@ export class SourceDetectorDB extends Dexie {
     pageSourceMaps!: Dexie.Table<PageSourceMap, number>;
     settings!: Dexie.Table<AppSettings, string>;
     crxFiles!: Dexie.Table<CrxFile, number>;
-    syncStatus!: Dexie.Table<SyncStatus, string>;
 
     constructor() {
         super(DB_NAME);
+
+        this.version(1).stores({
+            sourceMapFiles: '++id, url, timestamp, fileType, isLatest, hash, size',
+            pages: '++id, url, timestamp',
+            pageSourceMaps: '++id, pageId, sourceMapId, timestamp',
+            settings: 'id',
+            crxFiles: '++id, pageUrl, pageTitle, crxUrl, blob, size, timestamp, count, contentHash',
+            syncStatus: 'tableName'
+        });
 
         this.version(DB_VERSION).stores({
             sourceMapFiles: '++id, url, timestamp, fileType, isLatest, hash, size',
@@ -22,7 +30,7 @@ export class SourceDetectorDB extends Dexie {
             pageSourceMaps: '++id, pageId, sourceMapId, timestamp',
             settings: 'id',
             crxFiles: '++id, pageUrl, pageTitle, crxUrl, blob, size, timestamp, count, contentHash',
-            syncStatus: 'tableName'
+            syncStatus: null
         });
     }
 
@@ -176,31 +184,4 @@ export class SourceDetectorDB extends Dexie {
         });
     }
 
-    // Sync status methods
-    async getLastSyncId(table: string): Promise<number> {
-        const status = await this.syncStatus.get(table);
-        return status?.lastId || 0;
-    }
-
-    async updateLastSyncId(table: string, id: number): Promise<void> {
-        await this.syncStatus.put({ tableName: table, lastId: id });
-    }
-
-    async getModifiedData(table: string, lastId: number, chunkSize: number): Promise<any[]> {
-        const tableMap = {
-            sourceMapFiles: this.sourceMapFiles,
-            pages: this.pages,
-            pageSourceMaps: this.pageSourceMaps,
-            crxFiles: this.crxFiles
-        };
-
-        const dbTable = tableMap[table as keyof typeof tableMap];
-        if (!dbTable) return [];
-
-        return await dbTable
-            .where('id')
-            .above(lastId)
-            .limit(chunkSize)
-            .toArray();
-    }
 } 
