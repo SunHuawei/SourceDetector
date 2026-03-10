@@ -29,7 +29,7 @@
     "jszip": "^3.10.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^7.0.2",
+    "react-router-dom": "^7.13.1",
     "source-map-js": "^1.2.1",
     "webextension-polyfill": "^0.10.0"
   },
@@ -45,7 +45,7 @@
     "@typescript-eslint/eslint-plugin": "^8.17.0",
     "@typescript-eslint/parser": "^8.17.0",
     "archiver": "^5.3.1",
-    "esbuild": "^0.20.1",
+    "esbuild": "^0.27.3",
     "eslint": "^9.16.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.14",
