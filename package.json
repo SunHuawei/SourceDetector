@@ -1,7 +1,7 @@
 {
   "name": "source-detector",
   "private": true,
-  "version": "1.3.0",
+  "version": "1.3.2",
   "type": "module",
   "scripts": {
     "dev": "node --watch --import tsx scripts/build.ts --watch --browser=chrome",
