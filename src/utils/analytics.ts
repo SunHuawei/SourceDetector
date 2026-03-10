@@ -77,7 +77,7 @@ export async function trackEvent(eventName: string, params: Record<string, unkno
                                 session_id: sessionId,
                                 engagement_time_msec: DEFAULT_ENGAGEMENT_TIME_MSEC,
                                 app_name: 'source_detector',
-                                app_version: '1.3.0'
+                                app_version: '1.3.2'
                             }
                         }
                     ]

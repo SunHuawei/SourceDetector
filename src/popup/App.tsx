@@ -310,7 +310,7 @@ export default function App() {
             >
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Typography variant="h6">
-                        {crxFile ? 'Extension Files' : 'Source Maps'} (v1.3.0)
+                        {crxFile ? 'Extension Files' : 'Source Maps'} (v1.3.2)
                     </Typography>
                     <Box>
                         <Tooltip title="Open Source Explorer">

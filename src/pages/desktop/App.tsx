@@ -455,7 +455,7 @@ export default function SourceExplorerApp() {
                                 Source Explorer
                             </Typography>
                             <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                                v1.3.0 - Three-pane source intelligence workspace
+                                v1.3.2 - Three-pane source intelligence workspace
                             </Typography>
                         </Box>
                         <Tooltip title="Feedback on GitHub">

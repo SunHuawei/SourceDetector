@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Synced in-app version strings and extension manifest version to `1.3.2` so popup, Source Explorer, analytics, and packaged manifest report the same release.
+
 ### Added
 
 - Added `docs/robots.txt` and `docs/sitemap.xml` for crawl/index baseline on GitHub Pages.
