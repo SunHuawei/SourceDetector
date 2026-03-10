@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Source Detector — source map とクライアントサイド漏えい検知のための Chrome 拡張</title>
+    <meta name="description" content="Source Detector は source map の発見、クライアントサイド資産の収集、潜在的なシークレット漏えい検知を行う Chrome 拡張です。" />
+    <meta property="og:title" content="Source Detector" />
+    <meta property="og:description" content="source map の発見、クライアントサイド資産の収集、潜在的な漏えい検知を行う Chrome 拡張。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/ja/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/ja/" />
+    <link rel="alternate" hreflang="en" href="https://sunhuawei.github.io/SourceDetector/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://sunhuawei.github.io/SourceDetector/zh/" />
+    <link rel="alternate" hreflang="ja" href="https://sunhuawei.github.io/SourceDetector/ja/" />
+    <link rel="alternate" hreflang="x-default" href="https://sunhuawei.github.io/SourceDetector/" />
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #131a2a;
+        --text: #eef2ff;
+        --muted: #a7b0c5;
+        --line: #24314d;
+        --accent: #6ea8fe;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #0b1020 0%, #10172a 100%);
+        color: var(--text);
+        line-height: 1.6;
+      }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .wrap { max-width: 1120px; margin: 0 auto; padding: 24px; }
+      .nav {
+        display: flex; justify-content: space-between; align-items: center; gap: 16px;
+        padding: 8px 0 24px;
+      }
+      .nav-links { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); }
+      .brand { font-weight: 700; letter-spacing: 0.2px; }
+      .hero {
+        display: grid; grid-template-columns: 1.2fr 1fr; gap: 28px; align-items: center;
+        padding: 28px 0 24px;
+      }
+      .card {
+        background: rgba(19,26,42,0.78);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 22px;
+        box-shadow: 0 10px 35px rgba(0,0,0,0.22);
+      }
+      h1 { font-size: clamp(36px, 5vw, 56px); line-height: 1.05; margin: 0 0 16px; }
+      h2 { font-size: 28px; margin: 0 0 14px; }
+      h3 { font-size: 18px; margin: 0 0 10px; }
+      p.lead { font-size: 18px; color: #d8e0f6; margin: 0 0 20px; }
+      .cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 16px; }
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        padding: 12px 18px; border-radius: 12px; font-weight: 600; border: 1px solid var(--line);
+      }
+      .btn-primary { background: var(--accent); color: #07101f; border-color: transparent; }
+      .btn-secondary { background: transparent; color: var(--text); }
+      .muted { color: var(--muted); }
+      .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; }
+      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
+      section { padding: 26px 0; }
+      ul { padding-left: 20px; }
+      .pill {
+        display: inline-block; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px;
+        color: var(--muted); font-size: 13px; margin: 0 8px 8px 0;
+      }
+      footer {
+        border-top: 1px solid var(--line); margin-top: 24px; padding: 24px 0 40px; color: var(--muted);
+      }
+      @media (max-width: 860px) {
+        .hero, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Source Detector",
+        "applicationCategory": "BrowserApplication",
+        "operatingSystem": "Chrome",
+        "url": "https://sunhuawei.github.io/SourceDetector/ja/",
+        "downloadUrl": "https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn",
+        "sameAs": [
+          "https://github.com/SunHuawei/SourceDetector",
+          "https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn"
+        ],
+        "description": "source map の発見、クライアントサイド資産の収集、潜在的なシークレット漏えい検知を行う Chrome 拡張。"
+      }
+    </script>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="nav">
+        <div class="brand">Source Detector</div>
+        <div class="nav-links">
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+          <a href="https://github.com/SunHuawei/SourceDetector/blob/main/docs/README.md">Docs</a>
+          <a href="../privacy/">Privacy</a>
+          <a href="../">English</a>
+          <a href="../zh/">简体中文</a>
+        </div>
+      </div>
+
+      <section class="hero">
+        <div>
+          <div class="pill">Chrome extension</div>
+          <div class="pill">Source maps</div>
+          <div class="pill">Leak detection</div>
+          <h1>source map を素早く発見し、クライアント資産を検査し、漏えいリスクを早期に見つける。</h1>
+          <p class="lead">Source Detector は source map の発見、クライアントサイド資産の収集、Web 資産の潜在的なシークレット漏えい検知を支援する Chrome 拡張です。</p>
+          <div class="cta">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome に追加</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">GitHub を見る</a>
+          </div>
+          <p class="muted">Language: <a href="../">English</a> · <a href="../zh/">简体中文</a> · 日本語</p>
+          <p class="muted">ローカルファースト。コア利用にアカウントは不要です。</p>
+        </div>
+        <div class="card">
+          <h3>選ばれる理由</h3>
+          <ul>
+            <li>本番サイトで露出した source map を検出</li>
+            <li>バンドル資産内の API Key / AI Key 漏えい候補を発見</li>
+            <li>構造化されたビューで証拠を確認</li>
+            <li>検証や報告向けに成果物をエクスポート</li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <h2>Source Detector ができること</h2>
+        <div class="grid-3">
+          <div class="card">
+            <h3>Source map 検出</h3>
+            <p class="muted">閲覧中のページと関連資産から source map 参照を見つけます。</p>
+          </div>
+          <div class="card">
+            <h3>漏えいルールスキャン</h3>
+            <p class="muted">内蔵ルールとカスタムルールでリスクの高いパターンを可視化します。</p>
+          </div>
+          <div class="card">
+            <h3>証拠エクスポート</h3>
+            <p class="muted">バージョン単位またはドメイン単位で ZIP を出力できます。</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>想定ユーザー</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>セキュリティリサーチャー</h3>
+            <p class="muted">クライアントサイドの露出調査を効率化し、優先度付けを支援します。</p>
+          </div>
+          <div class="card">
+            <h3>開発者・フロントエンドチーム</h3>
+            <p class="muted">公開資産の監査や意図しない漏えいの確認を素早く実施できます。</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>使い方</h2>
+        <div class="grid-3">
+          <div class="card"><h3>1. サイトを開く</h3><p class="muted">Chrome で対象ページを表示します。</p></div>
+          <div class="card"><h3>2. 収集する</h3><p class="muted">拡張が source map 参照と関連資産を収集します。</p></div>
+          <div class="card"><h3>3. 分析・出力する</h3><p class="muted">証拠確認、ルールスキャン、必要に応じてエクスポートします。</p></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>プライバシーと権限</h2>
+        <div class="card">
+          <p>Source Detector はローカルファースト設計です。コア機能にアカウントは不要で、収集データと設定は端末内で扱う前提です。</p>
+          <p>詳細: <a href="../privacy/">Privacy Policy</a></p>
+        </div>
+      </section>
+
+      <section>
+        <h2>FAQ</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>サイトデータを外部に送信しますか？</h3>
+            <p class="muted">ローカルファーストを前提に設計されています。最新仕様は Privacy Policy とリポジトリを確認してください。</p>
+          </div>
+          <div class="card">
+            <h3>漏えいした API Key は検出できますか？</h3>
+            <p class="muted">内蔵/カスタムルールで疑わしいパターンを抽出し、証拠確認を補助します。</p>
+          </div>
+          <div class="card">
+            <h3>どこからインストールできますか？</h3>
+            <p class="muted">このページの公式 Chrome Web Store リンクからインストールできます。</p>
+          </div>
+          <div class="card">
+            <h3>フィードバックはどこへ送ればよいですか？</h3>
+            <p class="muted">不具合報告や要望は GitHub Issues へお願いします。</p>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div>Source Detector</div>
+        <div>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          · <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+          · <a href="https://github.com/SunHuawei/SourceDetector/blob/main/docs/roadmap.md">Roadmap</a>
+          · <a href="../privacy/">Privacy</a>
+          · <a href="../">English</a>
+          · <a href="../zh/">简体中文</a>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
