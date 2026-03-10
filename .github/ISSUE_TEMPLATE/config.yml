@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/SunHuawei/SourceDetector/discussions
+    about: Ask usage questions or discuss ideas with the community.
+  - name: Documentation
+    url: https://github.com/SunHuawei/SourceDetector/blob/main/docs/README.md
+    about: Read Pages, docs structure, and maintenance notes.
+  - name: Project website
+    url: https://sunhuawei.github.io/SourceDetector/
+    about: Visit the multilingual landing pages and privacy policy.

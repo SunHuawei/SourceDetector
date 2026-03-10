@@ -9,6 +9,9 @@ Source Detector 是一个 Chrome 扩展，用于发现 source map、收集前端
 - 隐私政策：[在线版](https://sunhuawei.github.io/SourceDetector/privacy/) · [仓库文件](./PRIVACY.md)
 - 问题反馈：[GitHub Issues](https://github.com/SunHuawei/SourceDetector/issues)
 - 站点文档：[Pages 说明](./docs/README.md) · [增长规划](./docs/roadmap.md)
+- 变更记录：[CHANGELOG](./CHANGELOG.md)
+- 常见问题：[在线 FAQ](https://sunhuawei.github.io/SourceDetector/faq.md) · [仓库文件](./docs/faq.md)
+- 截图/视频计划：[docs/assets/README.md](./docs/assets/README.md)
 
 ## 功能概览
 

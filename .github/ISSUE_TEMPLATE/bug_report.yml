@@ -1,0 +1,68 @@
+name: Bug report
+description: Report a reproducible problem in Source Detector.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Source Detector.
+        Please include reproducible details and avoid posting sensitive keys, tokens, or private source code.
+
+  - type: input
+    id: extension_version
+    attributes:
+      label: Extension version
+      description: Version shown in Chrome extension management page.
+      placeholder: e.g. 1.3.2
+    validations:
+      required: true
+
+  - type: input
+    id: browser_version
+    attributes:
+      label: Browser version
+      description: Chrome version and OS.
+      placeholder: e.g. Chrome 124 on macOS 14
+    validations:
+      required: true
+
+  - type: input
+    id: page_url
+    attributes:
+      label: Target page URL (if applicable)
+      description: Public URL where the issue appears. Remove private links if needed.
+      placeholder: https://example.com/app
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List exact steps, including which panel/button you used.
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected vs actual behavior
+      description: Explain what you expected and what happened instead.
+      placeholder: Expected ..., but got ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console logs / screenshots
+      description: Paste safe logs or attach screenshots. Redact sensitive content first.
+      placeholder: Optional but strongly recommended.
+    validations:
+      required: false

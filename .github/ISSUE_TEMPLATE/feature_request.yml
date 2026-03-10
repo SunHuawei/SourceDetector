@@ -1,0 +1,59 @@
+name: Feature request
+description: Suggest an improvement for Source Detector.
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing ideas.
+        Please focus on concrete user problems and expected workflow improvements.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What is difficult or missing in your current workflow?
+      placeholder: When I analyze ..., I cannot ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe behavior, UI, or data flow you expect.
+      placeholder: Add a way to ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you tried or evaluated.
+      placeholder: I also considered ...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Impact area
+      options:
+        - label: Source map discovery
+        - label: Leak pattern scanning
+        - label: Explorer / data review
+        - label: Export workflow
+        - label: Settings / rules management
+        - label: Documentation / onboarding
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Links, mockups, or usage examples.
+      placeholder: Optional references
+    validations:
+      required: false

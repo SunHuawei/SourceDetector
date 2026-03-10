@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sunhuawei.github.io/SourceDetector/sitemap.xml
