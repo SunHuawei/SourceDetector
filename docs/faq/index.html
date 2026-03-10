@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Source Detector FAQ | Privacy, permissions, export, and feedback</title>
+    <meta name="description" content="Frequently asked questions about Source Detector, including privacy, permissions, leak detection, export, and reporting issues." />
+    <meta property="og:title" content="Source Detector FAQ" />
+    <meta property="og:description" content="Frequently asked questions about Source Detector, including privacy, permissions, leak detection, export, and feedback." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/faq/" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/faq/" />
+    <link rel="alternate" hreflang="en" href="https://sunhuawei.github.io/SourceDetector/faq/" />
+    <link rel="alternate" hreflang="x-default" href="https://sunhuawei.github.io/SourceDetector/faq/" />
+    <style>
+      body { font-family: Inter, ui-sans-serif, system-ui, sans-serif; margin: 0; background: #0f172a; color: #e5e7eb; }
+      .wrap { max-width: 900px; margin: 0 auto; padding: 32px 20px 64px; }
+      a { color: #93c5fd; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      h1, h2, h3 { color: #fff; }
+      .panel { background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 24px; }
+      .muted { color: #94a3b8; }
+      .q { margin-top: 28px; }
+      ul { padding-left: 20px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <p><a href="../">← Back to homepage</a> · <a href="../privacy/">Privacy</a> · <a href="https://github.com/SunHuawei/SourceDetector/issues">Issues</a></p>
+      <div class="panel">
+        <h1>Source Detector FAQ</h1>
+        <p class="muted">Common questions about privacy, permissions, leak detection, export, and feedback.</p>
+
+        <div class="q">
+          <h2>1) Does Source Detector upload website data to a remote backend?</h2>
+          <p>Source Detector is designed for a local-first workflow. Core analysis and storage are intended to run on your device, and no account is required for core usage.</p>
+          <p>For the latest implementation details and policy wording, see the <a href="../privacy/">Privacy Policy</a> and the <a href="https://github.com/SunHuawei/SourceDetector">repository</a>.</p>
+        </div>
+
+        <div class="q">
+          <h2>2) Why does the extension request these permissions?</h2>
+          <ul>
+            <li><strong>storage</strong>: store settings and collected artifacts locally.</li>
+            <li><strong>webRequest</strong>: detect source map references and related network signals.</li>
+            <li><strong>host permissions</strong>: access target assets for analysis that you initiate in browser context.</li>
+          </ul>
+          <p>See policy details in the <a href="../privacy/">Privacy Policy</a>.</p>
+        </div>
+
+        <div class="q">
+          <h2>3) Can Source Detector prove that a key is leaked?</h2>
+          <p>No. It helps surface potentially risky patterns using rules and evidence views. Findings should be validated manually before any disclosure or remediation decision.</p>
+        </div>
+
+        <div class="q">
+          <h2>4) What can I export?</h2>
+          <p>You can export collected artifacts as ZIP bundles for selected versions or domain-level batches, then review them offline or attach evidence to internal reports.</p>
+        </div>
+
+        <div class="q">
+          <h2>5) How should I report bugs or request features?</h2>
+          <p>Use GitHub Issues:</p>
+          <ul>
+            <li><a href="https://github.com/SunHuawei/SourceDetector/issues/new?template=bug_report.yml">Bug report form</a></li>
+            <li><a href="https://github.com/SunHuawei/SourceDetector/issues/new?template=feature_request.yml">Feature request form</a></li>
+          </ul>
+        </div>
+
+        <div class="q">
+          <h2>6) Is Source Detector a replacement for a full security assessment?</h2>
+          <p>No. It is a focused client-side analysis and evidence collection tool. Treat its output as one input to a broader review process, not a complete security guarantee.</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

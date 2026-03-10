@@ -10,7 +10,7 @@ Source Detector is a Chrome extension for discovering source maps, collecting cl
 - Issues: [GitHub Issues](https://github.com/SunHuawei/SourceDetector/issues)
 - Docs: [Pages Guide](./docs/README.md) · [Growth Roadmap](./docs/roadmap.md)
 - Changelog: [CHANGELOG](./CHANGELOG.md)
-- FAQ: [Online FAQ](https://sunhuawei.github.io/SourceDetector/faq.md) · [Repo file](./docs/faq.md)
+- FAQ: [Online FAQ](https://sunhuawei.github.io/SourceDetector/faq/) · [Repo file](./docs/faq.md)
 - Screenshot plan: [docs/assets/README.md](./docs/assets/README.md)
 
 ## What it does
