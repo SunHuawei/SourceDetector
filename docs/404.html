@@ -52,22 +52,23 @@
       .meta-links a { color: var(--accent); text-decoration: none; }
       .meta-links a:hover { text-decoration: underline; }
     </style>
+    <script defer src="./assets/website_analytics.js"></script>
   </head>
-  <body>
+  <body data-page-type="not_found">
     <main class="wrap">
       <section class="card">
         <h1>404</h1>
         <p>The page you are looking for does not exist or has moved.</p>
         <p class="muted">Use one of the entry points below to continue browsing Source Detector content.</p>
         <div class="links">
-          <a class="btn btn-primary" href="./">Back to English Home</a>
-          <a class="btn" href="./zh/">简体中文入口</a>
-          <a class="btn" href="./ja/">日本語入口</a>
-          <a class="btn" href="./privacy/">Privacy</a>
+          <a class="btn btn-primary" href="./" data-analytics-event="outbound_click" data-analytics-cta-name="not_found_home" data-analytics-cta-location="body" data-analytics-destination-type="home">Back to English Home</a>
+          <a class="btn" href="./zh/" data-analytics-event="language_switch" data-analytics-cta-name="not_found_language_zh" data-analytics-cta-location="body" data-analytics-destination-type="language_page" data-analytics-target-language="zh_cn">简体中文入口</a>
+          <a class="btn" href="./ja/" data-analytics-event="language_switch" data-analytics-cta-name="not_found_language_ja" data-analytics-cta-location="body" data-analytics-destination-type="language_page" data-analytics-target-language="ja">日本語入口</a>
+          <a class="btn" href="./privacy/" data-analytics-event="outbound_click" data-analytics-cta-name="not_found_privacy" data-analytics-cta-location="body" data-analytics-destination-type="privacy">Privacy</a>
         </div>
         <p class="meta-links">
-          <a href="https://github.com/SunHuawei/SourceDetector/blob/main/docs/README.md">Docs</a>
-          · <a href="./faq/">FAQ</a>
+          <a href="https://github.com/SunHuawei/SourceDetector/blob/main/docs/README.md" data-analytics-event="outbound_click" data-analytics-cta-name="not_found_docs" data-analytics-cta-location="body" data-analytics-destination-type="docs">Docs</a>
+          · <a href="./faq/" data-analytics-event="outbound_click" data-analytics-cta-name="not_found_faq" data-analytics-cta-location="body" data-analytics-destination-type="faq">FAQ</a>
         </p>
       </section>
     </main>

@@ -103,19 +103,20 @@
         "description": "Chrome extension for discovering source maps, collecting client-side artifacts, and detecting potential secret leakage in web assets."
       }
     </script>
+    <script defer src="./assets/website_analytics.js"></script>
   </head>
-  <body>
+  <body data-page-type="home">
     <div class="wrap">
       <div class="nav">
         <div class="brand">Source Detector</div>
         <div class="nav-links">
-          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
-          <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
-          <a href="https://github.com/SunHuawei/SourceDetector/blob/main/docs/README.md">Docs</a>
-          <a href="./faq/">FAQ</a>
-          <a href="./privacy/">Privacy</a>
-          <a href="./zh/">简体中文</a>
-          <a href="./ja/">日本語</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="nav_install_chrome" data-analytics-cta-location="nav" data-analytics-destination-type="chrome_web_store">Chrome Web Store</a>
+          <a href="https://github.com/SunHuawei/SourceDetector" data-analytics-event="outbound_click" data-analytics-cta-name="nav_github" data-analytics-cta-location="nav" data-analytics-destination-type="github">GitHub</a>
+          <a href="https://github.com/SunHuawei/SourceDetector/blob/main/docs/README.md" data-analytics-event="outbound_click" data-analytics-cta-name="nav_docs" data-analytics-cta-location="nav" data-analytics-destination-type="docs">Docs</a>
+          <a href="./faq/" data-analytics-event="outbound_click" data-analytics-cta-name="nav_faq" data-analytics-cta-location="nav" data-analytics-destination-type="faq">FAQ</a>
+          <a href="./privacy/" data-analytics-event="outbound_click" data-analytics-cta-name="nav_privacy" data-analytics-cta-location="nav" data-analytics-destination-type="privacy">Privacy</a>
+          <a href="./zh/" data-analytics-event="language_switch" data-analytics-cta-name="nav_language_zh" data-analytics-cta-location="nav" data-analytics-destination-type="language_page" data-analytics-target-language="zh_cn">简体中文</a>
+          <a href="./ja/" data-analytics-event="language_switch" data-analytics-cta-name="nav_language_ja" data-analytics-cta-location="nav" data-analytics-destination-type="language_page" data-analytics-target-language="ja">日本語</a>
         </div>
       </div>
 
@@ -127,10 +128,10 @@
           <h1>Discover source maps. Inspect client-side assets. Catch risky leaks faster.</h1>
           <p class="lead">Source Detector is a Chrome extension for discovering source maps, collecting client-side artifacts, and detecting potential secret leakage in web assets.</p>
           <div class="cta">
-            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
-            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="hero_install_chrome" data-analytics-cta-location="hero" data-analytics-destination-type="chrome_web_store">Install on Chrome</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector" data-analytics-event="outbound_click" data-analytics-cta-name="hero_github" data-analytics-cta-location="hero" data-analytics-destination-type="github">View on GitHub</a>
           </div>
-          <p class="muted">Language: English · <a href="./zh/">简体中文</a> · <a href="./ja/">日本語</a></p>
+          <p class="muted">Language: English · <a href="./zh/" data-analytics-event="language_switch" data-analytics-cta-name="hero_language_zh" data-analytics-cta-location="hero" data-analytics-destination-type="language_page" data-analytics-target-language="zh_cn">简体中文</a> · <a href="./ja/" data-analytics-event="language_switch" data-analytics-cta-name="hero_language_ja" data-analytics-cta-location="hero" data-analytics-destination-type="language_page" data-analytics-target-language="ja">日本語</a></p>
           <p class="muted">Local-first workflow. No account required for core use.</p>
         </div>
         <div class="card">
@@ -189,7 +190,7 @@
         <h2>Privacy and permissions</h2>
         <div class="card">
           <p>Source Detector is designed around a local-first workflow. Core functionality does not require an account. Collected artifacts and settings are intended to stay on your device for analysis workflows.</p>
-          <p>Read the full policy: <a href="./privacy/">Privacy Policy</a></p>
+          <p>Read the full policy: <a href="./privacy/" data-analytics-event="outbound_click" data-analytics-cta-name="body_privacy_policy" data-analytics-cta-location="body" data-analytics-destination-type="privacy">Privacy Policy</a></p>
         </div>
       </section>
 
@@ -218,14 +219,14 @@
       <footer>
         <div>Source Detector</div>
         <div>
-          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
-          · <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
-          · <a href="https://github.com/SunHuawei/SourceDetector/blob/main/docs/README.md">Docs</a>
-          · <a href="./faq/">FAQ</a>
-          · <a href="https://github.com/SunHuawei/SourceDetector/blob/main/docs/roadmap.md">Roadmap</a>
-          · <a href="./privacy/">Privacy</a>
-          · <a href="./zh/">简体中文</a>
-          · <a href="./ja/">日本語</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="footer_install_chrome" data-analytics-cta-location="footer" data-analytics-destination-type="chrome_web_store">Chrome Web Store</a>
+          · <a href="https://github.com/SunHuawei/SourceDetector" data-analytics-event="outbound_click" data-analytics-cta-name="footer_github" data-analytics-cta-location="footer" data-analytics-destination-type="github">GitHub</a>
+          · <a href="https://github.com/SunHuawei/SourceDetector/blob/main/docs/README.md" data-analytics-event="outbound_click" data-analytics-cta-name="footer_docs" data-analytics-cta-location="footer" data-analytics-destination-type="docs">Docs</a>
+          · <a href="./faq/" data-analytics-event="outbound_click" data-analytics-cta-name="footer_faq" data-analytics-cta-location="footer" data-analytics-destination-type="faq">FAQ</a>
+          · <a href="https://github.com/SunHuawei/SourceDetector/blob/main/docs/roadmap.md" data-analytics-event="outbound_click" data-analytics-cta-name="footer_roadmap" data-analytics-cta-location="footer" data-analytics-destination-type="roadmap">Roadmap</a>
+          · <a href="./privacy/" data-analytics-event="outbound_click" data-analytics-cta-name="footer_privacy" data-analytics-cta-location="footer" data-analytics-destination-type="privacy">Privacy</a>
+          · <a href="./zh/" data-analytics-event="language_switch" data-analytics-cta-name="footer_language_zh" data-analytics-cta-location="footer" data-analytics-destination-type="language_page" data-analytics-target-language="zh_cn">简体中文</a>
+          · <a href="./ja/" data-analytics-event="language_switch" data-analytics-cta-name="footer_language_ja" data-analytics-cta-location="footer" data-analytics-destination-type="language_page" data-analytics-target-language="ja">日本語</a>
         </div>
       </footer>
     </div>

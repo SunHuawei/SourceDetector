@@ -25,14 +25,21 @@
 
 ```text
 docs/
+├── 404.html               # 404 页面
 ├── index.html             # 英文首页（默认首页）
+├── faq/
+│   └── index.html         # FAQ（英文）
 ├── privacy/
 │   └── index.html         # 隐私政策（英文）
 ├── zh/
 │   └── index.html         # 中文页面
 ├── ja/
 │   └── index.html         # 日文页面
+├── assets/
+│   ├── README.md          # 站点素材占位
+│   └── website_analytics.js # GitHub Pages 站点 GA4 埋点
 ├── README.md              # 本文档（发布与维护说明）
+├── ga4-website-rollout-plan.md # GA4 上线方案
 └── roadmap.md             # 增长与发现优化规划
 ```
 
@@ -68,3 +75,13 @@ docs/
 - 三语页面互链正确
 - 页面标题与描述已对应语言更新
 - workflow 运行成功并生成 Pages URL
+
+## Website GA4（仅 GitHub Pages）
+
+- 作用范围：仅 `docs/` 静态站点页面（不包含扩展运行时）
+- 实现文件：`docs/assets/website_analytics.js`
+- Measurement ID：当前占位值来自仓库根目录 `.ga4-website-measurement-id`（`G-PLACEHOLDER123`）
+- 事件：`page_view`、`install_intent`、`outbound_click`、`language_switch`
+- 关键参数：`page_language`、`page_type`、`page_path`、`cta_name`、`cta_location`、`destination_type`
+- 隐私默认：默认不发送 `destination_url`，仅使用 `destination_type` 分类
+- 链接标注：通过页面上的 `data-analytics-*` 属性声明优先 CTA 的事件与参数

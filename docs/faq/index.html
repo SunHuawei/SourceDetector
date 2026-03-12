@@ -24,10 +24,11 @@
       .q { margin-top: 28px; }
       ul { padding-left: 20px; }
     </style>
+    <script defer src="../assets/website_analytics.js"></script>
   </head>
-  <body>
+  <body data-page-type="faq">
     <div class="wrap">
-      <p><a href="../">← Back to homepage</a> · <a href="../privacy/">Privacy</a> · <a href="https://github.com/SunHuawei/SourceDetector/issues">Issues</a></p>
+      <p><a href="../" data-analytics-event="outbound_click" data-analytics-cta-name="faq_back_home" data-analytics-cta-location="nav" data-analytics-destination-type="home">← Back to homepage</a> · <a href="../privacy/" data-analytics-event="outbound_click" data-analytics-cta-name="faq_nav_privacy" data-analytics-cta-location="nav" data-analytics-destination-type="privacy">Privacy</a> · <a href="https://github.com/SunHuawei/SourceDetector/issues" data-analytics-event="outbound_click" data-analytics-cta-name="faq_nav_issues" data-analytics-cta-location="nav" data-analytics-destination-type="github">Issues</a></p>
       <div class="panel">
         <h1>Source Detector FAQ</h1>
         <p class="muted">Common questions about privacy, permissions, leak detection, export, and feedback.</p>
@@ -35,7 +36,7 @@
         <div class="q">
           <h2>1) Does Source Detector upload website data to a remote backend?</h2>
           <p>Source Detector is designed for a local-first workflow. Core analysis and storage are intended to run on your device, and no account is required for core usage.</p>
-          <p>For the latest implementation details and policy wording, see the <a href="../privacy/">Privacy Policy</a> and the <a href="https://github.com/SunHuawei/SourceDetector">repository</a>.</p>
+          <p>For the latest implementation details and policy wording, see the <a href="../privacy/" data-analytics-event="outbound_click" data-analytics-cta-name="faq_q1_privacy" data-analytics-cta-location="body" data-analytics-destination-type="privacy">Privacy Policy</a> and the <a href="https://github.com/SunHuawei/SourceDetector" data-analytics-event="outbound_click" data-analytics-cta-name="faq_q1_repository" data-analytics-cta-location="body" data-analytics-destination-type="github">repository</a>.</p>
         </div>
 
         <div class="q">
@@ -45,7 +46,7 @@
             <li><strong>webRequest</strong>: detect source map references and related network signals.</li>
             <li><strong>host permissions</strong>: access target assets for analysis that you initiate in browser context.</li>
           </ul>
-          <p>See policy details in the <a href="../privacy/">Privacy Policy</a>.</p>
+          <p>See policy details in the <a href="../privacy/" data-analytics-event="outbound_click" data-analytics-cta-name="faq_q2_privacy" data-analytics-cta-location="body" data-analytics-destination-type="privacy">Privacy Policy</a>.</p>
         </div>
 
         <div class="q">
@@ -62,8 +63,8 @@
           <h2>5) How should I report bugs or request features?</h2>
           <p>Use GitHub Issues:</p>
           <ul>
-            <li><a href="https://github.com/SunHuawei/SourceDetector/issues/new?template=bug_report.yml">Bug report form</a></li>
-            <li><a href="https://github.com/SunHuawei/SourceDetector/issues/new?template=feature_request.yml">Feature request form</a></li>
+            <li><a href="https://github.com/SunHuawei/SourceDetector/issues/new?template=bug_report.yml" data-analytics-event="outbound_click" data-analytics-cta-name="faq_bug_report" data-analytics-cta-location="body" data-analytics-destination-type="github">Bug report form</a></li>
+            <li><a href="https://github.com/SunHuawei/SourceDetector/issues/new?template=feature_request.yml" data-analytics-event="outbound_click" data-analytics-cta-name="faq_feature_request" data-analytics-cta-location="body" data-analytics-destination-type="github">Feature request form</a></li>
           </ul>
         </div>
 
