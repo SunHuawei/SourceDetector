@@ -1,5 +1,4 @@
 yahoo-front-end-architecture | What public source maps reveal about boundary design at internet scale
-stripe-dashboard-sourcemaps | Why internal-quality front ends often leave the clearest public architectural fingerprints
 github-public-frontend-footprints | What GitHub’s public asset graph teaches about front-end modularity and operational maturity
 shopify-marketing-vs-product-frontend | Two front-end worlds inside one company: growth pages versus product surfaces
 trello-atlassian-chunk-discipline | What Trello’s public bundles suggest about long-lived app modularity

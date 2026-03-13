@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stripe’s Three Front Ends Tell a Better Story Than Any Stack Diagram | Source Detector</title>
+    <meta name="description" content="What Stripe’s public marketing site, dashboard login surface, and docs site reveal about front-end boundary design, trust separation, and operational maturity." />
+    <meta property="og:title" content="Stripe’s Three Front Ends Tell a Better Story Than Any Stack Diagram" />
+    <meta property="og:description" content="What Stripe’s public marketing site, dashboard login surface, and docs site reveal about front-end boundary design, trust separation, and operational maturity." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/stripe-dashboard-sourcemaps/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/stripe-dashboard-sourcemaps/" />
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #12192b;
+        --text: #edf2ff;
+        --muted: #a6afc7;
+        --line: #25314d;
+        --accent: #7ab0ff;
+        --accent-2: #8ef0c9;
+        --quote: #c9d7ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #0b1020 0%, #10172a 100%);
+        color: var(--text);
+        line-height: 1.75;
+      }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .wrap { max-width: 920px; margin: 0 auto; padding: 28px 22px 72px; }
+      .nav, .footer-links { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); }
+      .eyebrow {
+        display: inline-block; margin-bottom: 14px; padding: 6px 10px; border: 1px solid var(--line);
+        border-radius: 999px; color: var(--muted); font-size: 13px;
+      }
+      .hero { padding: 20px 0 14px; }
+      h1 {
+        font-size: clamp(34px, 5vw, 56px);
+        line-height: 1.05;
+        margin: 0 0 16px;
+        letter-spacing: -0.03em;
+      }
+      .subhead { font-size: 20px; color: #d7e1f7; max-width: 780px; margin: 0 0 14px; }
+      .meta { color: var(--muted); font-size: 14px; }
+      .panel {
+        margin: 26px 0;
+        background: rgba(18,25,43,.78);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 22px;
+      }
+      article { margin-top: 22px; }
+      h2 { font-size: 29px; line-height: 1.2; margin: 46px 0 16px; }
+      h3 { font-size: 21px; line-height: 1.3; margin: 28px 0 12px; }
+      p { margin: 0 0 18px; }
+      ul { padding-left: 22px; margin: 0 0 18px; }
+      li { margin: 0 0 10px; }
+      blockquote {
+        margin: 22px 0;
+        padding: 16px 18px;
+        border-left: 4px solid var(--accent-2);
+        background: rgba(255,255,255,.03);
+        color: var(--quote);
+        border-radius: 0 12px 12px 0;
+      }
+      code {
+        background: rgba(255,255,255,.06);
+        padding: 2px 6px;
+        border-radius: 6px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: .95em;
+      }
+      .cta-box {
+        margin-top: 38px;
+        background: linear-gradient(135deg, rgba(122,176,255,.12), rgba(142,240,201,.08));
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 24px;
+      }
+      .btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        padding: 12px 18px; border-radius: 12px; font-weight: 600; border: 1px solid var(--line);
+      }
+      .btn-primary { background: var(--accent); color: #07101f; border-color: transparent; }
+      .btn-secondary { color: var(--text); }
+      .small { color: var(--muted); font-size: 14px; }
+      footer { border-top: 1px solid var(--line); margin-top: 40px; padding-top: 22px; color: var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Stripe’s Three Front Ends Tell a Better Story Than Any Stack Diagram",
+        "description": "What Stripe’s public marketing site, dashboard login surface, and docs site reveal about front-end boundary design, trust separation, and operational maturity.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/stripe-dashboard-sourcemaps/",
+        "author": {
+          "@type": "Organization",
+          "name": "Source Detector"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Source Detector"
+        }
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../" data-analytics-event="outbound_click" data-analytics-cta-name="blog_back_home" data-analytics-cta-location="nav" data-analytics-destination-type="home">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="blog_nav_install" data-analytics-cta-location="nav" data-analytics-destination-type="chrome_web_store">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector" data-analytics-event="outbound_click" data-analytics-cta-name="blog_nav_github" data-analytics-cta-location="nav" data-analytics-destination-type="github">GitHub</a>
+      </div>
+
+      <header class="hero">
+        <div class="eyebrow">Essay · Public artifacts · Front-end boundaries</div>
+        <h1>Stripe’s Three Front Ends Tell a Better Story Than Any Stack Diagram</h1>
+        <p class="subhead">The most interesting thing about Stripe’s public front-end footprint is not that it uses modern tooling. It is that three different public surfaces appear to obey three different trust models — and that is exactly what mature engineering should look like.</p>
+        <p class="meta">Observed from public web assets on <code>stripe.com</code>, <code>dashboard.stripe.com/login</code>, and <code>docs.stripe.com</code>, including Next-style chunk paths on the marketing site, a dashboard login bundle that references a non-public sourcemap host, and docs bundles exposing public <code>.js.map</code> references.</p>
+      </header>
+
+      <div class="panel">
+        <strong>Short version:</strong> Stripe’s public front-end surfaces look like they were designed under different operational constraints on purpose. That is a better sign of maturity than visual consistency. The architecture says: marketing can move fast, docs can stay inspectable, and the dashboard login path gets treated like a higher-trust surface.
+      </div>
+
+      <article>
+        <p>Most companies want their front end to feel unified.</p>
+        <p>Serious companies eventually learn that “unified” can be the wrong goal.</p>
+        <p>What you actually want is coherence where users can feel it, and separation where the system needs it. The public web surface should not look like one giant engineering blob just because the logo is the same.</p>
+        <p>That is why Stripe is interesting.</p>
+        <p>Looking only at public artifacts, Stripe appears to expose three distinct front-end personalities:</p>
+        <ul>
+          <li>the marketing site on <code>stripe.com</code> with large Next-style chunk graphs under <code>/_next/static/chunks/...</code></li>
+          <li>the dashboard login surface on <code>dashboard.stripe.com/login</code> with narrowly named assets like <code>login.runtime~login</code>, <code>login.vendors~login</code>, and <code>login.login</code></li>
+          <li>the docs site on <code>docs.stripe.com</code> with a separate asset family such as <code>common</code>, <code>sail</code>, <code>react</code>, <code>runtime</code>, <code>docs</code>, and <code>frontend</code></li>
+        </ul>
+        <p>That does not prove secret internal details. It does reveal something better: boundary choices.</p>
+        <blockquote>A company’s public asset graph is often the closest thing to an honest architecture diagram it will ever publish.</blockquote>
+
+        <h2>The important story is not “what framework Stripe uses”</h2>
+        <p>People love reducing public front-end analysis to stack spotting. See <code>_next</code>, say “Next.js,” and call it a day. That is like walking through a factory, noticing steel beams, and concluding you understand manufacturing.</p>
+        <p>The more revealing question is not <em>what</em> toolchain is present. It is <em>where</em> it is present, <em>how</em> the outputs differ across public surfaces, and <em>what risks appear to be treated differently</em>.</p>
+        <p>Stripe’s publicly reachable pages make that difference unusually visible.</p>
+        <p>On the marketing site, the HTML openly references many Next-style chunk assets from <code>b.stripecdn.com/mkt-ssr-statics/assets/_next/static/chunks/...</code>. That is exactly the sort of footprint you expect from a high-velocity growth surface: lots of content, experimentation pressure, localization, assets tuned for wide distribution, and little reason to pretend the front-end graph is tiny.</p>
+        <p>On the docs site, the asset family is different again. It looks less like a consumer landing experience and more like a dedicated documentation application with its own runtime and bundle naming conventions. Public <code>sourceMappingURL</code> references were observable in at least some docs bundles such as <code>react...js</code> and <code>runtime...js</code>.</p>
+        <p>Then there is the dashboard login surface. That is where things get interesting.</p>
+
+        <h2>The dashboard login page looks like a separate trust zone, not just another route</h2>
+        <p>The login page on <code>dashboard.stripe.com</code> does not look like a dressed-up version of the marketing site. Public bundle names such as <code>login.runtime~login</code>, <code>login.vendors~login</code>, and <code>login.login</code> suggest a more narrowly scoped application entrypoint.</p>
+        <p>More importantly, one observed public bundle included a <code>sourceMappingURL</code> that points at <code>sourcemaps.corp.stripe.com</code> rather than a plainly public asset location.</p>
+        <p>That distinction matters.</p>
+        <p>It does <strong>not</strong> mean the page is invulnerable. It does <strong>not</strong> prove there are no debugging artifacts elsewhere. And it definitely does <strong>not</strong> justify sensational “breach” language.</p>
+        <p>But it does suggest something operationally mature: the login surface may be treated as a different trust boundary, with debugging metadata referenced differently than on docs-facing public assets.</p>
+        <blockquote>When a company makes the login surface feel operationally different from the marketing site, that is not inconsistency. That is judgment.</blockquote>
+        <p>A lot of teams do not do this. They run the entire public web presence through one giant front-end habit. Same assumptions. Same bundling culture. Same deployment posture. Same artifact exposure norms. That is convenient until it is not.</p>
+
+        <h2>Three public surfaces, three operational priorities</h2>
+        <p>If you treat Stripe’s public assets as signals rather than trivia, a more useful interpretation emerges.</p>
+
+        <h3>1. Marketing: optimize for speed, narrative, experimentation</h3>
+        <p>The marketing site appears built for breadth and iteration. The chunk-heavy Next-style output fits a surface that changes constantly, supports campaigns, ships interactive product storytelling, and likely tolerates a bigger front-end graph because the business value of motion is high.</p>
+        <p>That is not sloppiness. That is a business-aligned tradeoff.</p>
+
+        <h3>2. Docs: optimize for inspectability, stability, developer utility</h3>
+        <p>Documentation is different. It is part product, part reference system, part search surface, part support mechanism. A docs front end can reasonably tolerate more inspectability because the audience is technical and the content itself benefits from openness and debuggability.</p>
+        <p>Public docs bundles referencing public map files is not automatically a mistake. Sometimes it is just a posture: lower secrecy, higher utility, different risk tolerance.</p>
+
+        <h3>3. Dashboard login: optimize for trust concentration</h3>
+        <p>The login surface is where companies should become emotionally boring. Fewer surprises. Narrower scope. Stricter assumptions. Less casual artifact handling.</p>
+        <p>If the observed private-ish sourcemap reference is intentional, that is a strong tell: someone decided the authentication-adjacent path deserves a different debugging exposure model than the docs site. That is exactly the kind of distinction mature systems make.</p>
+
+        <h2>What smaller teams usually get wrong</h2>
+        <p>The common startup instinct is to keep one front-end stack for everything and treat that as efficiency. One app. One build. One deployment pattern. One set of rules. One giant knot with good branding.</p>
+        <p>That can work for a while. But eventually different surfaces want incompatible things:</p>
+        <ul>
+          <li>marketing wants speed of iteration</li>
+          <li>docs want searchability and stability</li>
+          <li>authenticated product surfaces want tighter control and fewer surprises</li>
+          <li>auth entrypoints want the highest operational caution of all</li>
+        </ul>
+        <p>When all of those concerns are forced into a single front-end posture, the loudest local convenience tends to win. Usually that means the high-trust surface inherits the habits of the low-trust one.</p>
+        <p>That is backwards.</p>
+        <blockquote>The safest front end is not the one with the fewest files. It is the one that admits different surfaces deserve different rules.</blockquote>
+
+        <h2>Public sourcemaps are not binary good-or-bad signals</h2>
+        <p>This is where a lot of internet writing collapses into bad judgment.</p>
+        <p>Public source maps can absolutely increase exposure. They can reveal module names, route structure, internal feature vocabulary, debugging assumptions, and integration clues. Sometimes they expose too much. Sometimes they are harmless. Sometimes they are intentional. Sometimes they are accidental. Context matters.</p>
+        <p>That is why the right question is not simply “did we find a map?”</p>
+        <p>The better questions are:</p>
+        <ul>
+          <li>which surface exposed it?</li>
+          <li>does that surface deserve higher caution?</li>
+          <li>what architectural shape becomes visible because of it?</li>
+          <li>is the exposure pattern consistent with the trust level of that surface?</li>
+          <li>does the artifact reveal a disciplined boundary or an accidental one?</li>
+        </ul>
+        <p>Stripe is a useful case because the answer appears to vary by public surface. That variation is the story.</p>
+
+        <h2>Why this is really an essay about engineering taste</h2>
+        <p>There is a boring version of maturity where every team follows a checklist. Then there is the real version, where teams show taste under constraint.</p>
+        <p>Engineering taste is visible in the choices users never notice directly:</p>
+        <ul>
+          <li>where you separate concerns</li>
+          <li>where you narrow blast radius</li>
+          <li>where you allow openness</li>
+          <li>where you become stricter than necessary because trust is expensive to rebuild</li>
+        </ul>
+        <p>That is what makes Stripe’s public footprint worth studying. Even without private access, the front-end surfaces seem to imply an opinion: not every public page deserves the same artifact behavior.</p>
+        <p>That is a healthier opinion than the fake elegance of total uniformity.</p>
+
+        <h2>Why this naturally leads to SourceDetector</h2>
+        <p>You can piece this together manually if you are patient enough. Inspect HTML, enumerate script tags, fetch bundles, look for <code>sourceMappingURL</code>, compare asset families across routes, and try to reconstruct boundary logic from the outside in.</p>
+        <p>That is exactly the kind of work SourceDetector compresses.</p>
+        <p>Not so you can manufacture breach drama. Quite the opposite. The value is in observing public evidence carefully enough to make better judgments: which surfaces leak architectural clues, which ones expose public maps, which ones appear more tightly separated, and where your own site may be telling a story you did not mean to tell.</p>
+        <p>Not every public artifact is a vulnerability. But every public artifact is part of your engineering reputation.</p>
+
+        <div class="cta-box">
+          <h3>Inspect the shape, not just the scare headline</h3>
+          <p>SourceDetector helps you discover source maps, inspect client-side artifacts, and compare what different web surfaces reveal from the outside. That is useful whether you are auditing your own production assets or studying how serious teams draw boundaries in public.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="blog_cta_install" data-analytics-cta-location="body_end" data-analytics-destination-type="chrome_web_store">Install SourceDetector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector" data-analytics-event="outbound_click" data-analytics-cta-name="blog_cta_github" data-analytics-cta-location="body_end" data-analytics-destination-type="github">View on GitHub</a>
+          </div>
+          <p class="small">SourceDetector is a Chrome extension for discovering source maps, collecting client-side artifacts, and detecting potential secret leakage in web assets.</p>
+        </div>
+
+        <h2>Evidence note</h2>
+        <p>This article is based on public observation only. During this run, <code>stripe.com</code> publicly referenced many Next-style assets under <code>b.stripecdn.com/mkt-ssr-statics/assets/_next/static/chunks/...</code>. The dashboard login page publicly referenced bundles including <code>login.runtime~login</code>, <code>login.vendors~login</code>, and <code>login.login</code>; at least one observed bundle contained a <code>sourceMappingURL</code> pointing to <code>https://sourcemaps.corp.stripe.com/...</code>. The docs site publicly referenced bundles such as <code>common</code>, <code>sail</code>, <code>react</code>, <code>runtime</code>, <code>docs</code>, and <code>frontend</code>, with public <code>.js.map</code> references visible in at least some assets. None of that alone proves compromise. The point is to study boundary design through public artifacts, not to overclaim a security incident.</p>
+
+        <h2>FAQs</h2>
+        <h3>Is this article claiming Stripe has a breach?</h3>
+        <p>No. Public asset and sourcemap observations are exposure signals and architecture clues, not automatic proof of compromise.</p>
+        <h3>Why compare marketing, docs, and login separately?</h3>
+        <p>Because they serve different trust models and user intents. Mature systems often treat them differently on purpose.</p>
+        <h3>Are public sourcemaps always bad?</h3>
+        <p>No. They can increase visibility into code structure, but whether that is a problem depends on surface sensitivity, contents, and operational intent.</p>
+        <h3>What is the main lesson for smaller teams?</h3>
+        <p>Do not force every public surface into one front-end posture. High-trust paths usually deserve stricter artifact discipline than marketing or docs pages.</p>
+        <h3>Where does SourceDetector fit?</h3>
+        <p>It helps you discover and inspect public source maps and client-side artifacts so you can analyze exposure patterns with evidence instead of guesswork.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../" data-analytics-event="outbound_click" data-analytics-cta-name="blog_footer_home" data-analytics-cta-location="footer" data-analytics-destination-type="home">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="blog_footer_install" data-analytics-cta-location="footer" data-analytics-destination-type="chrome_web_store">Chrome Web Store</a>
+          <a href="../../faq/" data-analytics-event="outbound_click" data-analytics-cta-name="blog_footer_faq" data-analytics-cta-location="footer" data-analytics-destination-type="faq">FAQ</a>
+          <a href="../../privacy/" data-analytics-event="outbound_click" data-analytics-cta-name="blog_footer_privacy" data-analytics-cta-location="footer" data-analytics-destination-type="privacy">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is this article claiming Stripe has a breach?",
+            "acceptedAnswer": {"@type": "Answer", "text": "No. Public asset and sourcemap observations are exposure signals and architecture clues, not automatic proof of compromise."}
+          },
+          {
+            "@type": "Question",
+            "name": "Why compare marketing, docs, and login separately?",
+            "acceptedAnswer": {"@type": "Answer", "text": "Because they serve different trust models and user intents. Mature systems often treat them differently on purpose."}
+          },
+          {
+            "@type": "Question",
+            "name": "Are public sourcemaps always bad?",
+            "acceptedAnswer": {"@type": "Answer", "text": "No. They can increase visibility into code structure, but whether that is a problem depends on surface sensitivity, contents, and operational intent."}
+          },
+          {
+            "@type": "Question",
+            "name": "What is the main lesson for smaller teams?",
+            "acceptedAnswer": {"@type": "Answer", "text": "Do not force every public surface into one front-end posture. High-trust paths usually deserve stricter artifact discipline than marketing or docs pages."}
+          },
+          {
+            "@type": "Question",
+            "name": "Where does SourceDetector fit?",
+            "acceptedAnswer": {"@type": "Answer", "text": "It helps you discover and inspect public source maps and client-side artifacts so you can analyze exposure patterns with evidence instead of guesswork."}
+          }
+        ]
+      }
+    </script>
+  </body>
+</html>
