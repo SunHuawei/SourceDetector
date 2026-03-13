@@ -1,0 +1,10 @@
+yahoo-front-end-architecture | What public source maps reveal about boundary design at internet scale
+stripe-dashboard-sourcemaps | Why internal-quality front ends often leave the clearest public architectural fingerprints
+github-public-frontend-footprints | What GitHub’s public asset graph teaches about front-end modularity and operational maturity
+shopify-marketing-vs-product-frontend | Two front-end worlds inside one company: growth pages versus product surfaces
+trello-atlassian-chunk-discipline | What Trello’s public bundles suggest about long-lived app modularity
+bestbuy-commerce-frontend-scale | Commerce front ends under pressure: what public artifacts reveal about scale
+coursera-education-platform-client-artifacts | What learning platforms teach about mixed content and app delivery boundaries
+snapchat-nextjs-public-artifacts | Fast-moving consumer products still leak engineering shape in public
+roblox-public-maps-and-platform-complexity | Public source maps as clues to platform layering, not just exposure
+cloudflare-marketing-vs-dashboard-boundaries | Why infrastructure companies often separate trust boundaries before code style
