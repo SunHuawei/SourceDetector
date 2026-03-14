@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How Source Detector Works | Detection methodology and scope boundaries</title>
+    <meta name="description" content="Learn how Source Detector discovers source maps, scans client-side assets, and helps review potential secret leakage with clear scope boundaries." />
+    <meta property="og:title" content="How Source Detector Works" />
+    <meta property="og:description" content="Detection methodology and scope boundaries for source map discovery and client-side secret scanning." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/methodology/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/methodology/" />
+    <style>body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;margin:0;background:#0f172a;color:#e5e7eb;line-height:1.7}.wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}a{color:#93c5fd;text-decoration:none}a:hover{text-decoration:underline}.panel{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;margin:16px 0}h1,h2,h3{color:#fff}.muted{color:#94a3b8}</style>
+    <script defer src="../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="methodology">
+    <div class="wrap">
+      <p><a href="../">← Back to homepage</a></p>
+      <div class="panel">
+        <h1>How Source Detector works</h1>
+        <p class="muted">Source Detector is a browser-based workflow for discovering source maps, collecting client-side artifacts, and surfacing suspicious patterns for manual review.</p>
+      </div>
+      <div class="panel"><h2>1. Discovery</h2><p>The extension observes source map references and related client-side assets while you browse target pages in Chrome.</p></div>
+      <div class="panel"><h2>2. Pattern scanning</h2><p>Collected assets can be scanned with built-in and custom rules to highlight strings and structures that may indicate secret leakage or other risky client-side exposure.</p></div>
+      <div class="panel"><h2>3. Evidence review</h2><p>Findings are presented for inspection so you can review the surrounding evidence and decide whether a pattern represents a real issue, a public identifier, or a low-risk clue.</p></div>
+      <div class="panel"><h2>4. Export and validation</h2><p>Artifacts can be exported for offline validation, internal escalation, or documentation. Source Detector helps with discovery and evidence collection, but it does not replace manual security judgment.</p></div>
+      <div class="panel"><h2>What Source Detector does not claim</h2><ul><li>It does not prove exploitability on its own.</li><li>It does not guarantee that every surfaced key or token is sensitive.</li><li>It does not replace a full application security review.</li></ul></div>
+    </div>
+  </body>
+</html>

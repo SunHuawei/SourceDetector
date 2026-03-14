@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Source Detector — Chrome extension for source maps and client-side leak detection</title>
-    <meta name="description" content="Source Detector is a Chrome extension for discovering source maps, collecting web artifacts, and detecting potential secret leakage in client-side assets." />
-    <meta property="og:title" content="Source Detector" />
-    <meta property="og:description" content="Chrome extension for discovering source maps, collecting client-side artifacts, and detecting potential secret leakage in web assets." />
+    <title>Source Detector — Frontend secret scanner and source map discovery Chrome extension</title>
+    <meta name="description" content="Source Detector is a frontend secret scanner Chrome extension for discovering source maps, detecting exposed API keys, and reviewing risky client-side assets." />
+    <meta property="og:title" content="Source Detector — Frontend secret scanner" />
+    <meta property="og:description" content="Discover source maps, detect exposed API keys, and review risky client-side assets with a browser-based frontend secret scanner." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -100,7 +100,7 @@
           "https://github.com/SunHuawei/SourceDetector",
           "https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn"
         ],
-        "description": "Chrome extension for discovering source maps, collecting client-side artifacts, and detecting potential secret leakage in web assets."
+        "description": "Frontend secret scanner Chrome extension for discovering source maps, detecting exposed API keys, and reviewing risky client-side assets."
       }
     </script>
     <script defer src="./assets/website_analytics.js"></script>
@@ -111,8 +111,10 @@
         <div class="brand">Source Detector</div>
         <div class="nav-links">
           <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="nav_install_chrome" data-analytics-cta-location="nav" data-analytics-destination-type="chrome_web_store">Chrome Web Store</a>
+          <a href="./features/" data-analytics-event="outbound_click" data-analytics-cta-name="nav_features" data-analytics-cta-location="nav" data-analytics-destination-type="features">Features</a>
+          <a href="./use-cases/" data-analytics-event="outbound_click" data-analytics-cta-name="nav_use_cases" data-analytics-cta-location="nav" data-analytics-destination-type="use_cases">Use Cases</a>
+          <a href="./methodology/" data-analytics-event="outbound_click" data-analytics-cta-name="nav_methodology" data-analytics-cta-location="nav" data-analytics-destination-type="methodology">How It Works</a>
           <a href="https://github.com/SunHuawei/SourceDetector" data-analytics-event="outbound_click" data-analytics-cta-name="nav_github" data-analytics-cta-location="nav" data-analytics-destination-type="github">GitHub</a>
-          <a href="https://github.com/SunHuawei/SourceDetector/blob/main/docs/README.md" data-analytics-event="outbound_click" data-analytics-cta-name="nav_docs" data-analytics-cta-location="nav" data-analytics-destination-type="docs">Docs</a>
           <a href="./faq/" data-analytics-event="outbound_click" data-analytics-cta-name="nav_faq" data-analytics-cta-location="nav" data-analytics-destination-type="faq">FAQ</a>
           <a href="./privacy/" data-analytics-event="outbound_click" data-analytics-cta-name="nav_privacy" data-analytics-cta-location="nav" data-analytics-destination-type="privacy">Privacy</a>
           <a href="./zh/" data-analytics-event="language_switch" data-analytics-cta-name="nav_language_zh" data-analytics-cta-location="nav" data-analytics-destination-type="language_page" data-analytics-target-language="zh_cn">简体中文</a>
@@ -123,10 +125,10 @@
       <section class="hero">
         <div>
           <div class="pill">Chrome extension</div>
-          <div class="pill">Source maps</div>
-          <div class="pill">Leak detection</div>
-          <h1>Discover source maps. Inspect client-side assets. Catch risky leaks faster.</h1>
-          <p class="lead">Source Detector is a Chrome extension for discovering source maps, collecting client-side artifacts, and detecting potential secret leakage in web assets.</p>
+          <div class="pill">Frontend secret scanner</div>
+          <div class="pill">Source map discovery</div>
+          <h1>Detect exposed frontend secrets, discover source maps, and review risky client-side assets faster.</h1>
+          <p class="lead">Source Detector is a browser-based frontend secret scanner for security researchers and engineering teams who need to find exposed API keys, inspect source maps, and review client-side exposure evidence.</p>
           <div class="cta">
             <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="hero_install_chrome" data-analytics-cta-location="hero" data-analytics-destination-type="chrome_web_store">Install on Chrome</a>
             <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector" data-analytics-event="outbound_click" data-analytics-cta-name="hero_github" data-analytics-cta-location="hero" data-analytics-destination-type="github">View on GitHub</a>
@@ -158,40 +160,43 @@
         <div class="grid-3">
           <div class="card">
             <h3>Source map discovery</h3>
-            <p class="muted">Detect source map files referenced by pages and related client-side assets while you browse.</p>
+            <p class="muted">Detect source map files referenced by live pages and related client-side assets while you browse.</p>
           </div>
           <div class="card">
-            <h3>Leak scanning</h3>
-            <p class="muted">Use built-in and custom rules to surface risky patterns such as exposed API or AI-related credentials.</p>
+            <h3>Frontend secret scanning</h3>
+            <p class="muted">Use built-in and custom rules to surface suspicious patterns such as exposed API keys, AI-related tokens, and risky client-side secrets.</p>
           </div>
           <div class="card">
             <h3>Evidence export</h3>
-            <p class="muted">Review findings in the explorer and export versions or domain-level bundles as ZIP files.</p>
+            <p class="muted">Review findings in the explorer and export versions or domain-level bundles as ZIP files for manual validation and reporting.</p>
           </div>
         </div>
+        <p class="muted"><a href="./features/">Explore all features →</a></p>
       </section>
 
       <section>
         <h2>Who it is for</h2>
         <div class="grid-2">
           <div class="card">
-            <h3>Security researchers</h3>
-            <p class="muted">Speed up recon and prioritize client-side exposure worth investigating.</p>
+            <h3>Security researchers and bug bounty hunters</h3>
+            <p class="muted">Speed up browser-based reconnaissance and prioritize client-side exposure worth investigating.</p>
           </div>
           <div class="card">
             <h3>Developers and front-end teams</h3>
-            <p class="muted">Audit exposed assets, review accidental leaks, and inspect what is reachable from production pages.</p>
+            <p class="muted">Audit exposed assets, review accidental leaks, and inspect what is reachable from production pages after deployment.</p>
           </div>
         </div>
+        <p class="muted"><a href="./use-cases/">See use cases →</a></p>
       </section>
 
       <section>
         <h2>How it works</h2>
         <div class="grid-3">
-          <div class="card"><h3>1. Browse</h3><p class="muted">Open a target website in Chrome.</p></div>
-          <div class="card"><h3>2. Collect</h3><p class="muted">Source Detector watches source map references and relevant assets.</p></div>
-          <div class="card"><h3>3. Analyze</h3><p class="muted">Review evidence, scan for risky patterns, and export artifacts when needed.</p></div>
+          <div class="card"><h3>1. Browse</h3><p class="muted">Open a target website in Chrome and let Source Detector observe source map references and related assets.</p></div>
+          <div class="card"><h3>2. Scan</h3><p class="muted">Run built-in or custom rules to highlight suspicious strings, tokens, and client-side exposure patterns.</p></div>
+          <div class="card"><h3>3. Review</h3><p class="muted">Inspect the evidence, export artifacts, and validate whether a finding is a real issue or a low-risk public clue.</p></div>
         </div>
+        <p class="muted"><a href="./methodology/">Read detection methodology →</a></p>
       </section>
 
       <section>
