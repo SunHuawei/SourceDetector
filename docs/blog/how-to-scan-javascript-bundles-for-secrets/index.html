@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Scan JavaScript Bundles for Secrets | Source Detector</title>
+    <meta name="description" content="Learn how to scan JavaScript bundles for secrets, identify suspicious strings, and review what actually matters in context." />
+    <meta property="og:title" content="How to Scan JavaScript Bundles for Secrets" />
+    <meta property="og:description" content="Learn how to scan JavaScript bundles for secrets and review what matters in context." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/how-to-scan-javascript-bundles-for-secrets/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/how-to-scan-javascript-bundles-for-secrets/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;margin:0;background:#0f172a;color:#e5e7eb;line-height:1.8}.wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}a{color:#93c5fd;text-decoration:none}a:hover{text-decoration:underline}.panel{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;margin:16px 0}.muted{color:#94a3b8}h1,h2{color:#fff}</style>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <p><a href="../../">← Back to homepage</a></p>
+      <div class="panel"><h1>How to scan JavaScript bundles for secrets</h1><p class="muted">To scan JavaScript bundles for secrets, collect the production assets the browser loads, apply rules that surface suspicious patterns, and manually review the surrounding code before treating a finding as real leakage.</p></div>
+      <div class="panel"><h2>Start from production assets</h2><p>Production bundles are what matter most because they represent what users and attackers can already reach from the browser.</p></div>
+      <div class="panel"><h2>Use rules, not guesswork</h2><p>Good scanning combines pattern matching with context review. Rules help you find likely secrets faster, but they also produce harmless matches that need human judgment.</p></div>
+      <div class="panel"><h2>Review source maps when available</h2><p>Source maps can make bundle findings easier to interpret by revealing file structure and implementation context.</p></div>
+    </div>
+  </body>
+</html>

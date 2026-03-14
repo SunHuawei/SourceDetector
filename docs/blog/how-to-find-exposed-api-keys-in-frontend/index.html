@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Find Exposed API Keys in Frontend Code | Source Detector</title>
+    <meta name="description" content="A practical guide to finding exposed API keys in frontend code, reviewing context, and validating what is actually risky." />
+    <meta property="og:title" content="How to Find Exposed API Keys in Frontend Code" />
+    <meta property="og:description" content="A practical guide to finding exposed API keys in frontend code and validating what is actually risky." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/how-to-find-exposed-api-keys-in-frontend/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/how-to-find-exposed-api-keys-in-frontend/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;margin:0;background:#0f172a;color:#e5e7eb;line-height:1.8}.wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}a{color:#93c5fd;text-decoration:none}a:hover{text-decoration:underline}.panel{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;margin:16px 0}.muted{color:#94a3b8}h1,h2{color:#fff}</style>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <p><a href="../../">← Back to homepage</a></p>
+      <div class="panel"><h1>How to find exposed API keys in frontend code</h1><p class="muted">The fastest way to find exposed API keys in frontend code is to review shipped JavaScript, inspect source maps when available, and validate any suspicious key with surrounding context before deciding it is a real issue.</p></div>
+      <div class="panel"><h2>Step 1: Review what the browser already gets</h2><p>Start with the assets delivered to the browser: JavaScript bundles, referenced source maps, and public config fragments. This is where exposed keys often surface.</p></div>
+      <div class="panel"><h2>Step 2: Scan for suspicious patterns</h2><p>Use structured rules to surface API key-like strings, tokens, and other secret patterns more efficiently than manual searching alone.</p></div>
+      <div class="panel"><h2>Step 3: Validate context</h2><p>Ask whether the key is intended to be public, whether it is restricted, and what actions or cost it could enable. That context determines whether a finding is meaningful.</p></div>
+      <div class="panel"><h2>Where Source Detector fits</h2><p>Source Detector helps you discover source maps, scan frontend assets, and preserve evidence for manual validation.</p></div>
+    </div>
+  </body>
+</html>

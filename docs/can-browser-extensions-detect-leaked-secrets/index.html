@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Can Browser Extensions Detect Leaked Secrets? | Source Detector FAQ</title>
+    <meta name="description" content="Learn what browser extensions can and cannot detect when reviewing leaked secrets in frontend assets and production websites." />
+    <meta property="og:title" content="Can Browser Extensions Detect Leaked Secrets?" />
+    <meta property="og:description" content="What browser extensions can and cannot detect when reviewing leaked secrets." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/can-browser-extensions-detect-leaked-secrets/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/can-browser-extensions-detect-leaked-secrets/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;margin:0;background:#0f172a;color:#e5e7eb;line-height:1.75}.wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}a{color:#93c5fd;text-decoration:none}a:hover{text-decoration:underline}.panel{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;margin:16px 0}.muted{color:#94a3b8}h1,h2{color:#fff}</style>
+    <script defer src="../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="faq_article">
+    <div class="wrap">
+      <p><a href="../faq/">← Back to FAQ</a></p>
+      <div class="panel"><h1>Can browser extensions detect leaked secrets?</h1><p class="muted">Yes, browser extensions can help detect suspicious secret-like patterns in frontend assets that are already reachable in the browser. But detection is limited to what the browser can access and what rules can sensibly surface.</p></div>
+      <div class="panel"><h2>What they can do well</h2><ul><li>Observe shipped frontend assets</li><li>Scan JavaScript bundles for suspicious patterns</li><li>Preserve evidence in context</li></ul></div>
+      <div class="panel"><h2>What they cannot do alone</h2><ul><li>Prove exploitability automatically</li><li>See server-side secrets that never reach the client</li><li>Replace human validation and broader security testing</li></ul></div>
+    </div>
+  </body>
+</html>
