@@ -6,4 +6,3 @@ bestbuy-commerce-frontend-scale | Commerce front ends under pressure: what publi
 coursera-education-platform-client-artifacts | What learning platforms teach about mixed content and app delivery boundaries
 snapchat-nextjs-public-artifacts | Fast-moving consumer products still leak engineering shape in public
 roblox-public-maps-and-platform-complexity | Public source maps as clues to platform layering, not just exposure
-cloudflare-marketing-vs-dashboard-boundaries | Why infrastructure companies often separate trust boundaries before code style
