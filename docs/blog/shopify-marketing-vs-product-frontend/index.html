@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shopify’s Public Front-End Teaches a Better Lesson Than “Source Map Found” | Source Detector</title>
+    <meta name="description" content="A public-evidence essay on how Shopify’s open marketing asset graph and challenge-gated account surfaces reveal a more mature lesson than simple source map hunting: different trust surfaces deserve different visibility." />
+    <meta property="og:title" content="Shopify’s Public Front-End Teaches a Better Lesson Than ‘Source Map Found’" />
+    <meta property="og:description" content="A public-evidence essay on how Shopify’s open marketing asset graph and challenge-gated account surfaces reveal a more mature lesson than simple source map hunting: different trust surfaces deserve different visibility." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/shopify-marketing-vs-product-frontend/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/shopify-marketing-vs-product-frontend/" />
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #12192b;
+        --text: #edf2ff;
+        --muted: #a6afc7;
+        --line: #25314d;
+        --accent: #7ab0ff;
+        --accent-2: #8ef0c9;
+        --quote: #c9d7ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #0b1020 0%, #10172a 100%);
+        color: var(--text);
+        line-height: 1.75;
+      }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .wrap { max-width: 920px; margin: 0 auto; padding: 28px 22px 72px; }
+      .nav, .footer-links { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); }
+      .eyebrow {
+        display: inline-block; margin-bottom: 14px; padding: 6px 10px; border: 1px solid var(--line);
+        border-radius: 999px; color: var(--muted); font-size: 13px;
+      }
+      .hero { padding: 20px 0 14px; }
+      h1 {
+        font-size: clamp(34px, 5vw, 56px);
+        line-height: 1.05;
+        margin: 0 0 16px;
+        letter-spacing: -0.03em;
+      }
+      .subhead { font-size: 20px; color: #d7e1f7; max-width: 780px; margin: 0 0 14px; }
+      .meta { color: var(--muted); font-size: 14px; }
+      .panel {
+        margin: 26px 0;
+        background: rgba(18,25,43,.78);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 22px;
+      }
+      article { margin-top: 22px; }
+      h2 { font-size: 29px; line-height: 1.2; margin: 46px 0 16px; }
+      h3 { font-size: 21px; line-height: 1.3; margin: 28px 0 12px; }
+      p { margin: 0 0 18px; }
+      ul { padding-left: 22px; margin: 0 0 18px; }
+      li { margin: 0 0 10px; }
+      blockquote {
+        margin: 22px 0;
+        padding: 16px 18px;
+        border-left: 4px solid var(--accent-2);
+        background: rgba(255,255,255,.03);
+        color: var(--quote);
+        border-radius: 0 12px 12px 0;
+      }
+      code {
+        background: rgba(255,255,255,.06);
+        padding: 2px 6px;
+        border-radius: 6px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: .95em;
+      }
+      .cta-box {
+        margin-top: 38px;
+        background: linear-gradient(135deg, rgba(122,176,255,.12), rgba(142,240,201,.08));
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 24px;
+      }
+      .btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        padding: 12px 18px; border-radius: 12px; font-weight: 600; border: 1px solid var(--line);
+      }
+      .btn-primary { background: var(--accent); color: #07101f; border-color: transparent; }
+      .btn-secondary { color: var(--text); }
+      .small { color: var(--muted); font-size: 14px; }
+      footer { border-top: 1px solid var(--line); margin-top: 40px; padding-top: 22px; color: var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Shopify’s Public Front-End Teaches a Better Lesson Than ‘Source Map Found’",
+        "description": "A public-evidence essay on how Shopify’s open marketing asset graph and challenge-gated account surfaces reveal a more mature lesson than simple source map hunting: different trust surfaces deserve different visibility.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/shopify-marketing-vs-product-frontend/",
+        "author": { "@type": "Organization", "name": "Source Detector" },
+        "publisher": { "@type": "Organization", "name": "Source Detector" }
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../" data-analytics-event="outbound_click" data-analytics-cta-name="blog_back_home" data-analytics-cta-location="nav" data-analytics-destination-type="home">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="blog_nav_install" data-analytics-cta-location="nav" data-analytics-destination-type="chrome_web_store">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector" data-analytics-event="outbound_click" data-analytics-cta-name="blog_nav_github" data-analytics-cta-location="nav" data-analytics-destination-type="github">GitHub</a>
+      </div>
+
+      <header class="hero">
+        <div class="eyebrow">Essay · Trust surfaces · Public asset analysis</div>
+        <h1>Shopify’s Public Front-End Teaches a Better Lesson Than “Source Map Found”</h1>
+        <p class="subhead">The interesting public lesson from Shopify is not whether one bundle advertises a map. It is that the company seems comfortable making its marketing surface broadly inspectable while putting account and admin entry behind connection verification before the higher-trust experience begins.</p>
+        <p class="meta">Based on public evidence observed during this run from <code>www.shopify.com</code>, <code>accounts.shopify.com</code>, <code>admin.shopify.com</code>, and public assets on <code>cdn.shopify.com</code>, including module-preload references, bundle behavior, response headers, and Cloudflare verification pages.</p>
+      </header>
+
+      <div class="panel">
+        <strong>Short version:</strong> Shopify’s public web footprint suggests a company that does not confuse “modern front-end” with “same visibility everywhere.” The marketing layer is highly inspectable. The higher-trust account and admin edges are not. That is a more useful lesson than another lazy screenshot of a <code>sourceMappingURL</code> comment.
+      </div>
+
+      <article>
+        <p>People keep flattening front-end exposure into one boring question: <em>did you find a public source map or not?</em></p>
+        <p>That question is sometimes useful, but it is also intellectually cheap. It reduces a whole delivery system into one artifact hunt and then pretends the result explains a company’s security posture.</p>
+        <p>Shopify is a better case study because the public evidence points to a more mature reality: different web surfaces can be intentionally legible in different ways.</p>
+
+        <h2>The marketing surface is open, modern, and easy to study</h2>
+        <p>During this run, <code>https://www.shopify.com/</code> returned a normal public HTML document with a <code>200</code> response, <code>server: cloudflare</code>, and <code>cf-cache-status: HIT</code>. The page was large, crawlable, and rich with public asset references from <code>cdn.shopify.com</code>.</p>
+        <p>What stood out was not just the volume of assets. It was the shape of them. The homepage exposed a modern module-preload chain, including public references like:</p>
+        <ul>
+          <li><code>.../production-homepage/assets/entry.client-DbgpLLTu.js</code></li>
+          <li><code>.../production-homepage/assets/react-dom-BRjsG1nL.js</code></li>
+          <li><code>.../production-homepage/assets/chunk-JZWAC4HX-BPFHNEQr.js</code></li>
+          <li><code>.../production-homepage/assets/jsx-runtime-C8TH6vEV.js</code></li>
+          <li><code>.../production-homepage/assets/react-16zIsxtG.js</code></li>
+          <li><code>.../production-homepage/assets/preload-helper-DMFyOM8X.js</code></li>
+        </ul>
+        <p>In this run, the page exposed at least <code>35</code> <code>modulepreload</code> references. That is not a timid public brochure. It is a modern client asset graph laid out in plain sight.</p>
+        <blockquote>Some companies expose a marketing site like a postcard. Shopify exposes one more like a working front-end system you can actually inspect.</blockquote>
+
+        <h2>One public bundle says something subtle but important</h2>
+        <p>The public asset <code>entry.client-DbgpLLTu.js</code> was directly retrievable with HTTP <code>200</code>. The contents included strings such as <code>createRoot</code> and <code>hydrateRoot</code>, and the file ended with a <code>sourceMappingURL=entry.client-DbgpLLTu.js.map</code> trailer comment.</p>
+        <p>But the obvious map path returned <code>404 Not Found</code> during this run.</p>
+        <p>That combination is much more interesting than the usual yes-or-no source-map discourse. It suggests a marketing pipeline that keeps modern client bundles openly visible while not necessarily publishing every debugging artifact at the same path.</p>
+        <p>In other words: the public surface is inspectable, but not naively unlimited.</p>
+
+        <h2>The account and admin edges behave like a different world</h2>
+        <p>Now compare that with <code>https://accounts.shopify.com/</code> and <code>https://admin.shopify.com/</code>.</p>
+        <p>Both returned public <code>403</code> responses during this run with:</p>
+        <ul>
+          <li><code>server: cloudflare</code></li>
+          <li><code>content-type: text/html; charset=UTF-8</code></li>
+          <li><code>cache-control: private, max-age=0, no-store, no-cache, must-revalidate...</code></li>
+          <li>a page title of <code>Verifying your connection...</code></li>
+          <li>visible challenge-page markers such as <code>challenge-platform</code></li>
+        </ul>
+        <p>That is the key contrast. Shopify’s public marketing page invites wide inspection of assets and content. Shopify’s higher-trust entry points make verification part of the experience before the product surface becomes equally visible.</p>
+        <p>This is not just implementation trivia. It is a trust-boundary decision expressed at the HTTP layer.</p>
+
+        <h2>Mature front-end posture is about selective legibility</h2>
+        <p>There is a bad security instinct that says serious companies should hide everything equally. That instinct is wrong.</p>
+        <p>A mature public web posture is usually not “hide all artifacts.” It is “make the right surfaces legible to the right degree.”</p>
+        <p>Shopify’s public evidence appears consistent with that idea:</p>
+        <ul>
+          <li>the marketing site is optimized for reach, speed, and public consumption</li>
+          <li>its client assets are modern and broadly inspectable</li>
+          <li>the account and admin edges present friction before deeper application exposure</li>
+          <li>visibility policy seems tied to trust level, not just framework habit</li>
+        </ul>
+        <p>That is what good boundary design often looks like from the outside: not secrecy everywhere, but different visibility budgets for different kinds of surface.</p>
+
+        <h2>Why the source-map angle is still useful, but only with context</h2>
+        <p>Yes, the <code>sourceMappingURL</code> trailer on a public JavaScript file is worth noticing. No, it does not justify breach theater.</p>
+        <p>A public source map reference can mean many things: active publication, stale build output, a missing artifact, a deployment mismatch, or a pipeline that simply leaves the comment in place. Without context, the comment alone tells an incomplete story.</p>
+        <p>In this run, the more defensible reading is not “Shopify leaked something dramatic.” It is this:</p>
+        <ul>
+          <li>Shopify’s marketing front-end is openly inspectable and technically modern</li>
+          <li>some public bundles retain source-map trailer references</li>
+          <li>at least one obvious map path was not publicly retrievable</li>
+          <li>higher-trust account surfaces are guarded earlier by connection verification</li>
+        </ul>
+        <p>That is a strong architectural observation without pretending we proved compromise.</p>
+
+        <h2>The deeper lesson is organizational, not cosmetic</h2>
+        <p>Public assets are never just about code. They are about operating models.</p>
+        <p>A company that lets its marketing surface stay highly visible while gating account surfaces early is usually telling you something about ownership boundaries, abuse assumptions, CDN strategy, and incident tolerance.</p>
+        <p>That matters more than guessing a framework from a file name. Framework talk is fun. Boundary behavior is where the adult engineering decisions live.</p>
+        <blockquote>The real signal in public front-end analysis is rarely “they use X.” It is “they expose X here, but not there, for a reason.”</blockquote>
+
+        <h2>Why this matters for researchers and front-end teams</h2>
+        <p>If you are doing security research, the lesson is simple: do not turn every public clue into the same story. Compare surfaces. Compare hosts. Compare how easily the artifact graph opens up before identity or challenge controls appear.</p>
+        <p>If you are on a front-end or platform team, the lesson is slightly more uncomfortable: your public delivery posture is visible whether you document it or not.</p>
+        <p>Outsiders can infer:</p>
+        <ul>
+          <li>which surfaces are meant to be studied by anyone</li>
+          <li>which ones are allowed to stay cache-friendly and inspectable</li>
+          <li>where verification appears before deeper interaction</li>
+          <li>whether your publication rules differ by trust boundary</li>
+        </ul>
+        <p>That is why public artifact review should be treated as a routine operational discipline, not a one-off panic when someone tweets a screenshot.</p>
+
+        <h2>Why this naturally points to SourceDetector</h2>
+        <p>This Shopify example is exactly why a serious workflow needs more than simple keyword matching. You need the surrounding evidence: which domain served which asset, whether a bundle was public, whether a map reference resolved, and where the trust boundary visibly changed.</p>
+        <p>SourceDetector is useful because it helps structure that evidence trail. Instead of collapsing everything into “map found” or “no map found,” you can inspect the broader client-side exposure picture and make a more intelligent judgment.</p>
+
+        <div class="cta-box">
+          <h3>Study public front-end exposure with more nuance</h3>
+          <p>SourceDetector helps researchers and engineering teams inspect source-map references, public client bundles, suspicious strings, and surrounding page context so they can distinguish exposure signals from lazy overclaiming.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="blog_cta_install" data-analytics-cta-location="body_end" data-analytics-destination-type="chrome_web_store">Install SourceDetector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector" data-analytics-event="outbound_click" data-analytics-cta-name="blog_cta_github" data-analytics-cta-location="body_end" data-analytics-destination-type="github">View on GitHub</a>
+          </div>
+          <p class="small">Use it to analyze what public websites actually reveal without confusing visibility with compromise.</p>
+        </div>
+
+        <h2>Evidence note</h2>
+        <p>This article uses public evidence only. During this run, <code>https://www.shopify.com/</code> returned a public <code>200</code> page with a large HTML document, many <code>cdn.shopify.com</code> references, and at least <code>35</code> <code>modulepreload</code> asset links for the production homepage. The publicly accessible asset <code>entry.client-DbgpLLTu.js</code> returned <code>200</code>, contained client hydration strings such as <code>createRoot</code> and <code>hydrateRoot</code>, and ended with a <code>sourceMappingURL</code> trailer comment, while the obvious <code>.map</code> path returned <code>404</code> during this run. Separately, <code>accounts.shopify.com</code> and <code>admin.shopify.com</code> both returned <code>403</code> verification pages with the title <code>Verifying your connection...</code> and visible challenge markers. The thesis is therefore about trust-surface separation and selective visibility, not about any proven breach.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../" data-analytics-event="outbound_click" data-analytics-cta-name="blog_footer_home" data-analytics-cta-location="footer" data-analytics-destination-type="home">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="blog_footer_install" data-analytics-cta-location="footer" data-analytics-destination-type="chrome_web_store">Chrome Web Store</a>
+          <a href="../../faq/" data-analytics-event="outbound_click" data-analytics-cta-name="blog_footer_faq" data-analytics-cta-location="footer" data-analytics-destination-type="faq">FAQ</a>
+          <a href="../../privacy/" data-analytics-event="outbound_click" data-analytics-cta-name="blog_footer_privacy" data-analytics-cta-location="footer" data-analytics-destination-type="privacy">Privacy</a>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
