@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Two Front-End Worlds Around Trello: What Public Assets Reveal About Platform Discipline | Source Detector</title>
+    <meta name="description" content="A public-evidence essay on how Trello and Atlassian expose two different front-end publishing styles around the same product, and why that matters for architecture, trust boundaries, and exposure analysis." />
+    <meta property="og:title" content="Two Front-End Worlds Around Trello: What Public Assets Reveal About Platform Discipline" />
+    <meta property="og:description" content="A public-evidence essay on how Trello and Atlassian expose two different front-end publishing styles around the same product, and why that matters for architecture, trust boundaries, and exposure analysis." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/trello-atlassian-chunk-discipline/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/trello-atlassian-chunk-discipline/" />
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #12192b;
+        --text: #edf2ff;
+        --muted: #a6afc7;
+        --line: #25314d;
+        --accent: #7ab0ff;
+        --accent-2: #8ef0c9;
+        --quote: #c9d7ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #0b1020 0%, #10172a 100%);
+        color: var(--text);
+        line-height: 1.75;
+      }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .wrap { max-width: 920px; margin: 0 auto; padding: 28px 22px 72px; }
+      .nav, .footer-links { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); }
+      .eyebrow {
+        display: inline-block; margin-bottom: 14px; padding: 6px 10px; border: 1px solid var(--line);
+        border-radius: 999px; color: var(--muted); font-size: 13px;
+      }
+      .hero { padding: 20px 0 14px; }
+      h1 {
+        font-size: clamp(34px, 5vw, 56px);
+        line-height: 1.05;
+        margin: 0 0 16px;
+        letter-spacing: -0.03em;
+      }
+      .subhead { font-size: 20px; color: #d7e1f7; max-width: 780px; margin: 0 0 14px; }
+      .meta { color: var(--muted); font-size: 14px; }
+      .panel {
+        margin: 26px 0;
+        background: rgba(18,25,43,.78);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 22px;
+      }
+      article { margin-top: 22px; }
+      h2 { font-size: 29px; line-height: 1.2; margin: 46px 0 16px; }
+      h3 { font-size: 21px; line-height: 1.3; margin: 28px 0 12px; }
+      p { margin: 0 0 18px; }
+      ul { padding-left: 22px; margin: 0 0 18px; }
+      li { margin: 0 0 10px; }
+      blockquote {
+        margin: 22px 0;
+        padding: 16px 18px;
+        border-left: 4px solid var(--accent-2);
+        background: rgba(255,255,255,.03);
+        color: var(--quote);
+        border-radius: 0 12px 12px 0;
+      }
+      code {
+        background: rgba(255,255,255,.06);
+        padding: 2px 6px;
+        border-radius: 6px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: .95em;
+      }
+      .cta-box {
+        margin-top: 38px;
+        background: linear-gradient(135deg, rgba(122,176,255,.12), rgba(142,240,201,.08));
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 24px;
+      }
+      .btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        padding: 12px 18px; border-radius: 12px; font-weight: 600; border: 1px solid var(--line);
+      }
+      .btn-primary { background: var(--accent); color: #07101f; border-color: transparent; }
+      .btn-secondary { color: var(--text); }
+      .small { color: var(--muted); font-size: 14px; }
+      footer { border-top: 1px solid var(--line); margin-top: 40px; padding-top: 22px; color: var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Two Front-End Worlds Around Trello: What Public Assets Reveal About Platform Discipline",
+        "description": "A public-evidence essay on how Trello and Atlassian expose two different front-end publishing styles around the same product, and why that matters for architecture, trust boundaries, and exposure analysis.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/trello-atlassian-chunk-discipline/",
+        "author": {
+          "@type": "Organization",
+          "name": "Source Detector"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Source Detector"
+        }
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../" data-analytics-event="outbound_click" data-analytics-cta-name="blog_back_home" data-analytics-cta-location="nav" data-analytics-destination-type="home">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="blog_nav_install" data-analytics-cta-location="nav" data-analytics-destination-type="chrome_web_store">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector" data-analytics-event="outbound_click" data-analytics-cta-name="blog_nav_github" data-analytics-cta-location="nav" data-analytics-destination-type="github">GitHub</a>
+      </div>
+
+      <header class="hero">
+        <div class="eyebrow">Essay · Front-end architecture · Public evidence</div>
+        <h1>Two Front-End Worlds Around Trello: What Public Assets Reveal About Platform Discipline</h1>
+        <p class="subhead">The most interesting thing about Trello’s public front-end is not that JavaScript exists. It is that the product is surrounded by at least two distinct publishing styles: a highly componentized Trello marketing surface on Atlassian’s public content platform, and a different Atlassian product page stack with its own asset conventions and tighter map accessibility.</p>
+        <p class="meta">Based on public evidence observed during this run from <code>https://trello.com/</code> and <code>https://www.atlassian.com/software/trello</code>, including public script URLs, source map trailer comments, and direct map retrieval behavior.</p>
+      </header>
+
+      <div class="panel">
+        <strong>Short version:</strong> around Trello, Atlassian appears to run more than one front-end publishing model on purpose. One surface behaves like a modular content platform with publicly retrievable maps on hashed component bundles. Another behaves like a more traditional corporate web stack whose main JavaScript map was not publicly retrievable during this run. That difference tells us more about organizational boundaries than any single bundle ever could.
+      </div>
+
+      <article>
+        <p>Security conversations about front-end exposure are often embarrassingly literal. Someone finds a source map and immediately asks whether there is a vulnerability. Someone else sees no public map and assumes everything is disciplined. Both reactions are shallow.</p>
+        <p>The better question is this: <em>what does the public asset graph tell us about how a company organizes trust boundaries, deployment ownership, and front-end change?</em></p>
+        <p>Trello is useful because the public evidence does not point to a single front-end story. It points to two.</p>
+
+        <h2>World one: Trello.com looks like a component platform, not a single site</h2>
+        <p>When loading <code>https://trello.com/</code>, the public HTML referenced a dense set of JavaScript assets from <code>bxp-content-static.prod.public.atl-paas.net</code>. Even a quick pass showed a shape like this:</p>
+        <ul>
+          <li><code>/js/runtime.66ec469e01d669ab0e0c.min.js</code></li>
+          <li><code>/js/react.2063506fd83babd48d09.min.js</code></li>
+          <li><code>/js/vendors.e2072e342cc35be1bd19.min.js</code></li>
+          <li><code>/js/main.6bf254a1eb35d2372aa5.min.js</code></li>
+          <li><code>/js/UiHeaderNav.72558e1bf02d3433476c.min.js</code></li>
+          <li><code>/js/UiNavLink.a7da7a9e7d78949e1fd0.min.js</code></li>
+          <li><code>/js/UiSection.048d912756224dcf5c81.min.js</code></li>
+          <li><code>/js/UiFeatureSection.11defb28b5e5e932882a.min.js</code></li>
+        </ul>
+        <p>This is not just “a website with JS.” It looks like a shared content platform that treats UI blocks as reusable publishing units. The naming is revealing: <code>UiHeaderNav</code>, <code>UiSection</code>, <code>UiImage</code>, <code>UiCarousel</code>, <code>UiFooterNav</code>. That is a vocabulary of systematized components, not one-off marketing hacks.</p>
+        <blockquote>When a public site ships components with names that read like an internal design system, you are no longer looking at a page. You are looking at an operating model.</blockquote>
+        <p>That matters because operating models leave traces: who owns release cadence, how fast teams can assemble pages, how much of the stack is centralized, and how much front-end consistency is enforced by platform rather than taste.</p>
+
+        <h2>World two: Atlassian’s Trello product page runs through a different asset regime</h2>
+        <p>Now compare that with <code>https://www.atlassian.com/software/trello</code>. Publicly, that page referenced a different set of assets and infrastructure, including:</p>
+        <ul>
+          <li><code>https://wac-cdn.atlassian.com/static/master/10653/assets/build/js/head.js?cdnVersion=3278</code></li>
+          <li><code>https://wac-cdn.atlassian.com/static/master/10653/assets/build/js/jquery.js?cdnVersion=3278</code></li>
+          <li><code>https://wac-cdn.atlassian.com/static/master/10653/assets/build/js/main.js?cdnVersion=3278</code></li>
+        </ul>
+        <p>This stack feels older, broader, and more corporate-web flavored. It still shows deployment discipline, but not the same visible component granularity as the Trello.com surface.</p>
+        <p>That split is the actual story. Same product orbit. Different public front-end publishing philosophies.</p>
+        <p>One seems optimized for modular content assembly on a public platform. The other looks like a central web property balancing brand, legacy compatibility, and broader site-wide conventions.</p>
+
+        <h2>The source map behavior is where the boundary becomes visible</h2>
+        <p>Here is where the comparison gets more interesting.</p>
+        <p>On the Trello.com side, public JavaScript bundles such as <code>main.6bf254a1eb35d2372aa5.min.js</code> and <code>UiHeaderNav.72558e1bf02d3433476c.min.js</code> publicly included <code>sourceMappingURL</code> trailer comments. During this run, the corresponding map URLs were also publicly retrievable:</p>
+        <ul>
+          <li><code>.../main.6bf254a1eb35d2372aa5.min.js.map</code> → HTTP 200</li>
+          <li><code>.../UiHeaderNav.72558e1bf02d3433476c.min.js.map</code> → HTTP 200</li>
+        </ul>
+        <p>On the Atlassian.com side, public JavaScript files such as <code>head.js</code> and <code>main.js</code> also exposed <code>sourceMappingURL</code> trailer comments, but the obvious public path for <code>main.js.map</code> returned <code>404</code> during this run.</p>
+        <p>That difference is much more informative than either condition alone.</p>
+        <p>It suggests that map handling is not one company-wide yes-or-no decision. It is contextual. Different surfaces appear to have different publication assumptions, debugging affordances, or exposure tolerances.</p>
+        <blockquote>Mature organizations do not always have one front-end policy. They have multiple policies aligned to different surfaces, owners, and risk models.</blockquote>
+
+        <h2>Why this does not justify breach theater</h2>
+        <p>Let’s be careful. Public source maps are exposure signals, not automatic proof of compromise. A public map can increase reversibility and speed up outsider analysis, but it does not by itself prove a security flaw, data breach, or exploitable weakness.</p>
+        <p>Likewise, a <code>404</code> on a map path does not automatically mean airtight protection. It may mean the map is private, unpublished, stale, moved, or controlled elsewhere in the pipeline.</p>
+        <p>The job is not to overclaim. The job is to interpret.</p>
+        <p>In this case, the interpretation is architectural and operational:</p>
+        <ul>
+          <li>Trello.com appears to expose a highly modular public content platform with publicly retrievable maps on at least some component bundles.</li>
+          <li>Atlassian.com’s Trello product page appears to use a different asset pipeline where at least one advertised map path was not publicly retrievable.</li>
+          <li>The contrast itself suggests meaningful front-end boundary decisions across product-adjacent surfaces.</li>
+        </ul>
+
+        <h2>The real lesson: front-end output reveals org structure</h2>
+        <p>People like to think public assets reveal technology. That is only half true. Public assets often reveal something more durable: <em>org structure encoded as delivery behavior</em>.</p>
+        <p>A system that emits many reusable <code>Ui*</code> bundles likely has a different ownership pattern from one that ships a more monolithic corporate page stack. A surface that tolerates public maps may be optimizing heavily for velocity, debugging, or platform reuse. A surface that leaves map references but not public map retrieval may be balancing developer convenience against public reconstruction cost.</p>
+        <p>Those are not style choices. They are organizational choices with CDN fingerprints.</p>
+
+        <h2>Why researchers and engineering teams should care</h2>
+        <p>If you are a researcher, the lesson is simple: stop treating every source map discovery as the same story. You need the surrounding evidence to say anything intelligent.</p>
+        <p>If you are on an engineering team, the lesson is more uncomfortable: your public asset graph is part of your external posture whether you acknowledge it or not. It tells outsiders:</p>
+        <ul>
+          <li>how centralized your UI platform probably is</li>
+          <li>how aggressively you split components</li>
+          <li>whether your publishing pipeline leaks map availability</li>
+          <li>which surfaces are governed consistently and which are exceptions</li>
+        </ul>
+        <p>That is why front-end exposure review should be treated as an operational discipline, not a one-off hunt for dramatic bugs.</p>
+
+        <h2>Why this naturally points to SourceDetector</h2>
+        <p>This Trello/Atlassian comparison is exactly the kind of job where shallow tooling fails. You need more than “contains sourceMappingURL.” You need to capture page context, asset URLs, bundle names, and whether the associated artifacts actually resolve.</p>
+        <p>SourceDetector is useful here because it helps turn browser-visible clues into a structured evidence trail. That lets you distinguish between:</p>
+        <ul>
+          <li>a public source map</li>
+          <li>a public source map reference with no public artifact</li>
+          <li>a component platform pattern</li>
+          <li>a one-off page implementation</li>
+        </ul>
+        <p>That is the difference between interesting analysis and lazy fearmongering.</p>
+
+        <div class="cta-box">
+          <h3>Study the publishing model, not just the leak candidate</h3>
+          <p>SourceDetector helps researchers and front-end teams inspect public source map references, bundle structures, suspicious strings, and asset relationships in one workflow, so you can reason about exposure with evidence instead of vibes.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="blog_cta_install" data-analytics-cta-location="body_end" data-analytics-destination-type="chrome_web_store">Install SourceDetector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector" data-analytics-event="outbound_click" data-analytics-cta-name="blog_cta_github" data-analytics-cta-location="body_end" data-analytics-destination-type="github">View on GitHub</a>
+          </div>
+          <p class="small">SourceDetector is for structured client-side exposure review. It does not turn every public artifact into a breach claim, and that is exactly the point.</p>
+        </div>
+
+        <h2>Evidence note</h2>
+        <p>This article uses public evidence only. During this run, <code>https://trello.com/</code> referenced many hashed JavaScript assets on <code>bxp-content-static.prod.public.atl-paas.net</code>, including component-named bundles such as <code>UiHeaderNav</code>, and at least some of those bundles publicly exposed and served their referenced <code>.map</code> files with HTTP <code>200</code>. Separately, <code>https://www.atlassian.com/software/trello</code> referenced JavaScript assets on <code>wac-cdn.atlassian.com</code>; public files such as <code>head.js</code> and <code>main.js</code> included <code>sourceMappingURL</code> trailer comments, while the obvious public path for <code>main.js.map</code> returned <code>404</code> during this run. The thesis is therefore not that Atlassian suffered a breach, but that its public assets around Trello reveal multiple front-end operating models and differing publication boundaries.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../" data-analytics-event="outbound_click" data-analytics-cta-name="blog_footer_home" data-analytics-cta-location="footer" data-analytics-destination-type="home">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn" data-analytics-event="install_intent" data-analytics-cta-name="blog_footer_install" data-analytics-cta-location="footer" data-analytics-destination-type="chrome_web_store">Chrome Web Store</a>
+          <a href="../../faq/" data-analytics-event="outbound_click" data-analytics-cta-name="blog_footer_faq" data-analytics-cta-location="footer" data-analytics-destination-type="faq">FAQ</a>
+          <a href="../../privacy/" data-analytics-event="outbound_click" data-analytics-cta-name="blog_footer_privacy" data-analytics-cta-location="footer" data-analytics-destination-type="privacy">Privacy</a>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
