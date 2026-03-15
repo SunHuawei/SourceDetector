@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Package Browser Request Evidence for Later Investigation | Source Detector</title>
+    <meta name="description" content="A practical workflow for packaging browser request evidence so later investigation has context, timing, and verification notes instead of isolated screenshots." />
+    <meta property="og:title" content="How to Package Browser Request Evidence for Later Investigation" />
+    <meta property="og:description" content="Preserve browser request evidence with context, timestamps, and verification notes so later review is actually useful." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/package-browser-request-evidence/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/package-browser-request-evidence/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "How to Package Browser Request Evidence for Later Investigation",
+        "description": "A practical workflow for packaging browser request evidence so later investigation has context, timing, and verification notes instead of isolated screenshots.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/package-browser-request-evidence/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "dateModified": "2026-03-16",
+        "datePublished": "2026-03-16"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Workflow guide · Evidence handling · Browser recon</div>
+        <h1>How to Package Browser Request Evidence for Later Investigation</h1>
+        <p class="subhead">Good browser evidence is not a random screenshot of DevTools. It is a compact package that preserves what happened, when it happened, what triggered it, and why you thought it mattered. If later review lacks page state, initiator, request shape, and your own verification notes, the evidence will decay fast. The goal is simple: make the next reviewer understand the request without needing to recreate your entire session from memory.</p>
+        <p class="meta">Category: workflow · Search intent: learn how to preserve browser request evidence so later security review is faster and more accurate · Last reviewed: 2026-03-16</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> package request evidence as a small case file: page URL, timestamp, triggering action, request destination, method, payload summary, initiator, response status, and a one-line reason the request deserves follow-up.</div>
+
+      <article>
+        <h2>What you can detect and preserve with this workflow</h2>
+        <p>This workflow preserves browser-visible evidence around suspicious requests, hidden integrations, AI provider calls, telemetry that carries too much user context, or asset-driven network behavior that needs a second opinion. It is especially useful when the original reviewer may not be the final decision-maker.</p>
+        <p>A strong evidence package gives later review something better than a claim. It gives them sequence, context, and enough structure to follow the verification logic without overclaiming what the browser alone can show.</p>
+
+        <h2>Why packaging matters</h2>
+        <p>Most weak reports fail for procedural reasons, not because the underlying signal was fake. The request was real, but the reviewer did not note the page state, forgot which script initiated it, or captured a payload without recording whether the user had just clicked a button. That turns a useful signal into ambiguous noise.</p>
+        <blockquote>Evidence ages badly when it is detached from the moment that created it.</blockquote>
+
+<h2>Signals that evidence packaging matters here</h2>
+        <ul>
+          <li><strong>The request only appears under a meaningful action:</strong> login, upload, checkout, account settings, or chat submission.</li>
+          <li><strong>The payload carries context:</strong> user identifiers, file metadata, environment labels, or other fields that will be hard to reconstruct later.</li>
+          <li><strong>The destination is not self-explanatory:</strong> later review will need a host summary and initiator context to interpret it safely.</li>
+          <li><strong>The finding may be handed to another reviewer:</strong> if the original browser session will be gone, the notes must carry the investigation forward.</li>
+        </ul>
+
+        <h2>The minimum evidence bundle</h2>
+        <ul>
+          <li><strong>Page context:</strong> full page URL, route, and whether the user was logged in.</li>
+          <li><strong>Triggering action:</strong> page load, chat submission, file upload, login attempt, modal open, or other specific step.</li>
+          <li><strong>Request summary:</strong> host, path, method, and observed status code.</li>
+          <li><strong>Initiator:</strong> document, inline script, first-party bundle, or third-party library.</li>
+          <li><strong>Payload notes:</strong> field names, parameter categories, and whether user or environment context appears present.</li>
+          <li><strong>Why it matters:</strong> one sentence on why the request is unusual for that page.</li>
+        </ul>
+
+        <h2>How to verify before you package</h2>
+        <h3>1. Confirm that the request is reproducible</h3>
+        <p>If a request appears once and never again, say that clearly. Reproducibility changes confidence. A repeatable call tied to a stable user action is stronger evidence than a one-off bootstrap request during initial page load.</p>
+
+        <h3>2. Record the surrounding page state</h3>
+        <p>Note whether the page was public, partially authenticated, or fully account-linked. A request from a logged-in settings page means something different from the same request shape on a public landing page.</p>
+
+        <h3>3. Summarize, do not overshare</h3>
+        <p>Package the presence of sensitive-looking fields without needlessly copying raw secrets or personal data around. The point is to preserve review value, not to spread risky material wider than necessary.</p>
+
+        <h3>4. Separate fact from inference</h3>
+        <p>Write two short notes: what the browser visibly did, and what you suspect it might mean. That split makes later review cleaner and keeps a reasonable uncertainty boundary in the record.</p>
+
+        <h2>Common false positives in evidence handling</h2>
+        <ul>
+          <li><strong>“Unusual host” without baseline:</strong> the domain looked strange, but it was actually part of a normal support, analytics, or CDN chain.</li>
+          <li><strong>Isolated screenshot syndrome:</strong> a single cropped image of DevTools without URL, initiator, or timing is rarely enough.</li>
+          <li><strong>Copying raw blobs without interpretation:</strong> a payload dump is less useful than a short field-level summary with context.</li>
+          <li><strong>Assuming success from visibility:</strong> a visible request may have failed, been blocked, or required privileges the current user did not have.</li>
+        </ul>
+
+        <h2>What this does not prove</h2>
+        <p>A packaged evidence bundle does not prove exploitability, backend access, data exposure, or incident severity by itself. It proves that certain browser-visible behavior happened under specific observed conditions. That is still valuable. It simply needs to be framed honestly.</p>
+
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>The request appears to send user-generated content or account-linked metadata to a destination not obvious from the product flow.</li>
+          <li>The initiator is a first-party bundle, but the destination is a hidden vendor or undocumented service.</li>
+          <li>You can reproduce the traffic consistently under a sensitive action such as authentication, billing, or data upload.</li>
+          <li>The evidence package suggests a broader dependency or architecture question, not just one noisy request.</li>
+        </ul>
+
+        <h2>Methodology</h2>
+        <p>This workflow is based on browser-visible evidence capture only: request metadata, initiator context, page state, and reviewer notes. It intentionally avoids claiming backend compromise from network observation alone. Last reviewed: 2026-03-16.</p>
+
+        <div class="cta-box">
+          <h3>Keep the evidence reviewable, not dramatic</h3>
+          <p>Source Detector helps collect browser-visible artifacts and preserve the context around suspicious requests, so follow-up review starts with a usable evidence package instead of scattered screenshots and guesswork.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQs</h2>
+        <h3>What is the most common evidence mistake?</h3>
+        <p>Capturing a screenshot without recording URL, initiator, page state, or the user action that triggered the request.</p>
+        <h3>Should I copy full payloads into a report?</h3>
+        <p>Usually no. Summaries are safer and often more useful, unless full payload retention is necessary for an internal review workflow.</p>
+        <h3>Why separate fact from inference?</h3>
+        <p>Because later reviewers need to know what was directly observed versus what was your current hypothesis about the behavior, separate from the observed facts.</p>
+        <h3>When is a small evidence bundle enough?</h3>
+        <p>When it preserves page state, request summary, initiator, payload notes, and a clear explanation of why the request deserves follow-up.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"What is the most common evidence mistake?","acceptedAnswer":{"@type":"Answer","text":"Capturing a screenshot without recording URL, initiator, page state, or the user action that triggered the request."}},
+          {"@type":"Question","name":"Should I copy full payloads into a report?","acceptedAnswer":{"@type":"Answer","text":"Usually no. Summaries are safer and often more useful, unless full payload retention is necessary for an internal review workflow."}},
+          {"@type":"Question","name":"Why separate fact from inference?","acceptedAnswer":{"@type":"Answer","text":"Because later reviewers need to know what was directly observed versus what was your current hypothesis about the behavior, separate from the observed facts."}},
+          {"@type":"Question","name":"When is a small evidence bundle enough?","acceptedAnswer":{"@type":"Answer","text":"When it preserves page state, request summary, initiator, payload notes, and a clear explanation of why the request deserves follow-up."}}
+        ]
+      }
+    </script>
+  </body>
+</html>
