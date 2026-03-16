@@ -27,12 +27,22 @@ import { CrxFileTree } from './components/CrxFileTree';
 import { SourceMapTable } from './components/SourceMapTable';
 import { openInDesktop } from '@/utils/desktopApp';
 import { browserAPI } from '@/utils/browser-polyfill';
-import { trackEvent } from '@/utils/analytics';
+import { trackEvent, trackEventOnce, trackProductEvent } from '@/utils/analytics';
 
 // Helper function to format bundle size
 function getBundleSize(files: SourceMapFile[]): string {
     const totalSize = files.reduce((sum, file) => sum + file.size, 0);
     return formatBytes(totalSize);
+}
+
+function getErrorType(error: unknown): string {
+    if (error instanceof Error && error.name.trim().length > 0) {
+        return error.name;
+    }
+    if (typeof error === 'string' && error.trim().length > 0) {
+        return error;
+    }
+    return 'unknown_error';
 }
 
 export default function App() {
@@ -56,42 +66,117 @@ export default function App() {
     useEffect(() => {
         loadData();
         void trackEvent('popup_viewed');
+        void trackEventOnce('onboarding_started', 'popup_first_open', {
+            surface: 'popup',
+            entry_point: 'popup_icon'
+        });
     }, []);
 
     const loadData = async () => {
         try {
-            console.log('loadData')
             const [tab] = await browserAPI.tabs.query({ active: true, currentWindow: true });
-            console.log('tab.url', tab.url)
-            if (!tab.url) return;
+            if (!tab?.url) {
+                void trackProductEvent('scan_failed', {
+                    surface: 'popup',
+                    scan_stage: 'resolve_active_tab',
+                    error_type: 'active_tab_url_missing'
+                });
+                return;
+            }
             if (isExtensionPage(tab.url)) {
-                console.log('isExtensionPage', tab.url)
                 const response = await browserAPI.runtime.sendMessage({
                     type: MESSAGE_TYPES.GET_CRX_FILE,
                     data: { url: tab.url }
                 });
-                console.log('response', response);
+
+                const responseReason = typeof response?.reason === 'string' ? response.reason : undefined;
                 if (response.success && response.data) {
                     setCrxFile(response.data);
-                    const result = await parseCrxFile(response.data.crxUrl);
-                    setParsed(result);
+                    try {
+                        const result = await parseCrxFile(response.data.crxUrl);
+                        setParsed(result);
+
+                        void trackProductEvent('result_viewed', {
+                            surface: 'popup',
+                            result_tab: 'crx_files',
+                            result_count: result.count,
+                            has_results: result.count > 0
+                        });
+
+                        if (result.count > 0) {
+                            void trackEventOnce('onboarding_completed', 'popup_first_result_viewed', {
+                                surface: 'popup',
+                                completion_step: 'result_viewed',
+                                result_tab: 'crx_files'
+                            });
+                        }
+                    } catch (parseError) {
+                        void trackProductEvent('scan_failed', {
+                            surface: 'popup',
+                            scan_stage: 'parse_crx_file',
+                            error_type: getErrorType(parseError)
+                        });
+                    }
+                } else {
+                    void trackProductEvent('scan_failed', {
+                        surface: 'popup',
+                        scan_stage: 'fetch_crx_file',
+                        error_type: 'crx_lookup_failed',
+                        error_reason: responseReason
+                    });
                 }
             } else {
-                console.log('is not extension page', tab.url)
                 const response = await browserAPI.runtime.sendMessage({
                     type: MESSAGE_TYPES.GET_PAGE_DATA,
                     data: { url: tab.url }
                 });
-                console.log('response', response)
-                setPageData(response.data);
+
+                const responseReason = typeof response?.reason === 'string' ? response.reason : undefined;
+                if (response.success && response.data) {
+                    setPageData(response.data);
+                    const files = Array.isArray(response.data.files) ? response.data.files : [];
+                    const findingsCount = files.reduce(
+                        (total, file) => total + (file.findings?.length ?? 0),
+                        0
+                    );
+
+                    void trackProductEvent('result_viewed', {
+                        surface: 'popup',
+                        result_tab: 'source_maps',
+                        result_count: files.length,
+                        findings_count: findingsCount,
+                        has_findings: findingsCount > 0
+                    });
+
+                    if (files.length > 0) {
+                        void trackEventOnce('onboarding_completed', 'popup_first_result_viewed', {
+                            surface: 'popup',
+                            completion_step: 'result_viewed',
+                            result_tab: 'source_maps'
+                        });
+                    }
+                } else {
+                    void trackProductEvent('scan_failed', {
+                        surface: 'popup',
+                        scan_stage: 'fetch_page_data',
+                        error_type: 'page_data_lookup_failed',
+                        error_reason: responseReason
+                    });
+                }
             }
             const statsResponse = await browserAPI.runtime.sendMessage({
                 type: MESSAGE_TYPES.GET_STORAGE_STATS
             });
-            console.log('statsResponse', statsResponse)
-            setStats(statsResponse.data);
+            if (statsResponse.success) {
+                setStats(statsResponse.data);
+            }
         } catch (error) {
             console.error('Error loading data:', error);
+            void trackProductEvent('scan_failed', {
+                surface: 'popup',
+                scan_stage: 'load_data',
+                error_type: getErrorType(error)
+            });
         } finally {
             setLoading(false);
         }
@@ -122,9 +207,17 @@ export default function App() {
     };
 
     const handleOpenLeakReport = (file: SourceMapFile) => {
+        const firstFindingType = file.findings?.[0]?.ruleName?.trim();
         void trackEvent('popup_open_leak_report', {
             source_map_file_id: file.id,
             file_url: file.url,
+            findings_count: file.findings?.length ?? 0
+        });
+        void trackProductEvent('finding_detail_opened', {
+            surface: 'popup',
+            placement: 'source_map_table',
+            source_map_file_id: file.id,
+            finding_type: firstFindingType && firstFindingType.length > 0 ? firstFindingType : 'unknown_rule',
             findings_count: file.findings?.length ?? 0
         });
         openInDesktop('handleOpenDesktopApp', {
@@ -269,6 +362,18 @@ export default function App() {
 
     const handleOpenGithubFeedback = async () => {
         void trackEvent('popup_open_github_feedback');
+        void trackProductEvent('feedback_submitted', {
+            surface: 'popup',
+            placement: 'header_feedback_icon',
+            feedback_channel: 'github_issues',
+            submission_state: 'intent'
+        });
+        void trackProductEvent('share_clicked', {
+            surface: 'popup',
+            placement: 'header_feedback_icon',
+            share_target: 'github_issues',
+            share_channel: 'github'
+        });
         await browserAPI.tabs.create({ url: GITHUB_FEEDBACK_URL });
     };
 

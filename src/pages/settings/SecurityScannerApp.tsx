@@ -13,7 +13,7 @@ import {
 } from '@/storage/rules';
 import { AppSettings, Rule, StorageStats } from '@/types';
 import { browserAPI } from '@/utils/browser-polyfill';
-import { trackEvent } from '@/utils/analytics';
+import { trackEvent, trackProductEvent } from '@/utils/analytics';
 import { Add as AddIcon, Delete as DeleteIcon, GitHub as GitHubIcon } from '@mui/icons-material';
 import {
     Alert,
@@ -131,6 +131,11 @@ export default function SecurityScannerApp() {
 
             if (response.success) {
                 setSettings(newSettings);
+                void trackProductEvent('settings_changed', {
+                    surface: 'settings',
+                    setting_key: key,
+                    setting_value: value
+                });
                 setMessage({ type: 'success', text: 'Settings saved successfully' });
             }
         } catch (error) {
@@ -150,6 +155,12 @@ export default function SecurityScannerApp() {
                         : rule
                 )
             );
+            void trackProductEvent('settings_changed', {
+                surface: 'settings',
+                setting_key: 'built_in_rule_enabled',
+                setting_target: ruleId,
+                setting_value: isEnabled
+            });
             setMessage({ type: 'success', text: 'Built-in rule updated' });
         } catch (error) {
             console.error('Error updating built-in rule:', error);
@@ -170,6 +181,12 @@ export default function SecurityScannerApp() {
                         : rule
                 )
             );
+            void trackProductEvent('settings_changed', {
+                surface: 'settings',
+                setting_key: 'custom_rule_enabled',
+                setting_target: ruleId,
+                setting_value: isEnabled
+            });
             setMessage({ type: 'success', text: 'Custom rule updated' });
         } catch (error) {
             console.error('Error updating custom rule:', error);
@@ -209,6 +226,12 @@ export default function SecurityScannerApp() {
                 rule_id: newRule.id,
                 has_flags: Boolean(newRule.flags)
             });
+            void trackProductEvent('settings_changed', {
+                surface: 'settings',
+                setting_key: 'custom_rule_added',
+                setting_target: newRule.id,
+                has_flags: Boolean(newRule.flags)
+            });
             setCustomRuleName('');
             setCustomRulePattern('');
             setCustomRuleFlags('');
@@ -229,6 +252,11 @@ export default function SecurityScannerApp() {
             setRulesUpdating(true);
             await removeUserRule(ruleId);
             setUserRules((previousRules) => previousRules.filter((rule) => rule.id !== ruleId));
+            void trackProductEvent('settings_changed', {
+                surface: 'settings',
+                setting_key: 'custom_rule_deleted',
+                setting_target: ruleId
+            });
             setMessage({ type: 'success', text: 'Custom rule deleted' });
         } catch (error) {
             console.error('Error deleting custom rule:', error);
@@ -271,6 +299,12 @@ export default function SecurityScannerApp() {
 
     const handleOpenGithubFeedback = () => {
         void trackEvent('settings_open_github_feedback');
+        void trackProductEvent('share_clicked', {
+            surface: 'settings',
+            placement: 'header_feedback_icon',
+            share_target: 'github_issues',
+            share_channel: 'github'
+        });
         window.open(GITHUB_FEEDBACK_URL, '_blank', 'noopener,noreferrer');
     };
 

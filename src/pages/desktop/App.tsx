@@ -2,7 +2,7 @@ import { SourceDetectorDB } from '@/storage/database';
 import { LeakFinding, SourceMapFile } from '@/types';
 import { formatBytes } from '@/utils/format';
 import { SourceMapDownloader } from '@/utils/sourceMapDownloader';
-import { trackEvent } from '@/utils/analytics';
+import { trackEvent, trackProductEvent } from '@/utils/analytics';
 import {
     Alert,
     AppBar,
@@ -99,6 +99,16 @@ function readNumberOption(options: Record<string, unknown>, key: string): number
 function readSearchParam(searchParams: URLSearchParams, key: string): string | undefined {
     const value = searchParams.get(key);
     return value && value.trim().length > 0 ? value : undefined;
+}
+
+function getErrorType(error: unknown): string {
+    if (error instanceof Error && error.name.trim().length > 0) {
+        return error.name;
+    }
+    if (typeof error === 'string' && error.trim().length > 0) {
+        return error;
+    }
+    return 'unknown_error';
 }
 
 function parseNavigationState(): SourceExplorerNavigationState {
@@ -310,6 +320,11 @@ export default function SourceExplorerApp() {
                 if (!cancelled) {
                     console.error('Error loading source explorer data:', loadError);
                     setError(loadError instanceof Error ? loadError.message : 'Failed to load Source Explorer data.');
+                    void trackProductEvent('scan_failed', {
+                        surface: 'source_explorer',
+                        scan_stage: 'load_source_explorer_data',
+                        error_type: getErrorType(loadError)
+                    });
                 }
             } finally {
                 if (!cancelled) {
@@ -384,6 +399,42 @@ export default function SourceExplorerApp() {
         void trackEvent('source_explorer_viewed');
     }, []);
 
+    useEffect(() => {
+        if (!selectedFile) {
+            return;
+        }
+
+        void trackProductEvent('result_viewed', {
+            surface: 'source_explorer',
+            result_tab: 'file_details',
+            source_map_file_id: selectedFile.id,
+            file_type: selectedFile.fileType,
+            findings_count: selectedFindings.length,
+            has_findings: selectedFindings.length > 0
+        });
+    }, [selectedFile?.id, selectedFile?.fileType, selectedFindings.length]);
+
+    const handleFindingSelection = (index: number) => {
+        setSelectedFindingIndex(index);
+
+        const finding = selectedFindings[index];
+        if (!finding) {
+            return;
+        }
+
+        const normalizedFindingType = finding.ruleName.trim().length > 0
+            ? finding.ruleName
+            : 'unknown_rule';
+        void trackProductEvent('finding_detail_opened', {
+            surface: 'source_explorer',
+            placement: 'finding_list',
+            source_map_file_id: selectedFile?.id,
+            finding_type: normalizedFindingType,
+            finding_index: index + 1,
+            findings_count: selectedFindings.length
+        });
+    };
+
     const handleDownloadSingle = async () => {
         if (!selectedFile) {
             return;
@@ -441,6 +492,18 @@ export default function SourceExplorerApp() {
 
     const handleOpenGithubFeedback = () => {
         void trackEvent('source_explorer_open_github_feedback');
+        void trackProductEvent('feedback_submitted', {
+            surface: 'source_explorer',
+            placement: 'header_feedback_icon',
+            feedback_channel: 'github_issues',
+            submission_state: 'intent'
+        });
+        void trackProductEvent('share_clicked', {
+            surface: 'source_explorer',
+            placement: 'header_feedback_icon',
+            share_target: 'github_issues',
+            share_channel: 'github'
+        });
         window.open(GITHUB_FEEDBACK_URL, '_blank', 'noopener,noreferrer');
     };
 
@@ -721,7 +784,7 @@ export default function SourceExplorerApp() {
                                                                     <ListItemButton
                                                                         key={`${finding.ruleId}-${finding.startIndex}-${index}`}
                                                                         selected={index === selectedFindingIndex}
-                                                                        onClick={() => setSelectedFindingIndex(index)}
+                                                                        onClick={() => handleFindingSelection(index)}
                                                                     >
                                                                         <ListItemText
                                                                             primary={finding.ruleName}
