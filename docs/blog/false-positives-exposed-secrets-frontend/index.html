@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Common False Positives When Looking for Exposed Secrets in Frontend Apps | Source Detector</title>
+    <meta name="description" content="A practical explainer on common false positives when looking for exposed secrets in frontend apps, what browser evidence can really show, and when a finding deserves escalation." />
+    <meta property="og:title" content="Common False Positives When Looking for Exposed Secrets in Frontend Apps" />
+    <meta property="og:description" content="Learn which frontend secret findings are often misleading, what they do and do not prove, and how to verify them without overclaiming risk." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/false-positives-exposed-secrets-frontend/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/false-positives-exposed-secrets-frontend/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Common False Positives When Looking for Exposed Secrets in Frontend Apps",
+        "description": "A practical explainer on common false positives when looking for exposed secrets in frontend apps, what browser evidence can really show, and when a finding deserves escalation.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/false-positives-exposed-secrets-frontend/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "dateModified": "2026-03-17",
+        "datePublished": "2026-03-17"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Risk explainer · False positives · Frontend exposure</div>
+        <h1>Common False Positives When Looking for Exposed Secrets in Frontend Apps</h1>
+        <p class="subhead">A lot of frontend secret hunting goes wrong in the same predictable ways. Someone finds a long token-looking string, an environment variable name, a public API key, or an internal-sounding endpoint and immediately treats it as confirmed risk. Sometimes that instinct is right. Often it is not. The browser reveals many useful signals, but those signals need context: whether the value is meant to be public, whether it is restricted, whether it can be abused from the browser, and whether the surrounding flow actually changes the security picture. Good review is not about collecting the most dramatic strings. It is about knowing which findings deserve escalation and which ones only look scary out of context.</p>
+        <p class="meta">Category: risk-explainer · Search intent: understand common false positives in frontend secret review and how to verify them safely · Last reviewed: 2026-03-17</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> the most common false positives are public identifiers mistaken for secrets, stale or dead endpoints, environment labels without access value, token-like strings with no privilege, and scanner matches detached from runtime context. A finding becomes more credible when it is tied to a real request, a meaningful action, and a clear abuse or exposure path.</div>
+
+      <article>
+        <h2>What you can detect from frontend secret review</h2>
+        <p>Frontend review can absolutely detect meaningful exposure: shipped credentials, hidden service relationships, browser-reachable source maps, and request payloads that reveal more than they should. It is useful because the browser shows what is genuinely being delivered to public clients. But browser evidence is also noisy. Build systems emit placeholders, SDKs use public keys, and applications carry identifiers that look sensitive without granting sensitive access.</p>
+        <p>That is why secret review needs two questions at once: <em>what is visible?</em> and <em>what does that visibility actually enable?</em></p>
+
+        <h2>Signals that often mislead reviewers</h2>
+        <ul>
+          <li><strong>Long opaque strings:</strong> length alone makes people nervous, but many long values are public configuration, cache keys, tenant IDs, or generated client identifiers.</li>
+          <li><strong>Environment variable names:</strong> a variable named <code>API_KEY</code> or <code>SECRET</code> inside a bundle may be a placeholder, test fixture, or dead code path.</li>
+          <li><strong>Public SDK keys:</strong> some services intentionally use publishable or browser-side keys that identify an app without granting dangerous privileges.</li>
+          <li><strong>Internal-sounding routes:</strong> endpoint names such as <code>/internal</code> or <code>/admin</code> can look severe while exposing nothing useful to an unauthenticated browser.</li>
+          <li><strong>Regex-only scanner hits:</strong> pattern matches without surrounding code or request evidence often exaggerate risk.</li>
+        </ul>
+
+        <h2>The false positives that show up most often</h2>
+        <h3>1. Publishable keys treated like private secrets</h3>
+        <p>Many frontend stacks legitimately ship keys that identify a project, tenant, or client application. The value may still matter operationally, but visibility alone is not the same as dangerous exposure. What matters is whether the key can authorize privileged actions, incur cost, or bypass intended trust boundaries.</p>
+
+        <h3>2. Dead code and stale artifacts</h3>
+        <p>A string inside a bundle may belong to a feature no longer wired into production, a fallback path, or an old integration name. Static presence is a signal, not proof that the application still uses it.</p>
+
+        <h3>3. Endpoint names without reachable behavior</h3>
+        <p>Reviewers often overreact to path names because names are easy to quote. But a route that sounds internal may return 403, require private headers, reject browser origins, or represent a harmless naming convention. Behavior matters more than naming.</p>
+
+        <h3>4. Test fixtures and examples bundled into assets</h3>
+        <p>Frontend packages sometimes ship example values, mock data, or test-shaped strings. They can still indicate sloppy build hygiene, but they do not automatically create a live secret exposure problem.</p>
+
+        <h3>5. Tokens that identify but do not authorize</h3>
+        <p>Some values are identifiers, correlation handles, or public embed tokens. They may help explain an architecture, but they do not necessarily open access or create abuse value on their own.</p>
+
+        <h2>How to verify whether a finding is real</h2>
+        <h3>1. Look for runtime use, not just static presence</h3>
+        <p>If the value appears in a real browser request, config object, or active code path tied to a meaningful action, confidence goes up. If it only exists as a stray string in a large bundle, confidence should stay lower.</p>
+
+        <h3>2. Check what the value appears to control</h3>
+        <p>Ask what this string is actually doing. Does it select a project, authenticate a service, route traffic, label an environment, or merely toggle a client-side feature? Control value is more important than the label attached to it.</p>
+
+        <h3>3. Compare with page role and user state</h3>
+        <p>A token on a public marketing page tells a different story from a token on an authenticated billing screen. Context changes meaning.</p>
+
+        <h3>4. Separate visibility from abuse potential</h3>
+        <p>Some exposures are still worth fixing even when abuse is unclear, because they reveal architecture or create confusion. But that is different from claiming direct exploitability. Make the distinction explicit.</p>
+
+        <h2>What this does not prove</h2>
+        <p>A suspicious string in frontend code does not prove a breach, a secret leak with impact, or backend compromise. It does not prove the value is active, unrestricted, or meaningful outside the observed session. Public artifacts can be strong clues, but they become trustworthy findings only after you tie them to a real capability or operational risk.</p>
+
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>The value is used in live requests tied to sensitive actions such as login, upload, billing, export, or prompt submission.</li>
+          <li>The surrounding context suggests the value authorizes access, spends money, or changes scope rather than just identifying a client.</li>
+          <li>The same finding appears across multiple assets or flows, which makes accidental leftover test data less likely.</li>
+          <li>The browser evidence reveals a hidden dependency or trust boundary that changes how the app should be reviewed.</li>
+        </ul>
+
+        <h2>Methodology</h2>
+        <p>This article is based on browser-visible and asset-visible review only: strings found in shipped frontend code, associated request context when present, and verification logic focused on function, privilege, and reproducibility. It does not treat public visibility alone as proof of exploitability. Last reviewed: 2026-03-17.</p>
+
+        <div class="cta-box">
+          <h3>Use Source Detector to keep false positives from consuming the whole review</h3>
+          <p>Source Detector helps you inspect source maps, suspicious strings, and browser-visible request evidence in one place, so you can spend less time reacting to scary-looking noise and more time validating what actually matters.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQs</h2>
+        <h3>Is a public API key always a security issue?</h3>
+        <p>No. Some keys are intentionally publishable. The real question is what the key allows and whether misuse is possible from the browser-visible context.</p>
+        <h3>Does a scanner hit on the word “secret” mean I found a real secret?</h3>
+        <p>No. Variable names, examples, test fixtures, and dead code can all trigger keyword-based matches without exposing anything useful.</p>
+        <h3>Why are false positives so common in frontend review?</h3>
+        <p>Because frontend assets contain lots of identifiers, placeholders, SDK config, and historical build residue that can look sensitive outside their real context.</p>
+        <h3>When should I escalate a suspicious value?</h3>
+        <p>Escalate when the value is live in runtime behavior, tied to meaningful actions, and appears to grant access, spend money, or reveal a dependency that changes risk.</p>
+        <h3>Can public artifacts still matter even if they are not exploitable?</h3>
+        <p>Yes. They can reveal architecture, vendor dependencies, operational habits, or trust boundaries worth reviewing, even when they do not amount to a direct vulnerability.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Is a public API key always a security issue?","acceptedAnswer":{"@type":"Answer","text":"No. Some keys are intentionally publishable. The real question is what the key allows and whether misuse is possible from the browser-visible context."}},
+          {"@type":"Question","name":"Does a scanner hit on the word ‘secret’ mean I found a real secret?","acceptedAnswer":{"@type":"Answer","text":"No. Variable names, examples, test fixtures, and dead code can all trigger keyword-based matches without exposing anything useful."}},
+          {"@type":"Question","name":"Why are false positives so common in frontend review?","acceptedAnswer":{"@type":"Answer","text":"Because frontend assets contain lots of identifiers, placeholders, SDK config, and historical build residue that can look sensitive outside their real context."}},
+          {"@type":"Question","name":"When should I escalate a suspicious value?","acceptedAnswer":{"@type":"Answer","text":"Escalate when the value is live in runtime behavior, tied to meaningful actions, and appears to grant access, spend money, or reveal a dependency that changes risk."}},
+          {"@type":"Question","name":"Can public artifacts still matter even if they are not exploitable?","acceptedAnswer":{"@type":"Answer","text":"Yes. They can reveal architecture, vendor dependencies, operational habits, or trust boundaries worth reviewing, even when they do not amount to a direct vulnerability."}}
+        ]
+      }
+    </script>
+  </body>
+</html>

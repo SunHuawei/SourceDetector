@@ -2,7 +2,6 @@
 how-to-detect-exposed-api-keys-in-frontend-javascript | How to detect exposed API keys in frontend JavaScript
 verify-ai-web-app-provider-credential-leakage | How to verify whether an AI web app leaks provider credentials
 hardcoded-ai-service-credentials-client-side | How to detect hardcoded AI service credentials in client-side code
-inspect-fetch-xhr-traffic-security-triage | How to inspect fetch/XHR traffic for security triage
 verify-suspicious-endpoint-reachability | How to verify whether a suspicious endpoint is actually reachable
 inspect-ai-enabled-sites-integration-clues | How to inspect AI-enabled sites for exposed integration clues
 
@@ -21,7 +20,6 @@ manual-review-vs-automated-detection-frontend | Manual review vs automated detec
 
 # risk-explainer
 browser-request-patterns-third-party-risk | What browser request patterns can signal third-party script risk
-false-positives-exposed-secrets-frontend | Common false positives when looking for exposed secrets in frontend apps
 leaked-endpoints-passive-recon | What leaked endpoints can reveal during passive web reconnaissance
 suspicious-api-calls-what-they-prove | What a suspicious API call does and does not prove
 analytics-trackers-risk-signals | Third-party analytics, trackers, and risk signals: what is normal and what deserves review
@@ -36,5 +34,7 @@ source-maps-and-frontend-artifacts | Source maps, frontend artifacts, and what t
 
 # used
 # Move published topics here after successful deployment verification.
+inspect-fetch-xhr-traffic-security-triage | How to inspect fetch/XHR traffic for security triage
+false-positives-exposed-secrets-frontend | Common false positives when looking for exposed secrets in frontend apps
 inspect-suspicious-outbound-requests | How to inspect suspicious outbound requests on a webpage
 package-browser-request-evidence | How to package browser request evidence for later investigation

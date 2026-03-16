@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Inspect Fetch/XHR Traffic for Security Triage | Source Detector</title>
+    <meta name="description" content="A practical guide to inspecting fetch and XHR traffic for security triage, validating what the browser actually shows, and avoiding overclaiming from noisy frontend requests." />
+    <meta property="og:title" content="How to Inspect Fetch/XHR Traffic for Security Triage" />
+    <meta property="og:description" content="Inspect fetch and XHR traffic with a verification-first workflow that separates actionable browser evidence from normal frontend noise." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/inspect-fetch-xhr-traffic-security-triage/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/inspect-fetch-xhr-traffic-security-triage/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "How to Inspect Fetch/XHR Traffic for Security Triage",
+        "description": "A practical guide to inspecting fetch and XHR traffic for security triage, validating what the browser actually shows, and avoiding overclaiming from noisy frontend requests.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/inspect-fetch-xhr-traffic-security-triage/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "dateModified": "2026-03-17",
+        "datePublished": "2026-03-17"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">High-intent guide · Request evidence · Browser triage</div>
+        <h1>How to Inspect Fetch/XHR Traffic for Security Triage</h1>
+        <p class="subhead">If you want to triage frontend security signals quickly, fetch and XHR traffic is one of the best places to start. It shows which services the browser is actually talking to, what kind of data is being sent, and whether a page is doing more behind the scenes than the UI suggests. The useful move is not to label every odd request a vulnerability. It is to verify destination, initiator, timing, and payload shape together, then decide whether the traffic points to a real follow-up question or just normal application noise.</p>
+        <p class="meta">Category: high-intent · Search intent: learn how to inspect fetch/XHR traffic safely during frontend security triage · Last reviewed: 2026-03-17</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> review fetch/XHR traffic by grouping requests around user actions, checking which script initiated them, and asking whether the destination, parameters, and response behavior fit the page’s role. Interesting traffic usually combines an unexpected host, meaningful payload context, or a sensitive flow such as auth, upload, billing, or chat.</div>
+
+      <article>
+        <h2>What this method can detect</h2>
+        <p>Fetch and XHR review can surface hidden API relationships, AI-provider calls, environment-specific service usage, unexpected third-party dependencies, and places where the frontend is shipping user or account context more broadly than it should. It can also reveal when a simple public page quietly depends on moderation, analytics, fraud, feature-flag, or account-linked services that are not obvious from the interface alone.</p>
+        <p>That matters because network behavior is stronger evidence than a random string in a JavaScript bundle. A request shows that the browser attempted a real interaction. It still does not prove exploitability, but it gives you something concrete to verify.</p>
+
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Unexpected hosts:</strong> requests to vendors or subdomains that do not fit the page’s visible function.</li>
+          <li><strong>Sensitive payload context:</strong> prompts, email addresses, file metadata, environment labels, long opaque identifiers, or internal route hints in request bodies and query strings.</li>
+          <li><strong>Action-specific traffic:</strong> calls that appear only after login, upload, checkout, prompt submission, or settings changes.</li>
+          <li><strong>Privileged-looking endpoints:</strong> routes that sound administrative, internal, or operational even when the page itself is public.</li>
+          <li><strong>Mismatch between UI and network:</strong> a brochure page that suddenly behaves like a product console or sends richer state than expected.</li>
+        </ul>
+
+        <h2>Why fetch/XHR traffic matters more than raw request volume</h2>
+        <p>Modern pages emit a lot of traffic that is noisy but expected. The point is not to count every request. It is to isolate the requests that represent application behavior rather than support plumbing. Fetch and XHR calls usually carry higher-value clues because they often sit closer to product logic than static asset loads or generic CDN fetches.</p>
+        <blockquote>Good triage is less about spotting one weird request and more about proving why that request is weird for this page, at this moment, under this action.</blockquote>
+
+        <h2>How to verify what you are seeing</h2>
+        <h3>1. Start with one clean page action</h3>
+        <p>Pick a single trigger: page load, clicking a button, submitting a prompt, uploading a file, opening settings, or saving a form. If you watch too many actions at once, the traffic story gets muddy fast.</p>
+
+        <h3>2. Group by initiator before drawing conclusions</h3>
+        <p>A suspicious host is much more interesting when it is initiated by a first-party application bundle than when it comes from a standard tag manager or session replay script. The initiator gives the request a place in the frontend’s logic.</p>
+
+        <h3>3. Compare payload shape across repeated actions</h3>
+        <p>Repeat the same flow with one small change: different input, logged-in versus logged-out, different locale, or one extra UI step. If the payload changes in a meaningful way, you learn what the request is tied to. That is usually more useful than staring at endpoint names.</p>
+
+        <h3>4. Check whether the response actually succeeds</h3>
+        <p>A visible request may still fail on CORS, preflight, missing credentials, or backend validation. Treat successful behavior, blocked behavior, and speculative path names as different confidence levels.</p>
+
+        <h3>5. Keep notes on page state</h3>
+        <p>Whether the page was public, partially authenticated, or fully account-linked changes the interpretation. A request that feels alarming on a public landing page may be routine inside an authenticated workspace.</p>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Telemetry and observability noise:</strong> error tracking, analytics, feature flags, and performance beacons often look busy and unfamiliar even when they are normal.</li>
+          <li><strong>Challenge and anti-bot systems:</strong> fraud controls can generate opaque requests by design.</li>
+          <li><strong>Generic route names:</strong> <code>/internal</code>, <code>/admin</code>, or <code>/debug</code> in a path is not proof of exposed privileged functionality.</li>
+          <li><strong>Public identifiers mistaken for secrets:</strong> a long token-like value may be a public key, tenant marker, or session-independent identifier with low abuse value.</li>
+        </ul>
+
+        <h2>What this does not prove</h2>
+        <p>Fetch/XHR traffic does not prove a breach, backend compromise, or unauthorized access. It does not prove that an endpoint is reachable outside the observed session, and it does not prove that a token in a payload grants meaningful privileges. Browser evidence is often enough to justify review, but not enough to skip verification.</p>
+
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>The request carries user-generated content, file metadata, or account-linked context to an undocumented destination.</li>
+          <li>The same traffic appears repeatedly in sensitive flows such as authentication, billing, prompt submission, or export actions.</li>
+          <li>The initiator is first-party code, but the request reaches a hidden or surprising service that changes the trust picture.</li>
+          <li>You can reproduce the behavior cleanly and explain why it is inconsistent with the page’s stated role.</li>
+        </ul>
+
+        <h2>Methodology</h2>
+        <p>This article reflects browser-visible review only: fetch/XHR destinations, initiators, timing, payload shape, and observed response behavior from a normal browsing session. It does not claim backend access or confirmed exploitability from traffic inspection alone. Last reviewed: 2026-03-17.</p>
+
+        <div class="cta-box">
+          <h3>Keep fetch/XHR evidence tied to the page that produced it</h3>
+          <p>Source Detector helps you collect browser-visible artifacts, inspect suspicious client-side behavior, and preserve the surrounding evidence so triage starts from context instead of isolated screenshots and guesswork.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQs</h2>
+        <h3>Is fetch/XHR traffic better than looking at all network requests?</h3>
+        <p>For triage, often yes. It usually sits closer to application logic than generic asset loads, so it gives clearer security clues with less noise.</p>
+        <h3>Does an internal-sounding endpoint prove privileged access?</h3>
+        <p>No. It may be blocked, public, or simply poorly named. You still need context and verification.</p>
+        <h3>What should I inspect first: host, payload, or initiator?</h3>
+        <p>The best first combination is host plus initiator. A strange host means more when you know which part of the frontend triggered it.</p>
+        <h3>When is traffic worth escalating?</h3>
+        <p>Escalate when the request is reproducible, tied to a meaningful action, and carries data or reaches a destination that changes the security story.</p>
+        <h3>Can this method confirm a real vulnerability on its own?</h3>
+        <p>No. It is a strong triage method, but it still needs manual validation before you claim exploitability or impact.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Is fetch/XHR traffic better than looking at all network requests?","acceptedAnswer":{"@type":"Answer","text":"For triage, often yes. It usually sits closer to application logic than generic asset loads, so it gives clearer security clues with less noise."}},
+          {"@type":"Question","name":"Does an internal-sounding endpoint prove privileged access?","acceptedAnswer":{"@type":"Answer","text":"No. It may be blocked, public, or simply poorly named. You still need context and verification."}},
+          {"@type":"Question","name":"What should I inspect first: host, payload, or initiator?","acceptedAnswer":{"@type":"Answer","text":"The best first combination is host plus initiator. A strange host means more when you know which part of the frontend triggered it."}},
+          {"@type":"Question","name":"When is traffic worth escalating?","acceptedAnswer":{"@type":"Answer","text":"Escalate when the request is reproducible, tied to a meaningful action, and carries data or reaches a destination that changes the security story."}},
+          {"@type":"Question","name":"Can this method confirm a real vulnerability on its own?","acceptedAnswer":{"@type":"Answer","text":"No. It is a strong triage method, but it still needs manual validation before you claim exploitability or impact."}}
+        ]
+      }
+    </script>
+  </body>
+</html>
