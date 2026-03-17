@@ -66,5 +66,6 @@
     "developer-tools"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "packageManager": "npm@11.8.0"
 }
