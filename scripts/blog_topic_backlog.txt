@@ -1,12 +1,10 @@
 # high-intent
 how-to-detect-exposed-api-keys-in-frontend-javascript | How to detect exposed API keys in frontend JavaScript
-verify-ai-web-app-provider-credential-leakage | How to verify whether an AI web app leaks provider credentials
 hardcoded-ai-service-credentials-client-side | How to detect hardcoded AI service credentials in client-side code
 verify-suspicious-endpoint-reachability | How to verify whether a suspicious endpoint is actually reachable
 inspect-ai-enabled-sites-integration-clues | How to inspect AI-enabled sites for exposed integration clues
 
 # workflow
-review-script-loaded-assets-hidden-dependencies | How to review script-loaded assets for hidden external dependencies
 audit-browser-visible-integrations | How to audit browser-visible integrations without touching the backend
 review-asset-loading-behavior-recon | How to review asset loading behavior for recon and triage
 separate-noisy-browser-traffic-from-security-signals | How to separate noisy browser traffic from meaningful security signals
@@ -34,6 +32,8 @@ source-maps-and-frontend-artifacts | Source maps, frontend artifacts, and what t
 
 # used
 # Move published topics here after successful deployment verification.
+verify-ai-web-app-provider-credential-leakage | How to verify whether an AI web app leaks provider credentials
+review-script-loaded-assets-hidden-dependencies | How to review script-loaded assets for hidden external dependencies
 inspect-fetch-xhr-traffic-security-triage | How to inspect fetch/XHR traffic for security triage
 false-positives-exposed-secrets-frontend | Common false positives when looking for exposed secrets in frontend apps
 inspect-suspicious-outbound-requests | How to inspect suspicious outbound requests on a webpage
