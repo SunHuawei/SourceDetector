@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Review Script-Loaded Assets for Hidden External Dependencies | Source Detector</title>
+    <meta name="description" content="A browser-based workflow for reviewing script-loaded assets, spotting hidden external dependencies, and deciding which third-party relationships deserve deeper security review." />
+    <meta property="og:title" content="How to Review Script-Loaded Assets for Hidden External Dependencies" />
+    <meta property="og:description" content="Use browser-visible asset loading behavior to spot hidden external dependencies and decide what deserves deeper manual review." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/review-script-loaded-assets-hidden-dependencies/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/review-script-loaded-assets-hidden-dependencies/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;margin:0;background:#0f172a;color:#e5e7eb;line-height:1.75}.wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}a{color:#93c5fd;text-decoration:none}a:hover{text-decoration:underline}.panel{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;margin:16px 0}.muted{color:#94a3b8}h1,h2,h3{color:#fff}ul,ol{padding-left:20px}</style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"How to Review Script-Loaded Assets for Hidden External Dependencies","description":"A browser-based workflow for reviewing script-loaded assets, spotting hidden external dependencies, and deciding which third-party relationships deserve deeper security review.","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"datePublished":"2026-03-18","dateModified":"2026-03-18","mainEntityOfPage":"https://sunhuawei.github.io/SourceDetector/blog/review-script-loaded-assets-hidden-dependencies/"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <p><a href="../../">← Back to homepage</a></p>
+      <div class="panel">
+        <h1>How to review script-loaded assets for hidden external dependencies</h1>
+        <p class="muted">The fastest way to spot hidden external dependencies is to watch what a page loads after the initial HTML arrives, then group those assets by who serves them, what triggers them, and whether they support core product logic, analytics, experimentation, or something less obvious. Script-loaded assets can reveal CDNs, AI SDKs, tag managers, feature flag systems, payment widgets, or region-specific integrations that never show up in a product&apos;s marketing copy. They are useful recon evidence, but they are still signals. A hidden dependency is not automatically a security flaw.</p>
+      </div>
+
+      <div class="panel">
+        <h2>What you can detect</h2>
+        <ul>
+          <li>Third-party scripts and follow-on assets loaded dynamically after page render</li>
+          <li>Dependencies introduced through tag managers, loaders, SDK bootstraps, or A/B testing frameworks</li>
+          <li>Environment-specific asset chains that point to payment, analytics, support, AI, or experimentation vendors</li>
+          <li>Public integration clues that help explain a site&apos;s browser-side architecture</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>Signals that deserve attention</h2>
+        <ul>
+          <li><strong>Late-loading third-party domains.</strong> Assets that appear only after user interaction, route changes, or consent banners often reveal the real dependency graph.</li>
+          <li><strong>Loader cascades.</strong> A single bootstrap script that pulls five more domains is usually more informative than the first request alone.</li>
+          <li><strong>Role mismatch.</strong> A site that looks simple on the surface but loads payment, AI, session replay, and experimentation tooling may deserve a closer read.</li>
+          <li><strong>Region or feature branches.</strong> Some dependencies only appear in logged-in states, specific locales, or feature-flagged experiences.</li>
+          <li><strong>Source map or bundle naming clues.</strong> Chunk names, source map paths, and original file names can clarify whether an asset belongs to checkout, support, generation, admin, or internal tooling surfaces.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>Practical review workflow</h2>
+        <ol>
+          <li><strong>Capture the first page load.</strong> Note the initial scripts, stylesheet origins, and immediate network requests.</li>
+          <li><strong>Trigger realistic page actions.</strong> Open modals, switch routes, start sign-in, and interact with obvious product flows. Many dependencies load only after those events.</li>
+          <li><strong>Group assets by owner and purpose.</strong> Separate first-party bundles from third-party services, then label likely roles such as analytics, support chat, AI provider, payment, fraud, or experimentation.</li>
+          <li><strong>Preserve causal context.</strong> Record what user action caused the asset to appear. That detail matters when the same vendor is only used in one narrow flow.</li>
+          <li><strong>Check surrounding artifacts.</strong> Review chunk names, source maps, and visible configuration values to understand whether the dependency is shallow, central, or stale.</li>
+          <li><strong>Decide whether it is just architecture or a security lead.</strong> Hidden dependency mapping is useful on its own, but only some cases justify escalation.</li>
+        </ol>
+        <p>One example: if a homepage quietly loads a tag manager, that is ordinary. If the sign-up flow dynamically loads an unfamiliar AI gateway SDK plus a provider-facing request path and token bootstrap logic, you have a stronger reason to preserve evidence and inspect the implementation more carefully.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Standard CDN infrastructure.</strong> A new domain is not automatically a hidden vendor relationship; it may be a static asset host or performance layer.</li>
+          <li><strong>Dormant integrations.</strong> Old loader stubs, dead feature flags, or disabled experiments can still leave references in the client.</li>
+          <li><strong>Consent-gated analytics.</strong> Extra requests after a banner click may reflect normal privacy tooling rather than unusual architecture.</li>
+          <li><strong>Shared vendor domains.</strong> One provider domain can support many harmless product functions, so vendor presence alone says little about risk.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>What this does not prove</h2>
+        <p>Script-loaded assets do not prove insecure data sharing, weak access control, or vulnerability impact. They show that a browser-visible relationship exists. They do not, by themselves, prove what data crosses that relationship or whether the backend enforces controls you cannot see.</p>
+      </div>
+
+      <div class="panel">
+        <h2>When to escalate</h2>
+        <ul>
+          <li>The dependency appears in a sensitive flow such as authentication, payment, admin, or AI generation</li>
+          <li>The browser exposes source maps, config, or request evidence that clarifies how the dependency is wired</li>
+          <li>The vendor role contradicts the public architecture story in a way that matters for review</li>
+          <li>You can show a concrete trigger and concrete asset chain instead of a vague domain list</li>
+        </ul>
+        <p>Source Detector is useful here because it keeps the workflow grounded in browser evidence: loaded assets, source map discovery, suspicious strings, and exportable artifacts that make later manual review faster and less hand-wavy.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Methodology and last reviewed</h2>
+        <p><strong>Methodology:</strong> browser-based observation of asset loading behavior, domain relationships, source map references, and visible configuration. No claim should go beyond what the browser directly reveals.</p>
+        <p><strong>Last reviewed:</strong> 2026-03-18</p>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Verify Whether an AI Web App Leaks Provider Credentials | Source Detector</title>
+    <meta name="description" content="A verification-first guide to checking whether an AI web app exposes provider credentials in browser-visible code, requests, or public artifacts without over-claiming risk." />
+    <meta property="og:title" content="How to Verify Whether an AI Web App Leaks Provider Credentials" />
+    <meta property="og:description" content="Check browser-visible code, request patterns, and public artifacts to verify whether an AI web app exposes provider credentials without jumping to breach claims." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/verify-ai-web-app-provider-credential-leakage/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/verify-ai-web-app-provider-credential-leakage/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;margin:0;background:#0f172a;color:#e5e7eb;line-height:1.75}.wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}a{color:#93c5fd;text-decoration:none}a:hover{text-decoration:underline}.panel{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;margin:16px 0}.muted{color:#94a3b8}h1,h2,h3{color:#fff}ul{padding-left:20px}code{background:#1f2937;padding:2px 6px;border-radius:6px}</style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"How to Verify Whether an AI Web App Leaks Provider Credentials","description":"A verification-first guide to checking whether an AI web app exposes provider credentials in browser-visible code, requests, or public artifacts without over-claiming risk.","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"datePublished":"2026-03-18","dateModified":"2026-03-18","mainEntityOfPage":"https://sunhuawei.github.io/SourceDetector/blog/verify-ai-web-app-provider-credential-leakage/"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <p><a href="../../">← Back to homepage</a></p>
+      <div class="panel">
+        <h1>How to verify whether an AI web app leaks provider credentials</h1>
+        <p class="muted">The practical way to verify possible provider credential leakage in an AI web app is to inspect what the browser can already see: shipped JavaScript, public config, source maps, and live network requests. You are looking for evidence that a real provider credential, signing secret, or unrestricted token is exposed client-side. A model name, public publishable key, or proxy endpoint alone is not enough. Good verification means separating visible clues from actual credential material, then checking whether the evidence points to direct provider use, safe backend mediation, or a false alarm.</p>
+      </div>
+
+      <div class="panel">
+        <h2>What you can detect</h2>
+        <ul>
+          <li>Provider API keys or token-like strings embedded in shipped JavaScript or exposed config objects</li>
+          <li>Browser requests sent directly to third-party AI providers instead of a backend-controlled proxy</li>
+          <li>Source maps or debug artifacts that reveal provider SDK setup, environment names, or credential handling paths</li>
+          <li>Client-side code that appears to concatenate, transform, or fetch credential material at runtime</li>
+        </ul>
+        <p>You can often detect meaningful exposure signals from the browser. What you cannot do from those signals alone is prove abuse impact, account compromise, or missing provider-side restrictions.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Why this matters</h2>
+        <p>AI web apps often depend on providers such as OpenAI, Anthropic, Google, Azure OpenAI, or model gateways. When a site uses those services correctly, the browser should usually talk to the site&apos;s backend or to a tightly scoped public token flow. When it does not, researchers may see provider-facing requests, long-lived credentials, or artifact clues that deserve review.</p>
+        <p>The key point is restraint: browser-visible evidence can show that something looks wrong, but it does not automatically prove a breach or exploitable loss. Technical credibility comes from showing exactly what the browser reveals and exactly where the uncertainty starts.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Signals worth checking first</h2>
+        <ul>
+          <li><strong>Direct provider domains in live requests.</strong> Calls from the browser to known AI provider endpoints can indicate client-side integration choices worth reviewing.</li>
+          <li><strong>Secret-like prefixes or headers.</strong> A recognizable key format, bearer token, or vendor-specific header in readable code or browser tooling is a stronger signal than a vague string match.</li>
+          <li><strong>Public config with mixed sensitivity.</strong> Some apps ship both harmless public identifiers and riskier operational settings in the same object. That mix often creates confusion.</li>
+          <li><strong>Source map references.</strong> Source maps sometimes reveal the original file names, SDK wrappers, or feature flags that explain whether the browser is handling provider communication directly.</li>
+          <li><strong>Fallback logic.</strong> If client code retries against multiple vendors or regions, it may expose integration details that are useful for triage even when no real secret is present.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>How to verify without over-claiming</h2>
+        <ol>
+          <li><strong>Review shipped assets first.</strong> Look at production bundles, public configuration objects, and source map references. Save the exact file path and surrounding code, not just the matched string.</li>
+          <li><strong>Inspect browser requests.</strong> Check whether the page sends requests directly to a provider, what headers are visible, and whether the request appears user-scoped, ephemeral, or static.</li>
+          <li><strong>Map visible evidence to architecture.</strong> Ask whether the app appears to use a backend proxy, a signed short-lived token flow, or true client-side provider access.</li>
+          <li><strong>Check restrictions before escalating language.</strong> A public-facing key may still be domain-restricted, endpoint-limited, or intended only for low-risk publishable use.</li>
+          <li><strong>Document what is observable.</strong> Record the URL, asset name, request destination, header names, and why the signal appears meaningful. Avoid language that implies confirmed compromise unless you have direct proof.</li>
+        </ol>
+        <p>A concrete example: if you see a request from the browser to a provider endpoint with a stable bearer token reused across sessions, that is stronger than simply seeing an environment variable name in a bundle. The first is evidence of live client-side credential use. The second may only be a code artifact.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Publishable keys and public app IDs.</strong> Many services expose identifiers that are designed to be public and useless on their own.</li>
+          <li><strong>Example strings or test fixtures.</strong> Sample keys in docs, demo code, or mock data often survive the build process.</li>
+          <li><strong>Proxy-looking requests.</strong> A request path that mentions a provider does not mean the browser is sending a real provider credential. The site may still proxy and sanitize everything server-side.</li>
+          <li><strong>Dead code in source maps.</strong> Old branches, commented snippets, or unused modules can look alarming while having no runtime effect.</li>
+          <li><strong>Short-lived session tokens.</strong> Some tokens are intentionally ephemeral and bound to a narrow action window.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>What this does not prove</h2>
+        <p>Browser-visible evidence does not prove a provider account is broadly accessible, that billing abuse is possible, or that sensitive model data is exposed. It also does not prove the application lacks compensating controls. Even a real secret-like token may be locked down by origin, scope, quota, project policy, or server-side checks you cannot observe from the browser.</p>
+      </div>
+
+      <div class="panel">
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>The browser appears to call a provider directly with a stable credential or reusable authorization header</li>
+          <li>You can tie the signal to a specific runtime path rather than a dead artifact</li>
+          <li>The exposed material appears operational rather than merely descriptive</li>
+          <li>The finding affects a production site or production build asset</li>
+          <li>You have enough evidence to describe the risk clearly without guessing about breach impact</li>
+        </ul>
+        <p>That is where Source Detector is useful: it helps you inspect client-side assets, preserve the evidence trail, and review source maps or suspicious strings in one browser-native workflow before you package a report.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Methodology and last reviewed</h2>
+        <p><strong>Methodology:</strong> browser-visible artifact review only. This guide focuses on shipped assets, source maps, public configuration, and observable request behavior. It intentionally separates signal collection from exploit claims.</p>
+        <p><strong>Last reviewed:</strong> 2026-03-18</p>
+      </div>
+    </div>
+  </body>
+</html>
