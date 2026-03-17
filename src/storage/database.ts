@@ -148,7 +148,9 @@ export class SourceDetectorDB extends Dexie {
             .equals(page.id)
             .toArray();
 
-        const sourceMapIds = pageSourceMaps.map(psm => psm.sourceMapId);
+        const sourceMapIds = [...new Set(pageSourceMaps.map(psm => psm.sourceMapId))];
+        if (sourceMapIds.length === 0) return [];
+
         return await this.sourceMapFiles
             .where('id')
             .anyOf(sourceMapIds)

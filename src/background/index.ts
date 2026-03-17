@@ -1,5 +1,5 @@
 import { SourceDetectorDB } from '@/storage/database';
-import { AppSettings, PageData } from '@/types';
+import { AppSettings, PageData, ResolvedPageContext } from '@/types';
 import { getActiveRules } from '@/storage/rules';
 import { isExtensionPage } from '@/utils/isExtensionPage';
 import { scanCode } from '@/utils/leakScanner';
@@ -8,6 +8,13 @@ import { SourceMapConsumer } from 'source-map-js';
 import { MESSAGE_TYPES } from './constants';
 import { createHash } from './utils';
 import { browserAPI } from '@/utils/browser-polyfill';
+import {
+    extractSourceMapUrlFromContent,
+    getFileTypeFromUrl,
+    isPageUrlCandidate,
+    normalizePageUrl,
+    pickResolvedPageContext
+} from './pageContext';
 
 const db = new SourceDetectorDB();
 
@@ -53,38 +60,49 @@ async function getFileContent(url: string): Promise<string> {
 }
 
 // Store current page information
-let currentPage: { url: string; title: string } | null = null;
+let currentPage: { url: string; title: string; tabId?: number } | null = null;
+
+async function setBadgeState(text: string, options?: { color?: string; tabId?: number }) {
+    const actionDetails = typeof options?.tabId === 'number' ? { tabId: options.tabId } : {};
+    await browserAPI.action.setBadgeText({ text, ...actionDetails });
+    if (text && options?.color) {
+        await browserAPI.action.setBadgeBackgroundColor({ color: options.color, ...actionDetails });
+    }
+}
 
 // Function to update badge
-async function updateBadge(url: string, isCrx: boolean = false) {
+async function updateBadge(url: string, isCrx: boolean = false, tabId?: number) {
     try {
+        const normalizedUrl = normalizePageUrl(url);
+        if (!normalizedUrl) {
+            await setBadgeState('', { tabId });
+            return;
+        }
+
         if (isCrx) {
-            const crxFile = await db.getCrxFileByPageUrl(url);
+            const crxFile = await db.getCrxFileByPageUrl(normalizedUrl);
             if (crxFile) {
-                await browserAPI.action.setBadgeText({ text: String(crxFile.count) });
-                await browserAPI.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+                await setBadgeState(String(crxFile.count), { color: '#4CAF50', tabId });
             } else {
-                await browserAPI.action.setBadgeText({ text: '' });
+                await setBadgeState('', { tabId });
             }
         } else {
-            // Get source maps for current page using the new schema
-            const files = await db.getPageFiles(url);
+            const files = await db.getPageFiles(normalizedUrl);
             const latestFiles = files.filter(file => file.isLatest);
             const hasLeakFindings = files.some((file) => (file.findings?.length ?? 0) > 0);
 
-            // Update badge text and color
             if (latestFiles.length > 0) {
-                await browserAPI.action.setBadgeText({ text: String(latestFiles.length) });
-                await browserAPI.action.setBadgeBackgroundColor({
-                    color: hasLeakFindings ? '#F44336' : '#4CAF50'
+                await setBadgeState(String(latestFiles.length), {
+                    color: hasLeakFindings ? '#F44336' : '#4CAF50',
+                    tabId
                 });
             } else {
-                await browserAPI.action.setBadgeText({ text: '' });
+                await setBadgeState('', { tabId });
             }
         }
     } catch (error) {
         console.error('Error updating badge:', error);
-        await browserAPI.action.setBadgeText({ text: '' });
+        await setBadgeState('', { tabId });
     }
 }
 
@@ -93,12 +111,13 @@ async function updateCurrentPage() {
     try {
         const [tab] = await browserAPI.tabs.query({ active: true, currentWindow: true });
         if (tab?.url && tab?.title && !isExtensionPage(tab.url)) {
+            const normalizedUrl = normalizePageUrl(tab.url);
             currentPage = {
-                url: tab.url,
-                title: tab.title
+                url: normalizedUrl,
+                title: tab.title,
+                tabId: tab.id
             };
-            // Update badge when page changes
-            await updateBadge(tab.url);
+            await updateBadge(normalizedUrl, false, tab.id);
         }
     } catch (error) {
         console.error('Error updating current page:', error);
@@ -108,7 +127,6 @@ async function updateCurrentPage() {
 // Monitor tab updates
 browserAPI.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
-        console.log('tab.url', tab.url, isExtensionPage(tab.url))
         if (isExtensionPage(tab.url)) {
             await updateCrxPage(tab);
         } else {
@@ -134,18 +152,19 @@ browserAPI.windows.onFocusChanged.addListener(onTabActivated);
 async function updateCrxPage(tab: browserAPI.tabs.Tab) {
     const url = tab.url;
     if (!url) return;
-    await updateBadge(url, true);
-    const crxUrl = await getCrxUrl(url);
+    const normalizedUrl = normalizePageUrl(url);
+    await updateBadge(normalizedUrl, true, tab.id);
+    const crxUrl = await getCrxUrl(normalizedUrl);
     if (crxUrl) {
         // check if the file exists
-        let crxFile = await db.getCrxFileByPageUrl(url);
+        let crxFile = await db.getCrxFileByPageUrl(normalizedUrl);
         if (!crxFile) {
             // Create empty content hash for new file
             const emptyBlob = new Blob();
 
             // save to db
             crxFile = await db.addCrxFile({
-                pageUrl: url,
+                pageUrl: normalizedUrl,
                 pageTitle: tab.title || '',
                 crxUrl: crxUrl,
                 blob: emptyBlob,
@@ -168,7 +187,7 @@ async function updateCrxPage(tab: browserAPI.tabs.Tab) {
 
             await db.updateCrxFile({
                 id: crxFile.id,
-                pageUrl: url,
+                pageUrl: normalizedUrl,
                 pageTitle: tab.title || '',
                 crxUrl: crxUrl,
                 blob: result.blob,
@@ -179,7 +198,7 @@ async function updateCrxPage(tab: browserAPI.tabs.Tab) {
             });
             console.log('updateCrxFile', crxFile);
             // update badge
-            await updateBadge(url, true);
+            await updateBadge(normalizedUrl, true, tab.id);
         }
     }
 }
@@ -240,41 +259,23 @@ async function getLeakFindingsFromSourceMap(content: string, originalContent: st
     }
 }
 
-function extractSourceMapUrlFromContent(content: string): string | null {
-    // Parse from the end of file to handle trailing newlines and avoid scanning huge bundles.
-    const trailer = content.slice(Math.max(0, content.length - 4096));
-    const matches = Array.from(trailer.matchAll(/[#@]\s*sourceMappingURL=([^\s\*]+)/g));
-    if (matches.length === 0) {
-        return null;
-    }
-    return matches[matches.length - 1][1];
-}
-
-function isPageUrlCandidate(url: string): boolean {
-    if (!url || isExtensionPage(url)) {
-        return false;
-    }
-    return /^https?:\/\//.test(url) || url.startsWith('file://');
-}
-
-function getFileTypeFromUrl(url: string): 'js' | 'css' {
-    return /\.css(?:[\?#].*)?$/i.test(url) ? 'css' : 'js';
-}
-
 interface RequestPageContextDetails {
     tabId?: number;
     initiator?: string;
     documentUrl?: string;
 }
 
-async function resolveRequestPageContext(details: RequestPageContextDetails): Promise<{ pageUrl: string; pageTitle: string }> {
+async function resolveRequestPageContext(details: RequestPageContextDetails): Promise<ResolvedPageContext | null> {
+    let tabContext: ResolvedPageContext | null = null;
+
     if (typeof details.tabId === 'number' && details.tabId >= 0) {
         try {
             const tab = await browserAPI.tabs.get(details.tabId);
             if (tab?.url && isPageUrlCandidate(tab.url)) {
-                return {
+                tabContext = {
                     pageUrl: tab.url,
-                    pageTitle: tab.title || currentPage?.title || ''
+                    pageTitle: tab.title || currentPage?.title || '',
+                    tabId: tab.id
                 };
             }
         } catch (error) {
@@ -282,43 +283,15 @@ async function resolveRequestPageContext(details: RequestPageContextDetails): Pr
         }
     }
 
-    if (typeof details.documentUrl === 'string' && isPageUrlCandidate(details.documentUrl)) {
-        return {
-            pageUrl: details.documentUrl,
-            pageTitle: currentPage?.title || ''
-        };
-    }
-
-    if (typeof details.initiator === 'string' && isPageUrlCandidate(details.initiator)) {
-        return {
-            pageUrl: details.initiator,
-            pageTitle: currentPage?.title || ''
-        };
-    }
-
-    try {
-        const [activeTab] = await browserAPI.tabs.query({ active: true, currentWindow: true });
-        if (activeTab?.url && isPageUrlCandidate(activeTab.url)) {
-            return {
-                pageUrl: activeTab.url,
-                pageTitle: activeTab.title || currentPage?.title || ''
-            };
-        }
-    } catch (error) {
-        console.debug('Unable to resolve active tab context for source map detection:', error);
-    }
-
-    if (currentPage && isPageUrlCandidate(currentPage.url)) {
-        return {
-            pageUrl: currentPage.url,
-            pageTitle: currentPage.title
-        };
-    }
-
-    return {
-        pageUrl: '',
-        pageTitle: ''
-    };
+    return pickResolvedPageContext(
+        tabContext,
+        typeof details.documentUrl === 'string'
+            ? { pageUrl: details.documentUrl, pageTitle: currentPage?.title || '' }
+            : null,
+        typeof details.initiator === 'string'
+            ? { pageUrl: details.initiator, pageTitle: currentPage?.title || '' }
+            : null
+    );
 }
 
 // Listen for requests to detect JS/CSS files
@@ -328,7 +301,6 @@ browserAPI.webRequest.onCompleted.addListener(
             return;
         }
 
-        console.log('details', details.initiator)
         if (!/\.(js|css)([\?#].*)?$/i.test(details.url)) {
             return;
         }
@@ -354,12 +326,9 @@ browserAPI.webRequest.onCompleted.addListener(
                     documentUrl: (details as { documentUrl?: string }).documentUrl
                 });
 
-                console.log('sourceMapDetected', {
-                    sourceUrl: details.url,
-                    mapUrl: fullMapUrl,
-                    pageUrl: pageContext.pageUrl,
-                    initiator: (details as { initiator?: string }).initiator
-                });
+                if (!pageContext?.pageUrl) {
+                    return;
+                }
 
                 await handleSourceMapFound({
                     pageTitle: pageContext.pageTitle,
@@ -367,7 +336,8 @@ browserAPI.webRequest.onCompleted.addListener(
                     sourceUrl: details.url,
                     mapUrl: fullMapUrl,
                     fileType: getFileTypeFromUrl(details.url),
-                    originalContent: content
+                    originalContent: content,
+                    tabId: pageContext.tabId
                 });
             } catch (error) {
                 console.error('Error processing response:', error);
@@ -443,9 +413,10 @@ async function handleClearData() {
 
 async function handleGetPageData(data: { url: string }) {
     try {
-        const files = await db.getPageFiles(data.url);
+        const normalizedUrl = normalizePageUrl(data.url);
+        const files = await db.getPageFiles(normalizedUrl);
         const pageData: PageData = {
-            url: data.url,
+            url: normalizedUrl,
             title: currentPage?.title || '',
             timestamp: Date.now(),
             files: files
@@ -502,9 +473,14 @@ class TaskQueue {
 const taskQueue = new TaskQueue();
 
 // Function to handle source map found
-async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css'; originalContent: string }): Promise<{ success: boolean; reason?: string }> {
+async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; sourceUrl: string; mapUrl: string; fileType: 'js' | 'css'; originalContent: string; tabId?: number }): Promise<{ success: boolean; reason?: string }> {
     return taskQueue.enqueue('sourceMap', async () => {
         try {
+            const normalizedPageUrl = normalizePageUrl(data.pageUrl);
+            if (!normalizedPageUrl) {
+                return { success: false, reason: 'Missing page url context' };
+            }
+
             // Fetch content
             const content = await fetchSourceMapContent(data.sourceUrl, data.mapUrl);
             if (!content) return { success: false, reason: 'Failed to fetch content' };
@@ -519,8 +495,8 @@ async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; 
                     await db.sourceMapFiles.update(existingFile.id, { findings });
                 }
                 // Even if content is unchanged, we still need to associate it with the current page
-                await db.addSourceMapToPage(data.pageUrl, data.pageTitle, existingFile);
-                await updateBadge(data.pageUrl);
+                await db.addSourceMapToPage(normalizedPageUrl, data.pageTitle, existingFile);
+                await updateBadge(normalizedPageUrl, false, data.tabId);
                 return { success: true, reason: 'File content unchanged but added to page' };
             }
 
@@ -564,11 +540,11 @@ async function handleSourceMapFound(data: { pageTitle: string; pageUrl: string; 
             const savedSourceMapFile = await db.addSourceMapFile(sourceMapFile);
 
             // Associate with page
-            await db.addSourceMapToPage(data.pageUrl, data.pageTitle, savedSourceMapFile);
+            await db.addSourceMapToPage(normalizedPageUrl, data.pageTitle, savedSourceMapFile);
 
             checkAndCleanStorage();
             // Update badge after storing new source map
-            await updateBadge(data.pageUrl);
+            await updateBadge(normalizedPageUrl, false, data.tabId);
 
             return { success: true };
         } catch (error) {

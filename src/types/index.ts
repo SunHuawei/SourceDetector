@@ -46,6 +46,12 @@ export interface PageData {
     files: SourceMapFile[];
 }
 
+export interface ResolvedPageContext {
+    pageUrl: string;
+    pageTitle: string;
+    tabId?: number;
+}
+
 export interface StorageStats {
     usedSpace: number;
     totalSize: number;

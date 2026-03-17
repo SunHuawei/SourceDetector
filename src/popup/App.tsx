@@ -23,6 +23,16 @@ import {
 } from '@mui/material';
 import JSZip from 'jszip';
 import { useEffect, useMemo, useState } from 'react';
+
+function normalizePageUrl(url: string): string {
+    try {
+        const parsed = new URL(url);
+        parsed.hash = '';
+        return parsed.toString();
+    } catch {
+        return url.split('#')[0] || url;
+    }
+}
 import { CrxFileTree } from './components/CrxFileTree';
 import { SourceMapTable } from './components/SourceMapTable';
 import { openInDesktop } from '@/utils/desktopApp';
@@ -83,10 +93,11 @@ export default function App() {
                 });
                 return;
             }
+            const normalizedUrl = normalizePageUrl(tab.url);
             if (isExtensionPage(tab.url)) {
                 const response = await browserAPI.runtime.sendMessage({
                     type: MESSAGE_TYPES.GET_CRX_FILE,
-                    data: { url: tab.url }
+                    data: { url: normalizedUrl }
                 });
 
                 const responseReason = typeof response?.reason === 'string' ? response.reason : undefined;
@@ -128,7 +139,7 @@ export default function App() {
             } else {
                 const response = await browserAPI.runtime.sendMessage({
                     type: MESSAGE_TYPES.GET_PAGE_DATA,
-                    data: { url: tab.url }
+                    data: { url: normalizedUrl }
                 });
 
                 const responseReason = typeof response?.reason === 'string' ? response.reason : undefined;
