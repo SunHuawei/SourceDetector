@@ -18,7 +18,8 @@ export type ProductAnalyticsEventName =
     | 'onboarding_started'
     | 'onboarding_completed'
     | 'feedback_submitted'
-    | 'share_clicked';
+    | 'share_clicked'
+    | 'rating_clicked';
 
 declare global {
     interface Window {

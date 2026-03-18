@@ -1,8 +1,13 @@
 import { SourceDetectorDB } from '@/storage/database';
-import { LeakFinding, SourceMapFile } from '@/types';
+import { CrxFile, LeakFinding, SourceMapFile } from '@/types';
 import { formatBytes } from '@/utils/format';
 import { SourceMapDownloader } from '@/utils/sourceMapDownloader';
 import { trackEvent, trackProductEvent } from '@/utils/analytics';
+import { browserAPI } from '@/utils/browser-polyfill';
+import { parseCrxFile } from '@/utils/parseCrxFile';
+import { CHROME_WEB_STORE_REVIEW_URL, GITHUB_FEEDBACK_URL } from '@/constants/links';
+import { CodeViewer } from '@/components/CodeViewer';
+import { getFileIcon } from '@/components/fileIcon';
 import {
     Alert,
     AppBar,
@@ -36,8 +41,8 @@ import {
     getDomainGroupedFiles,
     resolveSourceExplorerSelection
 } from './sourceExplorerData';
-import { CHROME_WEB_STORE_REVIEW_URL, GITHUB_FEEDBACK_URL } from '@/constants/links';
-import CrxSourceExplorer from './CrxSourceExplorer';
+import { buildCrxCodeTree, buildSourceCodeTree, CodeTreeNode, isTextLikeFile } from './sourceCodeTree';
+import type { JSX } from 'react';
 import { GitHub as GitHubIcon, StarRate as StarRateIcon } from '@mui/icons-material';
 
 interface SourceExplorerNavigationState {
@@ -60,6 +65,11 @@ interface ToastState {
     open: boolean;
     message: string;
     severity: ToastSeverity;
+}
+
+interface SourceCodeEntry {
+    path: string;
+    content: string;
 }
 
 const theme = createTheme({
@@ -163,7 +173,24 @@ function getFindingTypeSummary(findings: SourceMapFile['findings']): FindingType
         .sort((left, right) => right.count - left.count);
 }
 
-function getCodeViewerPreview(file: SourceMapFile | null, selectedFinding: LeakFinding | null): string {
+function extractSourceEntries(file: SourceMapFile | null): SourceCodeEntry[] {
+    if (!file) {
+        return [];
+    }
+
+    try {
+        const parsed = JSON.parse(file.content) as { sources?: string[]; sourcesContent?: Array<string | null> };
+        const sources = parsed.sources ?? [];
+        const sourceContents = parsed.sourcesContent ?? [];
+        return sources
+            .map((path, index) => ({ path, content: sourceContents[index] ?? '' }))
+            .filter((entry) => entry.path.trim().length > 0 && entry.content.length > 0);
+    } catch {
+        return [];
+    }
+}
+
+function getFindingPreview(file: SourceMapFile | null, selectedFinding: LeakFinding | null): string {
     if (!file) {
         return 'No file selected.';
     }
@@ -174,14 +201,53 @@ function getCodeViewerPreview(file: SourceMapFile | null, selectedFinding: LeakF
             .join('\n');
     }
 
-    const sourceLines = file.originalContent.split('\n');
-    const previewLineCount = 120;
-    const previewLines = sourceLines.slice(0, previewLineCount);
-    const suffix = sourceLines.length > previewLineCount
-        ? `\n... (${sourceLines.length - previewLineCount} more lines hidden)`
-        : '';
+    return file.originalContent;
+}
 
-    return previewLines.join('\n') + suffix;
+function flattenTree(node: CodeTreeNode): CodeTreeNode[] {
+    const output: CodeTreeNode[] = [];
+    for (const child of node.children) {
+        output.push(child);
+        if (child.type === 'directory') {
+            output.push(...flattenTree(child));
+        }
+    }
+    return output;
+}
+
+function renderTreeList(
+    nodes: CodeTreeNode[],
+    selectedPath: string | null,
+    onSelect: (path: string) => void,
+    depth = 0
+): JSX.Element[] {
+    return nodes.flatMap((node) => {
+        const row = (
+            <ListItemButton
+                key={node.path || node.name}
+                selected={node.type === 'file' && selectedPath === node.path}
+                onClick={() => {
+                    if (node.type === 'file') {
+                        onSelect(node.path);
+                    }
+                }}
+                sx={{ pl: 2 + depth * 2, py: 0.75 }}
+            >
+                <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                    {node.type === 'directory' ? getFileIcon(`${node.name}.dir`) : getFileIcon(node.name)}
+                </Box>
+                <ListItemText
+                    primary={node.name}
+                    secondary={node.type === 'directory' ? undefined : node.path}
+                    secondaryTypographyProps={{ sx: { wordBreak: 'break-all' } }}
+                />
+            </ListItemButton>
+        );
+
+        return node.type === 'directory'
+            ? [row, ...renderTreeList(node.children, selectedPath, onSelect, depth + 1)]
+            : [row];
+    });
 }
 
 export default function SourceExplorerApp() {
@@ -199,11 +265,12 @@ export default function SourceExplorerApp() {
     const [shouldScrollToEvidence, setShouldScrollToEvidence] = useState(false);
     const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
     const [downloadingBatch, setDownloadingBatch] = useState(false);
-    const [toast, setToast] = useState<ToastState>({
-        open: false,
-        message: '',
-        severity: 'info'
-    });
+    const [selectedSourcePath, setSelectedSourcePath] = useState<string | null>(null);
+    const [selectedCrxPath, setSelectedCrxPath] = useState<string | null>(null);
+    const [crxFile, setCrxFile] = useState<CrxFile | null>(null);
+    const [crxTree, setCrxTree] = useState<CodeTreeNode | null>(null);
+    const [crxFiles, setCrxFiles] = useState<Record<string, string>>({});
+    const [toast, setToast] = useState<ToastState>({ open: false, message: '', severity: 'info' });
     const evidenceRef = useRef<HTMLDivElement | null>(null);
 
     const selectedDomain = useMemo(
@@ -238,25 +305,37 @@ export default function SourceExplorerApp() {
 
     const selectedFindings = selectedFile?.findings ?? [];
     const selectedFinding = selectedFindings[selectedFindingIndex] ?? null;
-    const findingTypeSummary = useMemo(
-        () => getFindingTypeSummary(selectedFindings),
-        [selectedFindings]
-    );
+    const findingTypeSummary = useMemo(() => getFindingTypeSummary(selectedFindings), [selectedFindings]);
 
     const latestDomainFiles = useMemo(
-        () => domainGroupedFiles
-            .map((group) => group.versions[0])
-            .filter((file): file is SourceMapFile => Boolean(file)),
+        () => domainGroupedFiles.map((group) => group.versions[0]).filter((file): file is SourceMapFile => Boolean(file)),
         [domainGroupedFiles]
     );
 
-    const showToast = (message: string, severity: ToastSeverity = 'info') => {
-        setToast({
-            open: true,
-            message,
-            severity
-        });
-    };
+    const sourceEntries = useMemo(() => extractSourceEntries(selectedFile), [selectedFile]);
+    const sourceTree = useMemo(() => buildSourceCodeTree(sourceEntries), [sourceEntries]);
+    const sourceFileMap = useMemo(
+        () => Object.fromEntries(sourceEntries.map((entry) => [entry.path.replace(/^\.\//, '').replace(/^\.\.\//, ''), entry.content])),
+        [sourceEntries]
+    );
+
+    const selectedSourceContent = useMemo(() => {
+        if (!selectedSourcePath) {
+            return null;
+        }
+        return sourceFileMap[selectedSourcePath] ?? null;
+    }, [selectedSourcePath, sourceFileMap]);
+
+    const selectedCrxContent = useMemo(() => {
+        if (!selectedCrxPath) {
+            return null;
+        }
+        return crxFiles[selectedCrxPath] ?? null;
+    }, [crxFiles, selectedCrxPath]);
+
+    function showToast(message: string, severity: ToastSeverity = 'info') {
+        setToast({ open: true, message, severity });
+    }
 
     useEffect(() => {
         let cancelled = false;
@@ -267,6 +346,55 @@ export default function SourceExplorerApp() {
 
             try {
                 if (navigationState.resourceType === 'crx-files') {
+                    const targetUrl = navigationState.pageUrl;
+                    if (!targetUrl) {
+                        throw new Error('Missing extension page URL for CRX explorer.');
+                    }
+
+                    const response = await browserAPI.runtime.sendMessage({
+                        type: 'GET_CRX_FILE',
+                        data: { url: targetUrl }
+                    });
+
+                    if (!response?.success || !response.data) {
+                        throw new Error(response?.reason || 'Failed to load CRX file.');
+                    }
+
+                    const currentCrxFile = response.data as CrxFile;
+                    const parsed = await parseCrxFile(currentCrxFile.crxUrl);
+                    if (!parsed) {
+                        throw new Error('Failed to parse CRX file.');
+                    }
+
+                    const extractedEntries = await Promise.all(
+                        Object.entries(parsed.zip.files)
+                            .filter(([, zipEntry]) => !zipEntry.dir)
+                            .map(async ([path, zipEntry]) => {
+                                if (!isTextLikeFile(path)) {
+                                    return { path, content: '' };
+                                }
+                                try {
+                                    const content = await zipEntry.async('string');
+                                    return { path, content };
+                                } catch {
+                                    return { path, content: '' };
+                                }
+                            })
+                    );
+
+                    if (cancelled) {
+                        return;
+                    }
+
+                    const filteredEntries = extractedEntries.filter((entry) => entry.path.trim().length > 0);
+                    const fileMap = Object.fromEntries(filteredEntries.map((entry) => [entry.path, entry.content]));
+                    const tree = buildCrxCodeTree(filteredEntries);
+                    const firstTextFile = flattenTree(tree).find((node) => node.type === 'file' && isTextLikeFile(node.path));
+
+                    setCrxFile(currentCrxFile);
+                    setCrxFiles(fileMap);
+                    setCrxTree(tree);
+                    setSelectedCrxPath(firstTextFile?.path ?? null);
                     setDomains([]);
                     setSelectedDomainHostname(null);
                     setSelectedPageId(null);
@@ -288,12 +416,8 @@ export default function SourceExplorerApp() {
                     sourceMapFileId: navigationState.sourceMapFileId
                 });
 
-                const resolvedDomain = nextDomains.find(
-                    (domain) => domain.hostname === initialSelection.selectedDomainHostname
-                );
-                const resolvedGroup = resolvedDomain?.groupedFiles.find(
-                    (group) => group.url === initialSelection.selectedGroupUrl
-                );
+                const resolvedDomain = nextDomains.find((domain) => domain.hostname === initialSelection.selectedDomainHostname);
+                const resolvedGroup = resolvedDomain?.groupedFiles.find((group) => group.url === initialSelection.selectedGroupUrl);
                 const resolvedFile = initialSelection.selectedFileId !== null
                     ? resolvedGroup?.versions.find((version) => version.id === initialSelection.selectedFileId)
                     : resolvedGroup?.versions[0];
@@ -308,6 +432,9 @@ export default function SourceExplorerApp() {
                 setSelectedGroupUrl(initialSelection.selectedGroupUrl);
                 setSelectedFileId(initialSelection.selectedFileId);
                 setSelectedFindingIndex(0);
+                setCrxFile(null);
+                setCrxTree(null);
+                setCrxFiles({});
                 setShouldScrollToEvidence(Boolean(
                     resolvedFile
                     && (resolvedFile.findings?.length ?? 0) > 0
@@ -335,10 +462,7 @@ export default function SourceExplorerApp() {
         };
 
         void loadData();
-
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [db, navigationState]);
 
     useEffect(() => {
@@ -380,13 +504,9 @@ export default function SourceExplorerApp() {
 
     useEffect(() => {
         setSelectedFindingIndex(0);
-    }, [selectedFile?.id]);
-
-    useEffect(() => {
-        if (selectedFindingIndex >= selectedFindings.length && selectedFindings.length > 0) {
-            setSelectedFindingIndex(0);
-        }
-    }, [selectedFindingIndex, selectedFindings.length]);
+        const firstSourceFile = flattenTree(sourceTree).find((node) => node.type === 'file');
+        setSelectedSourcePath(firstSourceFile?.path ?? null);
+    }, [selectedFile?.id, sourceTree]);
 
     useEffect(() => {
         if (!shouldScrollToEvidence || !selectedFinding || !evidenceRef.current) {
@@ -400,42 +520,6 @@ export default function SourceExplorerApp() {
         void trackEvent('source_explorer_viewed');
     }, []);
 
-    useEffect(() => {
-        if (!selectedFile) {
-            return;
-        }
-
-        void trackProductEvent('result_viewed', {
-            surface: 'source_explorer',
-            result_tab: 'file_details',
-            source_map_file_id: selectedFile.id,
-            file_type: selectedFile.fileType,
-            findings_count: selectedFindings.length,
-            has_findings: selectedFindings.length > 0
-        });
-    }, [selectedFile?.id, selectedFile?.fileType, selectedFindings.length]);
-
-    const handleFindingSelection = (index: number) => {
-        setSelectedFindingIndex(index);
-
-        const finding = selectedFindings[index];
-        if (!finding) {
-            return;
-        }
-
-        const normalizedFindingType = finding.ruleName.trim().length > 0
-            ? finding.ruleName
-            : 'unknown_rule';
-        void trackProductEvent('finding_detail_opened', {
-            surface: 'source_explorer',
-            placement: 'finding_list',
-            source_map_file_id: selectedFile?.id,
-            finding_type: normalizedFindingType,
-            finding_index: index + 1,
-            findings_count: selectedFindings.length
-        });
-    };
-
     const handleDownloadSingle = async () => {
         if (!selectedFile) {
             return;
@@ -446,10 +530,6 @@ export default function SourceExplorerApp() {
                 onError: (downloadError) => {
                     showToast(downloadError.message, 'error');
                 }
-            });
-            void trackEvent('source_explorer_download_single', {
-                source_map_file_id: selectedFile.id,
-                file_url: selectedFile.url
             });
             showToast('Selected file downloaded successfully.', 'success');
         } catch (downloadError) {
@@ -478,10 +558,6 @@ export default function SourceExplorerApp() {
                     showToast(downloadError.message, 'error');
                 }
             });
-            void trackEvent('source_explorer_download_domain_zip', {
-                domain: selectedDomain?.hostname,
-                files_count: latestDomainFiles.length
-            });
             showToast('Domain batch ZIP downloaded successfully.', 'success');
         } catch (downloadError) {
             console.error('Error downloading domain ZIP:', downloadError);
@@ -492,32 +568,25 @@ export default function SourceExplorerApp() {
     };
 
     const handleOpenGithubFeedback = () => {
-        void trackEvent('source_explorer_open_github_feedback');
         void trackProductEvent('feedback_submitted', {
             surface: 'source_explorer',
-            placement: 'header_feedback_icon',
+            placement: 'header_feedback_button',
             feedback_channel: 'github_issues',
             submission_state: 'intent'
-        });
-        void trackProductEvent('share_clicked', {
-            surface: 'source_explorer',
-            placement: 'header_feedback_icon',
-            share_target: 'github_issues',
-            share_channel: 'github'
         });
         window.open(GITHUB_FEEDBACK_URL, '_blank', 'noopener,noreferrer');
     };
 
     const handleOpenRateUs = () => {
-        void trackEvent('source_explorer_open_rate_us');
-        void trackProductEvent('share_clicked', {
+        void trackProductEvent('rating_clicked', {
             surface: 'source_explorer',
-            placement: 'header_rate_us_icon',
-            share_target: 'chrome_web_store_reviews',
-            share_channel: 'chrome_web_store'
+            placement: 'header_rate_us_button',
+            rating_channel: 'chrome_web_store'
         });
         window.open(CHROME_WEB_STORE_REVIEW_URL, '_blank', 'noopener,noreferrer');
     };
+
+    const isCrxMode = navigationState.resourceType === 'crx-files';
 
     return (
         <ThemeProvider theme={theme}>
@@ -530,22 +599,17 @@ export default function SourceExplorerApp() {
                                 Source Explorer
                             </Typography>
                             <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                                v1.3.2 - Three-pane source intelligence workspace
+                                {isCrxMode ? 'Extension source browser' : 'Source map explorer with original-source browsing'}
                             </Typography>
                         </Box>
-                        <Tooltip title="Rate us on Chrome Web Store">
-                            <IconButton color="inherit" onClick={handleOpenRateUs}>
-                                <StarRateIcon />
-                            </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Feedback on GitHub">
-                            <IconButton
-                                color="inherit"
-                                onClick={handleOpenGithubFeedback}
-                            >
-                                <GitHubIcon />
-                            </IconButton>
-                        </Tooltip>
+                        <Stack direction="row" spacing={1}>
+                            <Button color="inherit" startIcon={<StarRateIcon />} onClick={handleOpenRateUs}>
+                                Rate us
+                            </Button>
+                            <Button color="inherit" startIcon={<GitHubIcon />} onClick={handleOpenGithubFeedback}>
+                                Feedback
+                            </Button>
+                        </Stack>
                     </Toolbar>
                 </AppBar>
 
@@ -556,12 +620,42 @@ export default function SourceExplorerApp() {
                         </Box>
                     ) : error ? (
                         <Alert severity="error">{error}</Alert>
-                    ) : navigationState.resourceType === 'crx-files' ? (
-                        <CrxSourceExplorer targetUrl={navigationState.pageUrl} />
+                    ) : isCrxMode ? (
+                        !crxTree ? (
+                            <Alert severity="info">No extension files are available.</Alert>
+                        ) : (
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} md={4}>
+                                    <Card variant="outlined" sx={{ height: 'calc(100vh - 152px)' }}>
+                                        <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                            <Box sx={{ px: 2, py: 1.5 }}>
+                                                <Typography variant="h6">Extension Files</Typography>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    {crxFile?.pageTitle || crxFile?.pageUrl || 'CRX package'}
+                                                </Typography>
+                                            </Box>
+                                            <Divider />
+                                            <List disablePadding sx={{ overflowY: 'auto', flexGrow: 1 }}>
+                                                {renderTreeList(crxTree.children, selectedCrxPath, setSelectedCrxPath)}
+                                            </List>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                                <Grid item xs={12} md={8}>
+                                    {selectedCrxPath && selectedCrxContent !== null ? (
+                                        isTextLikeFile(selectedCrxPath) ? (
+                                            <CodeViewer filePath={selectedCrxPath} content={selectedCrxContent} />
+                                        ) : (
+                                            <Alert severity="info">This file looks binary and is not previewed inline.</Alert>
+                                        )
+                                    ) : (
+                                        <Alert severity="info">Select a file to inspect extension source.</Alert>
+                                    )}
+                                </Grid>
+                            </Grid>
+                        )
                     ) : domains.length === 0 ? (
-                        <Alert severity="info">
-                            No source files are currently available in indexedDB.
-                        </Alert>
+                        <Alert severity="info">No source files are currently available in indexedDB.</Alert>
                     ) : (
                         <Grid container spacing={2}>
                             <Grid item xs={12} md={3}>
@@ -569,32 +663,15 @@ export default function SourceExplorerApp() {
                                     <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
                                         <Box sx={{ px: 2, py: 1.5 }}>
                                             <Typography variant="h6">Domains / Pages</Typography>
-                                            <Typography variant="body2" color="text.secondary">
-                                                {domains.length} domain{domains.length === 1 ? '' : 's'}
-                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">{domains.length} domains</Typography>
                                         </Box>
                                         <Divider />
                                         <List disablePadding sx={{ overflowY: 'auto', flexGrow: 1 }}>
                                             {domains.map((domain) => (
                                                 <Box key={domain.hostname}>
-                                                    <Box
-                                                        sx={{
-                                                            px: 2,
-                                                            py: 1,
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            bgcolor: 'action.hover'
-                                                        }}
-                                                    >
+                                                    <Box sx={{ px: 2, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: 'action.hover' }}>
                                                         <Typography variant="subtitle2">{domain.hostname}</Typography>
-                                                        {domain.leakCount > 0 && (
-                                                            <Chip
-                                                                size="small"
-                                                                color="error"
-                                                                label={`${domain.leakCount}`}
-                                                            />
-                                                        )}
+                                                        {domain.leakCount > 0 && <Chip size="small" color="error" label={`${domain.leakCount}`} />}
                                                     </Box>
                                                     {domain.pages.map((page) => (
                                                         <ListItemButton
@@ -610,27 +687,15 @@ export default function SourceExplorerApp() {
                                                                 primary={page.title || domain.hostname}
                                                                 secondary={(
                                                                     <Stack spacing={0.25}>
-                                                                        <Typography
-                                                                            variant="caption"
-                                                                            color="text.secondary"
-                                                                            sx={{ wordBreak: 'break-all' }}
-                                                                        >
+                                                                        <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
                                                                             {page.url}
                                                                         </Typography>
                                                                         <Typography variant="caption" color="text.secondary">
-                                                                            {page.groupedFiles.length} file{page.groupedFiles.length === 1 ? '' : 's'}
+                                                                            {page.groupedFiles.length} files
                                                                         </Typography>
                                                                     </Stack>
                                                                 )}
                                                             />
-                                                            {page.leakCount > 0 && (
-                                                                <Chip
-                                                                    size="small"
-                                                                    color="error"
-                                                                    label={`${page.leakCount}`}
-                                                                    sx={{ ml: 1 }}
-                                                                />
-                                                            )}
                                                         </ListItemButton>
                                                     ))}
                                                 </Box>
@@ -644,10 +709,9 @@ export default function SourceExplorerApp() {
                                 <Card variant="outlined" sx={{ height: 'calc(100vh - 152px)' }}>
                                     <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
                                         <Box sx={{ px: 2, py: 1.5 }}>
-                                            <Typography variant="h6">File List</Typography>
+                                            <Typography variant="h6">Bundles</Typography>
                                             <Typography variant="body2" color="text.secondary">
-                                                {domainGroupedFiles.length} file{domainGroupedFiles.length === 1 ? '' : 's'}
-                                                {selectedDomain ? ` in ${selectedDomain.hostname}` : ''}
+                                                {domainGroupedFiles.length} file groups
                                             </Typography>
                                         </Box>
                                         <Divider />
@@ -671,26 +735,15 @@ export default function SourceExplorerApp() {
                                                             secondary={(
                                                                 <Stack spacing={0.25}>
                                                                     <Typography variant="caption" color="text.secondary">
-                                                                        {group.versions.length} version{group.versions.length === 1 ? '' : 's'}
+                                                                        {group.versions.length} versions
                                                                     </Typography>
-                                                                    <Typography
-                                                                        variant="caption"
-                                                                        color="text.secondary"
-                                                                        sx={{ wordBreak: 'break-all' }}
-                                                                    >
+                                                                    <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
                                                                         {group.url}
                                                                     </Typography>
                                                                 </Stack>
                                                             )}
                                                         />
-                                                        {findingsCount > 0 && (
-                                                            <Chip
-                                                                size="small"
-                                                                color="error"
-                                                                label={`${findingsCount}`}
-                                                                sx={{ ml: 1 }}
-                                                            />
-                                                        )}
+                                                        {findingsCount > 0 && <Chip size="small" color="error" label={`${findingsCount}`} sx={{ ml: 1 }} />}
                                                     </ListItemButton>
                                                 );
                                             })}
@@ -710,25 +763,12 @@ export default function SourceExplorerApp() {
                                                 <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
                                                     {selectedFile.url}
                                                 </Typography>
-
                                                 <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} flexWrap="wrap">
-                                                    <Chip
-                                                        size="small"
-                                                        label={`Version ${selectedFile.version}`}
-                                                        variant="outlined"
-                                                    />
-                                                    <Chip
-                                                        size="small"
-                                                        label={`Size ${formatBytes(selectedFile.size)}`}
-                                                        variant="outlined"
-                                                    />
-                                                    <Chip
-                                                        size="small"
-                                                        color={selectedFindings.length > 0 ? 'error' : 'success'}
-                                                        label={`${selectedFindings.length} finding${selectedFindings.length === 1 ? '' : 's'}`}
-                                                    />
+                                                    <Chip size="small" label={`Version ${selectedFile.version}`} variant="outlined" />
+                                                    <Chip size="small" label={`Size ${formatBytes(selectedFile.size)}`} variant="outlined" />
+                                                    <Chip size="small" color={selectedFindings.length > 0 ? 'error' : 'success'} label={`${selectedFindings.length} findings`} />
+                                                    <Chip size="small" color={sourceEntries.length > 0 ? 'primary' : 'default'} label={`${sourceEntries.length} source files`} />
                                                 </Stack>
-
                                                 {selectedGroup && selectedGroup.versions.length > 1 && (
                                                     <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1.5 }}>
                                                         {selectedGroup.versions.map((version) => (
@@ -744,135 +784,80 @@ export default function SourceExplorerApp() {
                                                         ))}
                                                     </Stack>
                                                 )}
-
                                                 <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2 }}>
-                                                    <Button
-                                                        size="small"
-                                                        variant="outlined"
-                                                        onClick={() => {
-                                                            void handleDownloadSingle();
-                                                        }}
-                                                        disabled={downloadingFileId === selectedFile.id || downloadingBatch}
-                                                    >
+                                                    <Button size="small" variant="outlined" onClick={() => { void handleDownloadSingle(); }} disabled={downloadingFileId === selectedFile.id || downloadingBatch}>
                                                         {downloadingFileId === selectedFile.id ? 'Downloading...' : 'Download Selected ZIP'}
                                                     </Button>
-                                                    <Button
-                                                        size="small"
-                                                        variant="contained"
-                                                        onClick={() => {
-                                                            void handleDownloadDomainZip();
-                                                        }}
-                                                        disabled={downloadingBatch || latestDomainFiles.length === 0}
-                                                    >
+                                                    <Button size="small" variant="contained" onClick={() => { void handleDownloadDomainZip(); }} disabled={downloadingBatch || latestDomainFiles.length === 0}>
                                                         {downloadingBatch ? 'Bundling...' : 'Download Domain ZIP'}
                                                     </Button>
                                                 </Stack>
                                             </CardContent>
                                         </Card>
 
-                                        <Card variant="outlined">
-                                            <CardContent>
-                                                <Typography variant="h6" gutterBottom>
-                                                    Security Findings
-                                                </Typography>
-                                                {selectedFindings.length === 0 ? (
-                                                    <Alert severity="success">No leak findings detected for this file.</Alert>
-                                                ) : (
-                                                    <Stack spacing={1.5}>
-                                                        <Stack direction="row" spacing={1} flexWrap="wrap">
-                                                            {findingTypeSummary.map((summary) => (
-                                                                <Chip
-                                                                    key={summary.ruleName}
-                                                                    size="small"
-                                                                    color="error"
-                                                                    variant="outlined"
-                                                                    label={`${summary.ruleName} (${summary.count})`}
-                                                                />
-                                                            ))}
-                                                        </Stack>
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={12} md={4}>
+                                                <Card variant="outlined" sx={{ height: 420 }}>
+                                                    <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                                        <Box sx={{ px: 2, py: 1.5 }}>
+                                                            <Typography variant="h6">Original Sources</Typography>
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                Browse source tree like an editor
+                                                            </Typography>
+                                                        </Box>
+                                                        <Divider />
+                                                        <List disablePadding sx={{ overflowY: 'auto', flexGrow: 1 }}>
+                                                            {sourceTree.children.length > 0 ? renderTreeList(sourceTree.children, selectedSourcePath, setSelectedSourcePath) : (
+                                                                <ListItemText primary="No original sources embedded in this source map." sx={{ px: 2, py: 2 }} />
+                                                            )}
+                                                        </List>
+                                                    </CardContent>
+                                                </Card>
+                                            </Grid>
+                                            <Grid item xs={12} md={8}>
+                                                <Stack spacing={2}>
+                                                    {selectedFindings.length > 0 && (
+                                                        <Card variant="outlined">
+                                                            <CardContent>
+                                                                <Typography variant="h6" gutterBottom>Security Findings</Typography>
+                                                                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 1.5 }}>
+                                                                    {findingTypeSummary.map((summary) => (
+                                                                        <Chip key={summary.ruleName} size="small" color="error" variant="outlined" label={`${summary.ruleName} (${summary.count})`} />
+                                                                    ))}
+                                                                </Stack>
+                                                                <Paper variant="outlined" sx={{ maxHeight: 180, overflowY: 'auto' }}>
+                                                                    <List disablePadding>
+                                                                        {selectedFindings.map((finding, index) => (
+                                                                            <ListItemButton key={`${finding.ruleId}-${finding.startIndex}-${index}`} selected={index === selectedFindingIndex} onClick={() => setSelectedFindingIndex(index)}>
+                                                                                <ListItemText primary={finding.ruleName} secondary={`Line ${finding.line}, Col ${finding.column}`} />
+                                                                            </ListItemButton>
+                                                                        ))}
+                                                                    </List>
+                                                                </Paper>
+                                                            </CardContent>
+                                                        </Card>
+                                                    )}
 
-                                                        <Paper variant="outlined" sx={{ maxHeight: 220, overflowY: 'auto' }}>
-                                                            <List disablePadding>
-                                                                {selectedFindings.map((finding, index) => (
-                                                                    <ListItemButton
-                                                                        key={`${finding.ruleId}-${finding.startIndex}-${index}`}
-                                                                        selected={index === selectedFindingIndex}
-                                                                        onClick={() => handleFindingSelection(index)}
-                                                                    >
-                                                                        <ListItemText
-                                                                            primary={finding.ruleName}
-                                                                            secondary={`Line ${finding.line}, Col ${finding.column}`}
-                                                                        />
-                                                                    </ListItemButton>
-                                                                ))}
-                                                            </List>
+                                                    {selectedFinding && (
+                                                        <Paper ref={evidenceRef} variant="outlined" sx={{ p: 2, borderColor: 'error.main', bgcolor: 'rgba(244, 67, 54, 0.08)' }}>
+                                                            <Typography variant="subtitle1" color="error.main">Leak Evidence</Typography>
+                                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                                {selectedFinding.ruleName} at Line {selectedFinding.line}, Col {selectedFinding.column}
+                                                            </Typography>
+                                                            <Box component="code" sx={{ mt: 1, display: 'block', p: 1, borderRadius: 1, border: 1, borderColor: 'divider', bgcolor: 'background.paper', fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>
+                                                                {selectedFinding.matchedText}
+                                                            </Box>
                                                         </Paper>
-                                                    </Stack>
-                                                )}
-                                            </CardContent>
-                                        </Card>
+                                                    )}
 
-                                        {selectedFinding && (
-                                            <Paper
-                                                ref={evidenceRef}
-                                                variant="outlined"
-                                                sx={{
-                                                    p: 2,
-                                                    borderColor: 'error.main',
-                                                    bgcolor: 'rgba(244, 67, 54, 0.08)'
-                                                }}
-                                            >
-                                                <Typography variant="subtitle1" color="error.main">
-                                                    Leak Evidence
-                                                </Typography>
-                                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                                    {selectedFinding.ruleName} at Line {selectedFinding.line}, Col {selectedFinding.column}
-                                                </Typography>
-                                                <Box
-                                                    component="code"
-                                                    sx={{
-                                                        mt: 1,
-                                                        display: 'block',
-                                                        p: 1,
-                                                        borderRadius: 1,
-                                                        border: 1,
-                                                        borderColor: 'divider',
-                                                        bgcolor: 'background.paper',
-                                                        fontFamily: 'monospace',
-                                                        fontSize: 12,
-                                                        wordBreak: 'break-all'
-                                                    }}
-                                                >
-                                                    {selectedFinding.matchedText}
-                                                </Box>
-                                            </Paper>
-                                        )}
-
-                                        <Paper variant="outlined">
-                                            <Box sx={{ px: 2, py: 1.25, borderBottom: 1, borderColor: 'divider' }}>
-                                                <Typography variant="subtitle1">Code Viewer</Typography>
-                                                <Typography variant="body2" color="text.secondary">
-                                                    {selectedFinding
-                                                        ? 'Showing focused finding context'
-                                                        : 'Showing first section of compiled file'}
-                                                </Typography>
-                                            </Box>
-                                            <Box
-                                                component="pre"
-                                                sx={{
-                                                    m: 0,
-                                                    p: 2,
-                                                    maxHeight: 420,
-                                                    overflow: 'auto',
-                                                    fontFamily: 'monospace',
-                                                    fontSize: 12,
-                                                    whiteSpace: 'pre-wrap',
-                                                    wordBreak: 'break-word'
-                                                }}
-                                            >
-                                                {getCodeViewerPreview(selectedFile, selectedFinding)}
-                                            </Box>
-                                        </Paper>
+                                                    {selectedSourcePath && selectedSourceContent !== null ? (
+                                                        <CodeViewer filePath={selectedSourcePath} content={selectedSourceContent} />
+                                                    ) : (
+                                                        <CodeViewer filePath={selectedFile.url} content={getFindingPreview(selectedFile, selectedFinding)} />
+                                                    )}
+                                                </Stack>
+                                            </Grid>
+                                        </Grid>
                                     </Stack>
                                 )}
                             </Grid>
@@ -881,21 +866,11 @@ export default function SourceExplorerApp() {
                 </Container>
             </Box>
 
-            <Snackbar
-                open={toast.open}
-                autoHideDuration={2400}
-                onClose={() => setToast((previousState) => ({ ...previousState, open: false }))}
-            >
-                <Alert
-                    severity={toast.severity}
-                    variant="filled"
-                    onClose={() => setToast((previousState) => ({ ...previousState, open: false }))}
-                    sx={{ width: '100%' }}
-                >
+            <Snackbar open={toast.open} autoHideDuration={2400} onClose={() => setToast((previousState) => ({ ...previousState, open: false }))}>
+                <Alert severity={toast.severity} variant="filled" onClose={() => setToast((previousState) => ({ ...previousState, open: false }))} sx={{ width: '100%' }}>
                     {toast.message}
                 </Alert>
             </Snackbar>
         </ThemeProvider>
     );
 }
-
