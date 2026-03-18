@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Verify Whether a Suspicious Endpoint Is Actually Reachable | Source Detector</title>
+    <meta name="description" content="A verification-first guide to deciding whether a suspicious endpoint found in frontend code is live, relevant, and worth escalating without overstating what browser evidence proves." />
+    <meta property="og:title" content="How to Verify Whether a Suspicious Endpoint Is Actually Reachable" />
+    <meta property="og:description" content="Use frontend code, request evidence, and browser-visible context to decide whether a suspicious endpoint is reachable and materially relevant." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/verify-suspicious-endpoint-reachability/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/verify-suspicious-endpoint-reachability/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;margin:0;background:#0f172a;color:#e5e7eb;line-height:1.75}.wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}a{color:#93c5fd;text-decoration:none}a:hover{text-decoration:underline}.panel{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;margin:16px 0}.muted{color:#94a3b8}h1,h2,h3{color:#fff}ul,ol{padding-left:20px}code{background:#1f2937;padding:2px 6px;border-radius:6px}</style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"How to Verify Whether a Suspicious Endpoint Is Actually Reachable","description":"A verification-first guide to deciding whether a suspicious endpoint found in frontend code is live, relevant, and worth escalating without overstating what browser evidence proves.","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"datePublished":"2026-03-19","dateModified":"2026-03-19","mainEntityOfPage":"https://sunhuawei.github.io/SourceDetector/blog/verify-suspicious-endpoint-reachability/"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <p><a href="../../">← Back to homepage</a></p>
+      <div class="panel">
+        <h1>How to verify whether a suspicious endpoint is actually reachable</h1>
+        <p class="muted">The useful question is not whether an endpoint string exists in shipped code. It is whether the browser can still reach that endpoint in a real product flow, under current conditions, with evidence you can preserve. Frontend bundles often contain stale routes, test hosts, example paths, region-specific services, and dead integrations. A suspicious URL becomes worth escalation only when you can connect it to a live request path, an observable trigger, or a current runtime dependency. Until then, treat it as a clue. Not proof.</p>
+      </div>
+
+      <div class="panel">
+        <h2>What you can detect</h2>
+        <ul>
+          <li>Endpoints embedded in production JavaScript, public config, source maps, or route manifests</li>
+          <li>Runtime requests the browser actually sends to those endpoints during normal interaction</li>
+          <li>Patterns that suggest an endpoint is dead, gated, environment-specific, or still wired into a real user flow</li>
+          <li>Whether the endpoint appears tied to auth, upload, AI generation, admin tooling, analytics, or another functional area</li>
+        </ul>
+        <p>You can often determine whether a path still matters operationally. You usually cannot prove backend sensitivity, authorization gaps, or business impact from passive browser evidence alone.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Signals that an endpoint may still matter</h2>
+        <ul>
+          <li><strong>Live request evidence.</strong> The browser sends a request to the endpoint during a normal page load or interaction.</li>
+          <li><strong>Current asset references.</strong> The endpoint appears in active bundles, recent chunk names, or source maps tied to the deployed build rather than archived code.</li>
+          <li><strong>Functional context.</strong> The path is tied to login, uploads, billing, model calls, search, admin surfaces, or another meaningful workflow.</li>
+          <li><strong>Trigger clarity.</strong> You can say exactly what action caused the request, such as opening a modal, submitting a form, or switching routes.</li>
+          <li><strong>Repeated runtime use.</strong> The path appears across sessions, routes, or states instead of in one noisy artifact.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>How to verify</h2>
+        <ol>
+          <li><strong>Start with the artifact, not the assumption.</strong> Capture the full endpoint string, surrounding code, bundle name, and page URL where you found it.</li>
+          <li><strong>Look for runtime confirmation.</strong> Watch whether the browser issues a matching request during realistic navigation or user actions.</li>
+          <li><strong>Compare route role and request role.</strong> A scary-looking string may just be a logging tag, fallback constant, or dormant config entry. A real network call carries more weight.</li>
+          <li><strong>Check whether the environment explains it.</strong> Many bundles ship paths for staging, regional routing, offline fallbacks, or optional features that are not active on the current page.</li>
+          <li><strong>Document what you observed, and what you did not.</strong> Save the request destination, method, timing, trigger, and any visible response metadata. If no request occurs, say so clearly.</li>
+        </ol>
+        <p>A practical example: finding <code>/internal/search/bootstrap</code> in a bundle is weak evidence on its own. Seeing the browser call that path when a search panel opens is stronger. Seeing it only in an old source map with no current request path is usually a low-confidence clue, not a publishable claim.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Dead endpoints left in old modules.</strong> Frontend code often keeps compatibility branches longer than the backend keeps the route alive.</li>
+          <li><strong>Template or example paths.</strong> Some strings are examples, mocks, or SDK defaults that never become real requests.</li>
+          <li><strong>Staging and local development URLs.</strong> These can survive in source maps or debugging helpers without affecting production runtime.</li>
+          <li><strong>Third-party SDK internals.</strong> A vendor library may contain endpoint patterns that do not reflect how the site is actually integrated.</li>
+          <li><strong>Feature-flagged code.</strong> A route may exist in the shipped bundle but stay dormant unless a hidden feature gate is active.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>What this does not prove</h2>
+        <p>An observable endpoint does not prove a vulnerability, sensitive data exposure, or unauthorized backend access. Reachability is not the same as exploitability. Even a live endpoint may enforce authentication, origin checks, input validation, or server-side authorization that the browser view cannot confirm by itself.</p>
+      </div>
+
+      <div class="panel">
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>You have both artifact evidence and live request evidence</li>
+          <li>The endpoint belongs to a sensitive workflow rather than background analytics or telemetry</li>
+          <li>The request path appears current, repeatable, and tied to a real user action</li>
+          <li>The surrounding code or source map suggests operational meaning instead of generic infrastructure noise</li>
+          <li>You can describe the uncertainty boundary honestly without inventing impact</li>
+        </ul>
+        <p>That is the right moment to preserve the evidence trail. Source Detector is useful here because it helps you review source maps, suspicious strings, and browser-visible request context in one place before you decide whether a finding deserves a deeper manual check.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Methodology and last reviewed</h2>
+        <p><strong>Methodology:</strong> browser-visible artifact review focused on shipped assets, source maps, and observable network behavior. This guide separates route discovery from stronger claims about backend exposure.</p>
+        <p><strong>Last reviewed:</strong> 2026-03-19</p>
+      </div>
+    </div>
+  </body>
+</html>

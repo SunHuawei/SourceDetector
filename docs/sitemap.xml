@@ -88,6 +88,20 @@
     <loc>https://sunhuawei.github.io/SourceDetector/faq/</loc>
     <lastmod>2026-03-10</lastmod>
   </url>
-  <url><loc>https://sunhuawei.github.io/SourceDetector/blog/verify-ai-web-app-provider-credential-leakage/</loc></url>
-  <url><loc>https://sunhuawei.github.io/SourceDetector/blog/review-script-loaded-assets-hidden-dependencies/</loc></url>
+  <url>
+    <loc>https://sunhuawei.github.io/SourceDetector/blog/verify-ai-web-app-provider-credential-leakage/</loc>
+    <lastmod>2026-03-18</lastmod>
+  </url>
+  <url>
+    <loc>https://sunhuawei.github.io/SourceDetector/blog/review-script-loaded-assets-hidden-dependencies/</loc>
+    <lastmod>2026-03-18</lastmod>
+  </url>
+  <url>
+    <loc>https://sunhuawei.github.io/SourceDetector/blog/verify-suspicious-endpoint-reachability/</loc>
+    <lastmod>2026-03-19</lastmod>
+  </url>
+  <url>
+    <loc>https://sunhuawei.github.io/SourceDetector/blog/real-signals-client-side-secret-exposure/</loc>
+    <lastmod>2026-03-19</lastmod>
+  </url>
 </urlset>

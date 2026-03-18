@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>What Counts as a Real Signal When Checking for Client-Side Secret Exposure | Source Detector</title>
+    <meta name="description" content="A risk explainer for separating real client-side secret exposure signals from noisy string matches, public identifiers, and other frontend clues that look worse than they are." />
+    <meta property="og:title" content="What Counts as a Real Signal When Checking for Client-Side Secret Exposure" />
+    <meta property="og:description" content="Learn which frontend clues deserve attention when checking for client-side secret exposure, and which ones are usually weak evidence." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/real-signals-client-side-secret-exposure/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/real-signals-client-side-secret-exposure/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;margin:0;background:#0f172a;color:#e5e7eb;line-height:1.75}.wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}a{color:#93c5fd;text-decoration:none}a:hover{text-decoration:underline}.panel{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;margin:16px 0}.muted{color:#94a3b8}h1,h2,h3{color:#fff}ul,ol{padding-left:20px}code{background:#1f2937;padding:2px 6px;border-radius:6px}</style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"What Counts as a Real Signal When Checking for Client-Side Secret Exposure","description":"A risk explainer for separating real client-side secret exposure signals from noisy string matches, public identifiers, and other frontend clues that look worse than they are.","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"datePublished":"2026-03-19","dateModified":"2026-03-19","mainEntityOfPage":"https://sunhuawei.github.io/SourceDetector/blog/real-signals-client-side-secret-exposure/"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <p><a href="../../">← Back to homepage</a></p>
+      <div class="panel">
+        <h1>What counts as a real signal when checking for client-side secret exposure</h1>
+        <p class="muted">A real signal is usually more than a scary-looking string. It is a piece of browser-visible evidence that suggests a token, key, credential, or sensitive operational secret is not only present in frontend artifacts, but also meaningful in runtime context. The strongest signals combine recognizable secret material, active code paths, and observable request behavior. Weak signals are common: public identifiers, dead strings, examples, and vendor-specific noise. Good frontend review is mostly the discipline of separating those two buckets before anyone overstates the risk.</p>
+      </div>
+
+      <div class="panel">
+        <h2>What you can detect</h2>
+        <ul>
+          <li>Secret-like strings in production JavaScript, source maps, inline config, and browser-visible assets</li>
+          <li>Whether suspicious material appears in active runtime paths or only in stale artifacts</li>
+          <li>Request patterns that suggest a credential is being used client-side instead of merely referenced</li>
+          <li>Context that helps decide whether a finding deserves manual review or should stay a low-confidence note</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>Signals that deserve more weight</h2>
+        <ul>
+          <li><strong>Recognizable secret format plus surrounding context.</strong> A token-like value matters more when the nearby code shows headers, auth logic, provider SDK use, or request construction.</li>
+          <li><strong>Runtime use.</strong> If the browser actively sends the credential or derived value in a live request, confidence rises sharply.</li>
+          <li><strong>Current build placement.</strong> Findings in active bundles or current source maps matter more than strings buried in legacy modules.</li>
+          <li><strong>Operational role.</strong> Signals tied to admin APIs, model providers, uploads, payments, or internal control paths deserve more scrutiny than generic telemetry.</li>
+          <li><strong>Cross-artifact consistency.</strong> A string match that lines up with config, request destinations, and code comments is usually stronger than a standalone regex hit.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>How to verify whether a signal is real</h2>
+        <ol>
+          <li><strong>Inspect the surrounding code.</strong> The few lines around a match often tell you whether it is a credential, an identifier, a test fixture, or a transformed value.</li>
+          <li><strong>Check whether the browser actually uses it.</strong> Look for matching headers, request parameters, or token bootstrap logic in live flows.</li>
+          <li><strong>Ask what the string enables.</strong> Public publishable keys and app IDs may be intentionally exposed. Operational secrets usually support authorization, signing, or privileged API access.</li>
+          <li><strong>Compare against deployment reality.</strong> A value inside an old source map may not reflect the current production path. Runtime confirmation matters.</li>
+          <li><strong>Document confidence honestly.</strong> It is fine to say "strong signal," "weak signal," or "unverified artifact clue." That is better than pretending certainty.</li>
+        </ol>
+        <p>One concrete example: an exposed provider publishable key with no direct provider calls is often a low-risk public identifier. A stable bearer token reused in browser requests to a provider endpoint is a different class of signal entirely.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Public keys that are meant to be public.</strong> Payment, maps, analytics, and some AI-adjacent products expose identifiers by design.</li>
+          <li><strong>Example secrets in demo code.</strong> Documentation snippets, mocks, and tests often survive bundling.</li>
+          <li><strong>Hash-like values with no auth role.</strong> Cache keys, content digests, feature-flag IDs, and telemetry labels can look secret-like without being sensitive.</li>
+          <li><strong>Dead code and old source maps.</strong> These are useful as architecture clues, but weak as evidence of present-day exposure.</li>
+          <li><strong>Vendor-specific prefixes without usable material.</strong> A provider name or short prefix is not the same thing as a credential.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>What this does not prove</h2>
+        <p>Even a strong client-side signal does not prove exploitability, account compromise, or material impact. A credential may be scope-limited, domain-restricted, rate-limited, ephemeral, or protected by backend controls you cannot observe from the browser. Browser evidence is best used to support triage, not to skip verification.</p>
+      </div>
+
+      <div class="panel">
+        <h2>When to escalate</h2>
+        <ul>
+          <li>The signal appears in active production assets and also shows runtime use</li>
+          <li>The surrounding code indicates an operational secret rather than a public identifier</li>
+          <li>The request path or provider integration suggests real client-side handling of sensitive material</li>
+          <li>You can preserve enough evidence to explain the claim without guessing about downstream impact</li>
+        </ul>
+        <p>That is where Source Detector helps most. It gives you one place to review source maps, suspicious strings, and browser-visible evidence so you can decide whether a finding is a real lead, a likely false positive, or just a note about how the frontend is wired.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Methodology and last reviewed</h2>
+        <p><strong>Methodology:</strong> browser-visible artifact review focused on shipped JavaScript, source maps, public configuration, and request behavior. This guide treats public artifacts as signals, not automatic proof of compromise.</p>
+        <p><strong>Last reviewed:</strong> 2026-03-19</p>
+      </div>
+    </div>
+  </body>
+</html>
