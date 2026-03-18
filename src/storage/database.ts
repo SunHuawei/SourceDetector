@@ -65,6 +65,13 @@ export class SourceDetectorDB extends Dexie {
             .first();
     }
 
+    async getCrxFileByCrxUrl(crxUrl: string): Promise<CrxFile | undefined> {
+        return this.crxFiles
+            .where('crxUrl')
+            .equals(crxUrl)
+            .first();
+    }
+
     async getSettings(): Promise<AppSettings> {
         try {
             const settings = await this.settings.toArray();

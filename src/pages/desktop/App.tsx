@@ -36,8 +36,9 @@ import {
     getDomainGroupedFiles,
     resolveSourceExplorerSelection
 } from './sourceExplorerData';
-import { GITHUB_FEEDBACK_URL } from '@/constants/links';
-import { GitHub as GitHubIcon } from '@mui/icons-material';
+import { CHROME_WEB_STORE_REVIEW_URL, GITHUB_FEEDBACK_URL } from '@/constants/links';
+import CrxSourceExplorer from './CrxSourceExplorer';
+import { GitHub as GitHubIcon, StarRate as StarRateIcon } from '@mui/icons-material';
 
 interface SourceExplorerNavigationState {
     actionType: string;
@@ -265,7 +266,7 @@ export default function SourceExplorerApp() {
             setError(null);
 
             try {
-                if (navigationState.resourceType !== 'source-files') {
+                if (navigationState.resourceType === 'crx-files') {
                     setDomains([]);
                     setSelectedDomainHostname(null);
                     setSelectedPageId(null);
@@ -507,6 +508,17 @@ export default function SourceExplorerApp() {
         window.open(GITHUB_FEEDBACK_URL, '_blank', 'noopener,noreferrer');
     };
 
+    const handleOpenRateUs = () => {
+        void trackEvent('source_explorer_open_rate_us');
+        void trackProductEvent('share_clicked', {
+            surface: 'source_explorer',
+            placement: 'header_rate_us_icon',
+            share_target: 'chrome_web_store_reviews',
+            share_channel: 'chrome_web_store'
+        });
+        window.open(CHROME_WEB_STORE_REVIEW_URL, '_blank', 'noopener,noreferrer');
+    };
+
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
@@ -521,6 +533,11 @@ export default function SourceExplorerApp() {
                                 v1.3.2 - Three-pane source intelligence workspace
                             </Typography>
                         </Box>
+                        <Tooltip title="Rate us on Chrome Web Store">
+                            <IconButton color="inherit" onClick={handleOpenRateUs}>
+                                <StarRateIcon />
+                            </IconButton>
+                        </Tooltip>
                         <Tooltip title="Feedback on GitHub">
                             <IconButton
                                 color="inherit"
@@ -533,18 +550,14 @@ export default function SourceExplorerApp() {
                 </AppBar>
 
                 <Container maxWidth={false} sx={{ py: 2.5 }}>
-                    {navigationState.resourceType !== 'source-files' && (
-                        <Alert severity="info">
-                            Source Explorer currently supports source files only.
-                        </Alert>
-                    )}
-
                     {loading ? (
                         <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
                             <CircularProgress />
                         </Box>
                     ) : error ? (
                         <Alert severity="error">{error}</Alert>
+                    ) : navigationState.resourceType === 'crx-files' ? (
+                        <CrxSourceExplorer targetUrl={navigationState.pageUrl} />
                     ) : domains.length === 0 ? (
                         <Alert severity="info">
                             No source files are currently available in indexedDB.

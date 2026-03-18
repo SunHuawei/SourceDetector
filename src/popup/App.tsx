@@ -5,13 +5,14 @@ import { CrxFile, PageData, ParsedCrxFile, SourceMapFile, StorageStats } from '@
 import { isExtensionPage } from '@/utils/isExtensionPage';
 import { parseCrxFile } from '@/utils/parseCrxFile';
 import { SourceMapDownloader } from '@/utils/sourceMapDownloader';
-import { GITHUB_FEEDBACK_URL } from '@/constants/links';
+import { CHROME_WEB_STORE_REVIEW_URL, GITHUB_FEEDBACK_URL } from '@/constants/links';
 import { groupSourceMapFiles } from '@/utils/sourceMapUtils';
 import {
     CloudDownload as CloudDownloadIcon,
     GitHub as GitHubIcon,
     OpenInNew as OpenInNewIcon,
-    Settings as SettingsIcon
+    Settings as SettingsIcon,
+    StarRate as StarRateIcon
 } from '@mui/icons-material';
 import {
     Box,
@@ -388,6 +389,17 @@ export default function App() {
         await browserAPI.tabs.create({ url: GITHUB_FEEDBACK_URL });
     };
 
+    const handleOpenRateUs = async () => {
+        void trackEvent('popup_open_rate_us');
+        void trackProductEvent('share_clicked', {
+            surface: 'popup',
+            placement: 'header_rate_us_icon',
+            share_target: 'chrome_web_store_reviews',
+            share_channel: 'chrome_web_store'
+        });
+        await browserAPI.tabs.create({ url: CHROME_WEB_STORE_REVIEW_URL });
+    };
+
     const handleOpenSettings = async () => {
         void trackEvent('popup_open_settings');
         await browserAPI.runtime.openOptionsPage();
@@ -460,6 +472,15 @@ export default function App() {
                                 </span>
                             </Tooltip>
                         )}
+                        <Tooltip title="Rate us on Chrome Web Store">
+                            <IconButton
+                                size="small"
+                                sx={{ mr: 1 }}
+                                onClick={handleOpenRateUs}
+                            >
+                                <StarRateIcon />
+                            </IconButton>
+                        </Tooltip>
                         <Tooltip title="Feedback on GitHub">
                             <IconButton
                                 size="small"

@@ -47,6 +47,30 @@ test('getPageFiles de-duplicates repeated page/sourceMap relations', async (t) =
     assert.equal(files[0].id, sourceMap.id);
 });
 
+test('getCrxFileByCrxUrl resolves stored CRX record by package url', async (t) => {
+    const db = createDb(`SourceDetectorDB-test-${Date.now()}-crx`);
+
+    t.after(async () => {
+        await db.delete();
+    });
+
+    const blob = new Blob(['demo-crx'], { type: 'application/octet-stream' });
+    await db.addCrxFile({
+        pageUrl: 'https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn',
+        pageTitle: 'Source Detector',
+        crxUrl: 'https://clients2.google.com/service/update2/crx?response=redirect&prodversion=130.0&id=aioimldmpakibclgckpdfpfkadbflfkn',
+        blob,
+        size: blob.size,
+        timestamp: Date.now(),
+        count: 1,
+        contentHash: 'hash-crx'
+    });
+
+    const found = await db.getCrxFileByCrxUrl('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=130.0&id=aioimldmpakibclgckpdfpfkadbflfkn');
+    assert.ok(found);
+    assert.equal(found?.pageTitle, 'Source Detector');
+});
+
 test('addSourceMapToPage does not create duplicate relation for same page and sourceMap', async (t) => {
     const db = createDb(`SourceDetectorDB-test-${Date.now()}-2`);
 

@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS, MESSAGE_TYPES, STORAGE_LIMITS } from '@/background/constants';
-import { GITHUB_FEEDBACK_URL } from '@/constants/links';
+import { CHROME_WEB_STORE_REVIEW_URL, GITHUB_FEEDBACK_URL } from '@/constants/links';
 import { formatBytes } from '@/background/utils';
 import { Toast } from '@/components/Toast';
 import {
@@ -14,7 +14,7 @@ import {
 import { AppSettings, Rule, StorageStats } from '@/types';
 import { browserAPI } from '@/utils/browser-polyfill';
 import { trackEvent, trackProductEvent } from '@/utils/analytics';
-import { Add as AddIcon, Delete as DeleteIcon, GitHub as GitHubIcon } from '@mui/icons-material';
+import { Add as AddIcon, Delete as DeleteIcon, GitHub as GitHubIcon, StarRate as StarRateIcon } from '@mui/icons-material';
 import {
     Alert,
     AppBar,
@@ -308,6 +308,17 @@ export default function SecurityScannerApp() {
         window.open(GITHUB_FEEDBACK_URL, '_blank', 'noopener,noreferrer');
     };
 
+    const handleOpenRateUs = () => {
+        void trackEvent('settings_open_rate_us');
+        void trackProductEvent('share_clicked', {
+            surface: 'settings',
+            placement: 'header_rate_us_icon',
+            share_target: 'chrome_web_store_reviews',
+            share_channel: 'chrome_web_store'
+        });
+        window.open(CHROME_WEB_STORE_REVIEW_URL, '_blank', 'noopener,noreferrer');
+    };
+
     if (loading) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
@@ -331,6 +342,11 @@ export default function SecurityScannerApp() {
                     <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                         Source Detector - Settings
                     </Typography>
+                    <Tooltip title="Rate us on Chrome Web Store">
+                        <IconButton color="inherit" onClick={handleOpenRateUs}>
+                            <StarRateIcon />
+                        </IconButton>
+                    </Tooltip>
                     <Tooltip title="Feedback on GitHub">
                         <IconButton
                             color="inherit"
