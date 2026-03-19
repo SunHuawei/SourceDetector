@@ -5,7 +5,7 @@ import { useAppTheme } from '@/theme';
 import SourceExplorerApp from './SourceExplorerApp';
 
 function Root() {
-  const theme = useAppTheme();
+  const theme = useAppTheme('source_explorer');
 
   return (
     <ThemeProvider theme={theme}>

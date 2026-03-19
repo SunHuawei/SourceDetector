@@ -296,7 +296,7 @@ function getSourceMapPageTreeIdPrefix(pageId: number): string {
 }
 
 export default function SourceExplorerApp() {
-  const theme = useAppTheme();
+  const theme = useAppTheme('source_explorer');
   const db = useMemo(() => new SourceDetectorDB(), []);
   const navigationState = useMemo(() => parseNavigationState(), []);
 
@@ -907,11 +907,13 @@ export default function SourceExplorerApp() {
   const isSourceMapNodeExpanded = (nodeId: string, fallbackExpanded = false): boolean =>
     expandedSourceMapNodes[nodeId] ?? fallbackExpanded;
 
-  const toggleSourceMapNode = (nodeId: string, fallbackExpanded = false) => {
+  const toggleSourceMapNode = (nodeId: string, fallbackExpanded = false): boolean => {
+    const nextExpanded = !(expandedSourceMapNodes[nodeId] ?? fallbackExpanded);
     setExpandedSourceMapNodes(previousState => ({
       ...previousState,
-      [nodeId]: !(previousState[nodeId] ?? fallbackExpanded),
+      [nodeId]: nextExpanded,
     }));
+    return nextExpanded;
   };
 
   const expandSourceMapNodes = (nodeIds: string[]) => {
@@ -938,6 +940,14 @@ export default function SourceExplorerApp() {
     setSelectedPageId(pageId);
     setSelectedGroupUrl(groupUrl);
     setSelectedFileId(defaultFileId);
+    void trackEvent('source_explorer_source_map_file_selected', {
+      hostname,
+      page_id: pageId,
+      group_url: groupUrl,
+      file_id: defaultFileId ?? undefined,
+      file_name: getFileName(groupUrl),
+      selection_source: 'navigation_tree',
+    });
 
     const idPrefix = getSourceMapPageTreeIdPrefix(pageId);
     const nodeIdsToExpand = [`domain:${hostname}`, `page:${pageId}`];
@@ -953,11 +963,13 @@ export default function SourceExplorerApp() {
   const isCrxNodeExpanded = (nodeId: string, fallbackExpanded = false): boolean =>
     expandedSourceMapNodes[nodeId] ?? fallbackExpanded;
 
-  const toggleCrxNode = (nodeId: string, fallbackExpanded = false) => {
+  const toggleCrxNode = (nodeId: string, fallbackExpanded = false): boolean => {
+    const nextExpanded = !(expandedSourceMapNodes[nodeId] ?? fallbackExpanded);
     setExpandedSourceMapNodes(previousState => ({
       ...previousState,
-      [nodeId]: !(previousState[nodeId] ?? fallbackExpanded),
+      [nodeId]: nextExpanded,
     }));
+    return nextExpanded;
   };
 
   const handleSelectCrxGroup = (groupKey: string) => {
@@ -965,8 +977,22 @@ export default function SourceExplorerApp() {
     if (!group) {
       return;
     }
+    const hostGroupCount = crxPackageGroups.filter(item => item.hostname === group.hostname).length;
     setSelectedCrxGroupKey(group.key);
     setSelectedCrxId(group.latestRecord.id);
+    void trackEvent('source_explorer_crx_host_selected', {
+      hostname: group.hostname,
+      host_group_count: hostGroupCount,
+      package_group_key: group.key,
+      selection_source: 'navigation_tree',
+    });
+    void trackEvent('source_explorer_crx_package_group_selected', {
+      hostname: group.hostname,
+      package_group_key: group.key,
+      capture_count: group.records.length,
+      selected_capture_id: group.latestRecord.id,
+      selection_source: 'navigation_tree',
+    });
 
     const hostNodeId = `crx-host:${group.hostname}`;
     const groupNodeId = `crx-group:${group.key}`;
@@ -1369,9 +1395,19 @@ export default function SourceExplorerApp() {
         const directoryRow = (
           <ListItemButton
             key={directory.id}
-            onClick={() =>
-              toggleSourceMapNode(directory.id, selectedSourceMapDirectoryNodeIds.has(directory.id))
-            }
+            onClick={() => {
+              const defaultExpanded = selectedSourceMapDirectoryNodeIds.has(directory.id);
+              const nextExpanded = toggleSourceMapNode(directory.id, defaultExpanded);
+              void trackEvent('source_explorer_source_map_tree_node_toggled', {
+                node_type: 'directory',
+                hostname,
+                page_id: pageId,
+                node_id: directory.id,
+                node_name: directory.name,
+                is_expanded: nextExpanded,
+                file_count: fileCount,
+              });
+            }}
             sx={{ pl: 2 + depth * 1.5, py: 0.75 }}
           >
             <Box sx={{ mr: 0.75, display: 'flex', alignItems: 'center' }}>
@@ -1473,10 +1509,18 @@ export default function SourceExplorerApp() {
                       selected={selectedDomainHostname === domainEntry.hostname}
                       onClick={() => {
                         handleSelectDomain(domainEntry.hostname);
-                        toggleSourceMapNode(
+                        const nextExpanded = toggleSourceMapNode(
                           domainNodeId,
                           domainEntry.hostname === selectedDomainHostname
                         );
+                        void trackEvent('source_explorer_source_map_tree_node_toggled', {
+                          node_type: 'domain',
+                          hostname: domainEntry.hostname,
+                          node_id: domainNodeId,
+                          is_expanded: nextExpanded,
+                          page_count: domainEntry.pages.length,
+                          finding_count: domainEntry.leakCount,
+                        });
                       }}
                       sx={{ pl: 2, py: 0.85 }}
                     >
@@ -1514,7 +1558,18 @@ export default function SourceExplorerApp() {
                                 selected={selectedPageId === pageEntry.pageId}
                                 onClick={() => {
                                   handleSelectPage(pageEntry.pageId);
-                                  toggleSourceMapNode(pageNodeId, selectedPageId === pageEntry.pageId);
+                                  const nextExpanded = toggleSourceMapNode(
+                                    pageNodeId,
+                                    selectedPageId === pageEntry.pageId
+                                  );
+                                  void trackEvent('source_explorer_source_map_tree_node_toggled', {
+                                    node_type: 'page',
+                                    hostname: domainEntry.hostname,
+                                    page_id: pageEntry.pageId,
+                                    node_id: pageNodeId,
+                                    is_expanded: nextExpanded,
+                                    grouped_file_count: pageEntry.groupedFileCount,
+                                  });
                                 }}
                                 sx={{ pl: 3.5, py: 0.75 }}
                               >
@@ -1835,7 +1890,18 @@ export default function SourceExplorerApp() {
                 const hostExpanded = isCrxNodeExpanded(hostNodeId, true);
                 return (
                   <Box key={hostNodeId} sx={{ minHeight: 0 }}>
-                    <ListItemButton onClick={() => toggleCrxNode(hostNodeId, true)} sx={{ pl: 2, py: 0.85 }}>
+                    <ListItemButton
+                      onClick={() => {
+                        const nextExpanded = toggleCrxNode(hostNodeId, true);
+                        void trackEvent('source_explorer_crx_host_toggled', {
+                          hostname,
+                          node_id: hostNodeId,
+                          is_expanded: nextExpanded,
+                          host_group_count: groups.length,
+                        });
+                      }}
+                      sx={{ pl: 2, py: 0.85 }}
+                    >
                       <Box sx={{ mr: 0.75, display: 'flex', alignItems: 'center' }}>
                         {hostExpanded ? <ExpandMoreIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
                       </Box>
@@ -1855,7 +1921,17 @@ export default function SourceExplorerApp() {
                                 selected={selectedCrxGroup?.key === crxGroup.key}
                                 onClick={() => {
                                   handleSelectCrxGroup(crxGroup.key);
-                                  toggleCrxNode(groupNodeId, selectedCrxGroup?.key === crxGroup.key);
+                                  const nextExpanded = toggleCrxNode(
+                                    groupNodeId,
+                                    selectedCrxGroup?.key === crxGroup.key
+                                  );
+                                  void trackEvent('source_explorer_crx_package_group_toggled', {
+                                    hostname,
+                                    package_group_key: crxGroup.key,
+                                    node_id: groupNodeId,
+                                    is_expanded: nextExpanded,
+                                    capture_count: crxGroup.records.length,
+                                  });
                                 }}
                                 sx={{ pl: 3.5, py: 0.75 }}
                               >
@@ -1879,6 +1955,28 @@ export default function SourceExplorerApp() {
                                       onClick={() => {
                                         setSelectedCrxGroupKey(crxGroup.key);
                                         setSelectedCrxId(record.id);
+                                        void trackEvent('source_explorer_crx_host_selected', {
+                                          hostname,
+                                          host_group_count: groups.length,
+                                          package_group_key: crxGroup.key,
+                                          selection_source: 'capture_row',
+                                        });
+                                        void trackEvent('source_explorer_crx_package_group_selected', {
+                                          hostname,
+                                          package_group_key: crxGroup.key,
+                                          capture_count: crxGroup.records.length,
+                                          selected_capture_id: record.id,
+                                          selection_source: 'capture_row',
+                                        });
+                                        void trackEvent('source_explorer_crx_capture_selected', {
+                                          hostname,
+                                          package_group_key: crxGroup.key,
+                                          capture_id: record.id,
+                                          capture_timestamp: record.timestamp,
+                                          capture_file_count: record.count,
+                                          capture_size_bytes: record.size,
+                                          selection_source: 'navigation_tree',
+                                        });
                                       }}
                                       sx={{ pl: 5, py: 0.7 }}
                                     >
@@ -1981,7 +2079,18 @@ export default function SourceExplorerApp() {
                           label={formatTimestamp(record.timestamp)}
                           color={record.id === selectedCrx.id ? 'primary' : 'default'}
                           variant={record.id === selectedCrx.id ? 'filled' : 'outlined'}
-                          onClick={() => setSelectedCrxId(record.id)}
+                          onClick={() => {
+                            setSelectedCrxId(record.id);
+                            void trackEvent('source_explorer_crx_capture_selected', {
+                              hostname: selectedCrxGroup.hostname,
+                              package_group_key: selectedCrxGroup.key,
+                              capture_id: record.id,
+                              capture_timestamp: record.timestamp,
+                              capture_file_count: record.count,
+                              capture_size_bytes: record.size,
+                              selection_source: 'capture_chip',
+                            });
+                          }}
                           clickable
                         />
                       ))}

@@ -666,7 +666,7 @@ export default function App() {
       >
         <Box display="flex" justifyContent="space-between" alignItems="center" gap={2}>
           <Typography variant="h6" sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
-            {crxFile ? 'Extension Files' : 'Source Maps'} (v1.4.0)
+            {crxFile ? 'Extension Files' : 'Source Maps'} (v1.4.1)
           </Typography>
           <Box
             sx={{

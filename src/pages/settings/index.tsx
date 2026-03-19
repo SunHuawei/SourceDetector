@@ -5,7 +5,7 @@ import { useAppTheme } from '@/theme';
 import App from './App';
 
 function Root() {
-    const theme = useAppTheme();
+    const theme = useAppTheme('settings');
 
     return (
         <ThemeProvider theme={theme}>

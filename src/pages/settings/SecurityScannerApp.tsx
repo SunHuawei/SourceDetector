@@ -132,12 +132,32 @@ export default function SecurityScannerApp() {
             });
 
             if (response.success) {
+                const previousThemePreference = settings.themePreference;
                 setSettings(newSettings);
                 void trackProductEvent('settings_changed', {
                     surface: 'settings',
                     setting_key: key,
                     setting_value: value
                 });
+                if (key === 'themePreference') {
+                    const nextThemePreference = value as ThemePreference;
+                    const systemPrefersDark =
+                        typeof window !== 'undefined' &&
+                        typeof window.matchMedia === 'function' &&
+                        window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    const appliedThemeMode =
+                        nextThemePreference === 'system'
+                            ? (systemPrefersDark ? 'dark' : 'light')
+                            : nextThemePreference;
+                    void trackEvent('theme_changed', {
+                        surface: 'settings',
+                        trigger: 'theme_toggle',
+                        previous_theme_preference: previousThemePreference,
+                        theme_preference: nextThemePreference,
+                        theme_mode: appliedThemeMode,
+                        system_prefers_dark: systemPrefersDark
+                    });
+                }
                 setMessage({ type: 'success', text: 'Settings saved successfully' });
             }
         } catch (error) {
