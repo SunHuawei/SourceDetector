@@ -30,6 +30,8 @@ export interface SourceMapFile {
     findings?: LeakFinding[];
 }
 
+export type SourceMapFileSummary = Omit<SourceMapFile, 'content' | 'originalContent'>;
+
 export interface SourceMapFoundData {
     pageTitle: string;
     pageUrl: string;
@@ -43,7 +45,7 @@ export interface PageData {
     url: string;
     title: string;
     timestamp: number;
-    files: SourceMapFile[];
+    files: SourceMapFileSummary[];
 }
 
 export interface ResolvedPageContext {
@@ -61,9 +63,12 @@ export interface StorageStats {
     oldestTimestamp: number;
 }
 
+export type ThemePreference = 'system' | 'light' | 'dark';
+
 export interface AppSettings {
     id: string;
     cleanupThreshold: number;
+    themePreference: ThemePreference;
 }
 
 export interface Message<T = unknown> {

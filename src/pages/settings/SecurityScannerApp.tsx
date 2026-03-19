@@ -11,7 +11,7 @@ import {
     setRuleEnabled,
     upsertUserRule
 } from '@/storage/rules';
-import { AppSettings, Rule, StorageStats } from '@/types';
+import { AppSettings, Rule, StorageStats, ThemePreference } from '@/types';
 import { browserAPI } from '@/utils/browser-polyfill';
 import { trackEvent, trackProductEvent } from '@/utils/analytics';
 import { Add as AddIcon, Delete as DeleteIcon, GitHub as GitHubIcon, StarRate as StarRateIcon } from '@mui/icons-material';
@@ -37,7 +37,9 @@ import {
     TextField,
     Toolbar,
     Tooltip,
-    Typography
+    Typography,
+    ToggleButton,
+    ToggleButtonGroup
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 
@@ -371,6 +373,29 @@ export default function SecurityScannerApp() {
                         Storage used: {formatBytes(stats.usedSpace)} • {stats.fileCount} Source Maps Found on {stats.uniqueSiteCount} {stats.uniqueSiteCount === 1 ? 'Site' : 'Sites'}
                     </Alert>
                 )}
+
+                <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+                    <Typography variant="h6" sx={{ mb: 1 }}>
+                        Appearance
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Choose how the extension theme is applied. Default follows your system setting.
+                    </Typography>
+                    <ToggleButtonGroup
+                        exclusive
+                        value={settings?.themePreference ?? 'system'}
+                        onChange={(_, value: ThemePreference | null) => {
+                            if (value) {
+                                void handleSettingChange('themePreference', value);
+                            }
+                        }}
+                        size="small"
+                    >
+                        <ToggleButton value="system">System</ToggleButton>
+                        <ToggleButton value="light">Light</ToggleButton>
+                        <ToggleButton value="dark">Dark</ToggleButton>
+                    </ToggleButtonGroup>
+                </Paper>
 
                 <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
                     <Typography variant="h6" sx={{ mb: 1 }}>

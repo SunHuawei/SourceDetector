@@ -1,185 +1,227 @@
 import { getFileIcon } from '@/components/fileIcon';
 import { ParsedCrxFile } from '@/types';
 import { formatBytes } from '@/utils/format';
+import { ChevronRight, CloudDownload, ExpandMore, Folder } from '@mui/icons-material';
 import {
-    ChevronRight,
-    CloudDownload,
-    ExpandMore,
-    Folder,
-} from '@mui/icons-material';
-import { Box, IconButton, Tooltip, Typography } from '@mui/material';
+  Alert,
+  Box,
+  IconButton,
+  Paper,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import { TreeItem as MuiTreeItem, SimpleTreeView as MuiTreeView } from '@mui/x-tree-view';
-import JSZip from 'jszip';
-import React, { useEffect, useState } from 'react';
-import { LoadingScreen } from './LoadingScreen';
+import React, { useEffect, useMemo, useState } from 'react';
 
 interface FileNode {
-    name: string;
-    path: string;
-    size?: number;
-    isDirectory?: boolean;
-    children: { [key: string]: FileNode };
+  name: string;
+  path: string;
+  size?: number;
+  isDirectory: boolean;
+  children: Record<string, FileNode>;
+}
+
+interface BuildFileTreeResult {
+  root: FileNode;
 }
 
 interface Props {
-    crxUrl: string;
-    parsed: ParsedCrxFile | null;
-    onDownload: (path: string) => void;
+  parsed: ParsedCrxFile | null;
+  onDownload: (path: string) => void;
 }
 
 const TreeItem = MuiTreeItem as any;
 const TreeView = MuiTreeView as any;
 
-export function CrxFileTree({ crxUrl, parsed, onDownload }: Props) {
-    const [expanded, setExpanded] = useState<string[]>([]);
-    const [fileTree, setFileTree] = useState<FileNode | null>(null);
-    const [loading, setLoading] = useState(true);
+function getAncestorPaths(path: string): string[] {
+  const segments = path.split('/').filter(Boolean);
+  const ancestors: string[] = [];
 
-    useEffect(() => {
-        const loadFileTree = async () => {
-            try {
-                setLoading(true);
-                if (parsed?.zip) {
-                    const tree = await buildFileTreeFromJszip(parsed.zip);
-                    setFileTree(tree);
-                }
-            } catch (error) {
-                console.error('Error loading file tree:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadFileTree();
-    }, [parsed]);
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    ancestors.push(segments.slice(0, index + 1).join('/'));
+  }
 
-    const buildFileTreeFromJszip = async (jszip: JSZip): Promise<FileNode> => {
-        const root: FileNode = {
-            name: 'root',
-            path: '',
-            isDirectory: true,
-            children: {},
-        };
+  return ancestors;
+}
 
-        // Process each file in the zip
-        for (const [path, file] of Object.entries(jszip.files)) {
-            if (file.dir) continue; // Skip directory entries as we'll create them implicitly
+function buildFileTree(parsed: ParsedCrxFile): BuildFileTreeResult {
+  const root: FileNode = {
+    name: 'root',
+    path: '',
+    isDirectory: true,
+    children: {},
+  };
 
-            // Split the path into segments
-            const segments = path.split('/');
-            let currentNode = root;
-
-            // Create/traverse the folder structure
-            for (let i = 0; i < segments.length - 1; i++) {
-                const segment = segments[i];
-                if (!currentNode.children[segment]) {
-                    console.log('create folder', segment, segments.slice(0, i + 1).join('/'))
-                    currentNode.children[segment] = {
-                        name: segment,
-                        path: segments.slice(0, i + 1).join('/'),
-                        isDirectory: true,
-                        children: {},
-                    };
-                }
-                currentNode = currentNode.children[segment];
-            }
-
-            // Add the file to its parent folder
-            const fileName = segments[segments.length - 1];
-            try {
-                const fileData = await file.async('uint8array');
-                console.log('path', path, fileName, fileData.length)
-                currentNode.children[fileName] = {
-                    name: fileName,
-                    path: path,
-                    size: fileData.length,
-                    isDirectory: false,
-                    children: {}, // Empty children for files
-                };
-            } catch (error) {
-                console.error(`Error processing file ${path}:`, error);
-                console.log('create file- error ', fileName, path)
-                currentNode.children[fileName] = {
-                    name: fileName,
-                    path: path,
-                    isDirectory: false,
-                    children: {},
-                };
-            }
-        }
-
-        return root;
-    };
-
-    const renderTree = (node: FileNode, nodeId: string) => {
-        const label = (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
-                {node.isDirectory ? (
-                    <Folder fontSize="small" />
-                ) : (
-                    getFileIcon(node.name)
-                )}
-                <Tooltip title={`${node.path}${node.size ? ` (${formatBytes(node.size)})` : ''}`}>
-                    <span>{node.name}</span>
-                </Tooltip>
-                {!node.isDirectory && (
-                    <IconButton
-                        size="small"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDownload(node.path);
-                        }}
-                        sx={{ ml: 'auto' }}
-                    >
-                        <CloudDownload fontSize="small" />
-                    </IconButton>
-                )}
-            </Box>
-        );
-
-        return (
-            <TreeItem
-                key={nodeId}
-                itemId={node.path || nodeId}
-                label={label}
-            >
-                {Object.entries(node.children).map(([childName, childNode]) =>
-                    renderTree(childNode, `${node.path || nodeId}-${childName}`)
-                )}
-            </TreeItem>
-        );
-    };
-
-    const handleToggle = (_event: React.SyntheticEvent, nodeIds: string[]) => {
-        setExpanded(nodeIds);
-    };
-
-    if (loading) {
-        return <LoadingScreen />
+  for (const [path, file] of Object.entries(parsed.zip.files)) {
+    if (file.dir) {
+      continue;
     }
 
-    if (!fileTree) {
-        return <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                <Typography variant="body1" color="text.secondary">
-                    No files found on this page
-                </Typography>
-            </Box>
-        </Box>
+    const segments = path.split('/').filter(Boolean);
+    if (segments.length === 0) {
+      continue;
     }
+
+    let currentNode = root;
+
+    for (let index = 0; index < segments.length - 1; index += 1) {
+      const segment = segments[index];
+      const nextPath = segments.slice(0, index + 1).join('/');
+
+      if (!currentNode.children[segment]) {
+        currentNode.children[segment] = {
+          name: segment,
+          path: nextPath,
+          isDirectory: true,
+          children: {},
+        };
+      }
+
+      currentNode = currentNode.children[segment];
+    }
+
+    const fileName = segments[segments.length - 1];
+    currentNode.children[fileName] = {
+      name: fileName,
+      path,
+      isDirectory: false,
+      children: {},
+    };
+
+  }
+
+  return { root };
+}
+
+function sortNodes(nodes: FileNode[]): FileNode[] {
+  return [...nodes].sort((left, right) => {
+    if (left.isDirectory !== right.isDirectory) {
+      return left.isDirectory ? -1 : 1;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
+}
+
+export function CrxFileTree({ parsed, onDownload }: Props) {
+  const [expanded, setExpanded] = useState<string[]>([]);
+
+  const treeData = useMemo(() => {
+    if (!parsed) return null;
+    return buildFileTree(parsed);
+  }, [parsed]);
+  const fileTree = treeData?.root ?? null;
+
+  useEffect(() => {
+    if (!treeData) {
+      setExpanded([]);
+      return;
+    }
+
+    const firstPath = Object.keys(parsed?.zip.files ?? {}).find(path => {
+      const file = parsed?.zip.files[path];
+      return file && !file.dir;
+    });
+    setExpanded(firstPath ? getAncestorPaths(firstPath) : []);
+  }, [parsed, treeData]);
+
+  const handleToggle = (_event: React.SyntheticEvent, nodeIds: string[]) => {
+    setExpanded(nodeIds);
+  };
+
+  const renderTree = (node: FileNode, nodeId: string) => {
+    const sortedChildren = sortNodes(Object.values(node.children));
+
+    const label = (
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          py: 0.5,
+          pr: 0.5,
+          minWidth: 0,
+          borderRadius: 0.75,
+        }}
+      >
+        {node.isDirectory ? <Folder fontSize="small" /> : getFileIcon(node.name)}
+        <Tooltip title={`${node.path}${node.size ? ` (${formatBytes(node.size)})` : ''}`}>
+          <Typography
+            variant="body2"
+            component="span"
+            sx={{
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flexGrow: 1,
+            }}
+          >
+            {node.name}
+          </Typography>
+        </Tooltip>
+        {!node.isDirectory && (
+          <IconButton
+            size="small"
+            onClick={event => {
+              event.stopPropagation();
+              onDownload(node.path);
+            }}
+            sx={{ ml: 'auto', flexShrink: 0 }}
+          >
+            <CloudDownload fontSize="small" />
+          </IconButton>
+        )}
+      </Box>
+    );
 
     return (
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-            <TreeView
-                defaultCollapseIcon={<ExpandMore />}
-                defaultExpandIcon={<ChevronRight />}
-                expanded={expanded}
-                onNodeToggle={handleToggle}
-                sx={{ flexGrow: 1 }}
-            >
-                {Object.entries(fileTree.children).map(([name, node]) =>
-                    renderTree(node, name)
-                )}
-            </TreeView>
-        </Box>
+      <TreeItem key={nodeId} itemId={node.path || nodeId} label={label}>
+        {sortedChildren.map(childNode =>
+          renderTree(childNode, childNode.path || `${nodeId}-${childNode.name}`)
+        )}
+      </TreeItem>
     );
-} 
+  };
+
+  if (!fileTree) {
+    return (
+      <Alert severity="info" sx={{ mt: 2 }}>
+        No files found in this extension package.
+      </Alert>
+    );
+  }
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        height: '100%',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+        <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+          <Typography variant="subtitle2">Package Files</Typography>
+          <Typography variant="caption" color="text.secondary">
+            Browse the extension tree directly in the popup
+          </Typography>
+        </Box>
+        <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', px: 1, py: 1 }}>
+          <TreeView
+            defaultCollapseIcon={<ExpandMore />}
+            defaultExpandIcon={<ChevronRight />}
+            expanded={expanded}
+            onNodeToggle={handleToggle}
+            sx={{ flexGrow: 1 }}
+          >
+            {sortNodes(Object.values(fileTree.children)).map(node =>
+              renderTree(node, node.path || node.name)
+            )}
+          </TreeView>
+        </Box>
+    </Paper>
+  );
+}

@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS } from '@/background/constants';
-import { AppSettings, Page, PageSourceMap, SourceMapFile, CrxFile } from '@/types';
+import { AppSettings, Page, PageSourceMap, SourceMapFile, SourceMapFileSummary, CrxFile } from '@/types';
 import Dexie from 'dexie';
 
 const DB_VERSION = 2;
@@ -162,6 +162,11 @@ export class SourceDetectorDB extends Dexie {
             .where('id')
             .anyOf(sourceMapIds)
             .toArray();
+    }
+
+    async getPageFileSummaries(pageUrl: string): Promise<SourceMapFileSummary[]> {
+        const files = await this.getPageFiles(pageUrl);
+        return files.map(({ content: _content, originalContent: _originalContent, ...summary }) => summary);
     }
 
     async addSourceMapToPage(pageUrl: string, pageTitle: string, sourceMap: SourceMapFile): Promise<void> {

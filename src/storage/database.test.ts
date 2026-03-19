@@ -102,3 +102,43 @@ test('addSourceMapToPage does not create duplicate relation for same page and so
     assert.equal(relations.length, 1);
     assert.equal(relations[0].sourceMapId, sourceMap.id);
 });
+
+test('getPageFileSummaries omits heavy source content fields for popup list rendering', async (t) => {
+    const db = createDb(`SourceDetectorDB-test-${Date.now()}-summaries`);
+
+    t.after(async () => {
+        await db.delete();
+    });
+
+    const sourceMap = await db.addSourceMapFile({
+        url: 'https://cdn.example.com/large.js',
+        sourceMapUrl: 'https://cdn.example.com/large.js.map',
+        content: '{"huge":true}',
+        originalContent: 'console.log("very large original source")',
+        fileType: 'js',
+        size: 4096,
+        timestamp: 3,
+        version: 2,
+        hash: 'hash-3',
+        isLatest: true,
+        findings: [{
+            ruleId: 'demo',
+            ruleName: 'Demo Finding',
+            matchedText: 'secret',
+            line: 1,
+            column: 1,
+            startIndex: 0,
+            endIndex: 6,
+            contextLines: []
+        }]
+    });
+
+    await db.addSourceMapToPage('https://example.com/heavy', 'Heavy', sourceMap);
+
+    const summaries = await db.getPageFileSummaries('https://example.com/heavy');
+
+    assert.equal(summaries.length, 1);
+    assert.equal(summaries[0].url, sourceMap.url);
+    assert.ok(!('content' in summaries[0]));
+    assert.ok(!('originalContent' in summaries[0]));
+});

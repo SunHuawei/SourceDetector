@@ -141,7 +141,7 @@ export async function trackEvent(eventName: string, params: AnalyticsEventParams
                                 session_id: sessionId,
                                 engagement_time_msec: DEFAULT_ENGAGEMENT_TIME_MSEC,
                                 app_name: 'source_detector',
-                                app_version: '1.3.2'
+                                app_version: '1.4.0'
                             }
                         }
                     ]
