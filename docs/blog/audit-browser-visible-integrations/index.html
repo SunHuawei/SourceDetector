@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Audit Browser-Visible Integrations Without Touching the Backend | Source Detector</title>
+    <meta name="description" content="A practical workflow for auditing browser-visible integrations without touching the backend, using requests, source maps, and frontend artifacts to map third-party dependencies responsibly." />
+    <meta property="og:title" content="How to Audit Browser-Visible Integrations Without Touching the Backend" />
+    <meta property="og:description" content="Use browser-visible requests, scripts, and source maps to audit third-party integrations without overstating what frontend evidence can prove." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/audit-browser-visible-integrations/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/audit-browser-visible-integrations/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul,ol { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "How to Audit Browser-Visible Integrations Without Touching the Backend",
+        "description": "A practical workflow for auditing browser-visible integrations without touching the backend, using requests, source maps, and frontend artifacts to map third-party dependencies responsibly.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/audit-browser-visible-integrations/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "dateModified": "2026-03-20",
+        "datePublished": "2026-03-20"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Workflow guide · Browser recon · Integration mapping</div>
+        <h1>How to audit browser-visible integrations without touching the backend</h1>
+        <p class="subhead">You can audit a surprising amount of a site&apos;s third-party integration surface without touching the backend at all. Browser-visible integrations leave traces in script loads, API requests, source maps, environment-specific config, and feature-triggered network behavior. That evidence is useful for security review because it helps you map trust boundaries and hidden dependencies from a normal browsing session. The limit is just as important: browser evidence shows what the frontend reveals, not everything a backend does, and not every integration clue is a security issue.</p>
+        <p class="meta">Category: workflow · Search intent: learn how to audit browser-visible integrations without touching the backend · Last reviewed: 2026-03-20</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> audit browser-visible integrations by correlating loaded scripts, fetch/XHR destinations, source-map references, and user-triggered request patterns. The goal is to build an evidence-backed map of which external services the frontend depends on, where those services appear in the user journey, and which ones deserve deeper manual review.</div>
+
+      <article>
+        <h2>What you can detect</h2>
+        <p>This workflow can detect third-party analytics, AI providers, feature-flag systems, fraud tooling, error monitoring, session replay, content delivery helpers, and hidden product dependencies that only appear after specific user actions. It can also expose how a site separates first-party application logic from outsourced services.</p>
+        <p>For a researcher or engineering reviewer, that matters because the trust picture of a site is often broader than the visible brand suggests. A simple public page may quietly depend on several external systems, each with its own data flow and operational assumptions.</p>
+
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Script origin patterns.</strong> Which external scripts load on first paint, after login, or only after a high-value action?</li>
+          <li><strong>Request destination clusters.</strong> Are requests concentrated around analytics, AI, payments, fraud, or support tooling?</li>
+          <li><strong>Initiator context.</strong> Did the request come from first-party application code, a tag manager, or a third-party widget?</li>
+          <li><strong>Source-map references and original file names.</strong> These often reveal vendor wrappers, integration helpers, or environment routing that minified code hides.</li>
+          <li><strong>State-dependent traffic.</strong> Some integrations appear only on upload, chat, checkout, admin, or workspace pages.</li>
+        </ul>
+
+        <h2>How to verify</h2>
+        <ol>
+          <li><strong>Pick one page state at a time.</strong> Start with a clean public page load, then repeat the process for login, form submission, upload, settings, or chat. Mixed states produce noisy conclusions.</li>
+          <li><strong>Group external calls by product role.</strong> Separate analytics from core application traffic, and separate support tooling from workflow-critical integrations.</li>
+          <li><strong>Tie requests back to initiators.</strong> A hidden AI provider is more interesting when it is triggered by first-party code than when it appears through a generic browser extension or injected widget.</li>
+          <li><strong>Use source maps and asset names as explanatory evidence.</strong> They can show whether a service is central to the product workflow or just a supporting library.</li>
+          <li><strong>Document sequence, not just presence.</strong> Knowing that a service appears only after user submission or file upload gives much stronger architectural context than listing the hostname alone.</li>
+        </ol>
+        <blockquote>The useful output is not a list of domains. It is a map of which integrations appear where, why they likely appear, and how confident you are in that interpretation.</blockquote>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>CDN and asset plumbing.</strong> Not every external host is an integration in the meaningful product sense.</li>
+          <li><strong>Tag-manager noise.</strong> Tag managers can pull in services dynamically and make everything look first-party-adjacent.</li>
+          <li><strong>Dormant code paths.</strong> Source maps and bundles may describe integrations that are no longer active in the current runtime.</li>
+          <li><strong>Security tooling itself.</strong> Bot mitigation, captchas, or observability platforms can look suspicious when they are simply part of the site&apos;s defense stack.</li>
+          <li><strong>Vendor hostnames without data sensitivity.</strong> A service can be present without receiving meaningful user data or privileged context.</li>
+        </ul>
+
+        <h2>What this does not prove</h2>
+        <p>Browser-visible evidence does not prove the full backend architecture, prove data misuse, or prove that a third-party service has access to sensitive content beyond the specific observed flow. It also does not prove contract, billing, or retention scope. You are mapping visible dependencies, not auditing every server-side control behind them.</p>
+
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>An undocumented integration appears in a sensitive user journey such as auth, upload, payment, or AI user submission</li>
+          <li>First-party code sends rich user or account context to an unexpected external service</li>
+          <li>The same service appears across multiple high-value flows, changing the trust boundary of the application</li>
+          <li>You can reproduce the sequence cleanly and explain why the integration matters operationally</li>
+        </ul>
+        <p>That is where Source Detector fits naturally: it keeps source-map clues, request evidence, and client-side artifacts together so your integration review stays anchored to reproducible browser behavior.</p>
+
+        <h2>Methodology</h2>
+        <p>This guide focuses on browser-visible evidence only: loaded scripts, network destinations, initiators, source maps, and user-triggered request patterns from a normal browsing session. It is designed for passive architectural review and avoids claims about backend-only logic or confirmed impact that the frontend cannot prove. Last reviewed: 2026-03-20.</p>
+
+        <div class="cta-box">
+          <h3>Map visible integrations before the architecture story gets fuzzy</h3>
+          <p>Source Detector helps you preserve the surrounding browser evidence so third-party integration review starts with concrete artifacts, not memory and scattered screenshots.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQ</h2>
+        <h3>Can I identify hidden integrations from a public page alone?</h3>
+        <p>Sometimes, yes. Public pages often expose analytics, support, or AI-adjacent integrations. But many higher-value dependencies only appear after specific user actions.</p>
+        <h3>Why use source maps in an integration audit?</h3>
+        <p>They can reveal original module names, wrappers, and feature paths that explain how an external service is actually used.</p>
+        <h3>Is every third-party request a risk?</h3>
+        <p>No. The question is whether the request changes the trust boundary, carries meaningful data, or shows a hidden dependency in an important workflow.</p>
+        <h3>What makes an integration clue worth escalating?</h3>
+        <p>A reproducible pattern in a sensitive workflow, especially when first-party code sends meaningful data to an unexpected service.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Can I identify hidden integrations from a public page alone?","acceptedAnswer":{"@type":"Answer","text":"Sometimes, yes. Public pages often expose analytics, support, or AI-adjacent integrations. But many higher-value dependencies only appear after specific user actions."}},
+          {"@type":"Question","name":"Why use source maps in an integration audit?","acceptedAnswer":{"@type":"Answer","text":"They can reveal original module names, wrappers, and feature paths that explain how an external service is actually used."}},
+          {"@type":"Question","name":"Is every third-party request a risk?","acceptedAnswer":{"@type":"Answer","text":"No. The question is whether the request changes the trust boundary, carries meaningful data, or shows a hidden dependency in an important workflow."}},
+          {"@type":"Question","name":"What makes an integration clue worth escalating?","acceptedAnswer":{"@type":"Answer","text":"A reproducible pattern in a sensitive workflow, especially when first-party code sends meaningful data to an unexpected service."}}
+        ]
+      }
+    </script>
+  </body>
+</html>

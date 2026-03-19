@@ -1,10 +1,8 @@
 # high-intent
 how-to-detect-exposed-api-keys-in-frontend-javascript | How to detect exposed API keys in frontend JavaScript
-hardcoded-ai-service-credentials-client-side | How to detect hardcoded AI service credentials in client-side code
 inspect-ai-enabled-sites-integration-clues | How to inspect AI-enabled sites for exposed integration clues
 
 # workflow
-audit-browser-visible-integrations | How to audit browser-visible integrations without touching the backend
 review-asset-loading-behavior-recon | How to review asset loading behavior for recon and triage
 separate-noisy-browser-traffic-from-security-signals | How to separate noisy browser traffic from meaningful security signals
 browser-based-recon-workflow-modern-web-apps | Browser-based recon workflow for quickly triaging modern web apps
@@ -29,6 +27,8 @@ investigate-suspicious-javascript-bundles | How to investigate suspicious JavaSc
 source-maps-and-frontend-artifacts | Source maps, frontend artifacts, and what they can reveal to researchers
 
 # used
+hardcoded-ai-service-credentials-client-side | How to detect hardcoded AI service credentials in client-side code
+audit-browser-visible-integrations | How to audit browser-visible integrations without touching the backend
 # Move published topics here after successful deployment verification.
 verify-suspicious-endpoint-reachability | How to verify whether a suspicious endpoint is actually reachable
 real-signals-client-side-secret-exposure | What counts as a real signal when checking for client-side secret exposure

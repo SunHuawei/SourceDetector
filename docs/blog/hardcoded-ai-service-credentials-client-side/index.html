@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Detect Hardcoded AI Service Credentials in Client-Side Code | Source Detector</title>
+    <meta name="description" content="A verification-first guide to detecting hardcoded AI service credentials in client-side code, separating real browser-visible exposure from harmless config and dead artifacts." />
+    <meta property="og:title" content="How to Detect Hardcoded AI Service Credentials in Client-Side Code" />
+    <meta property="og:description" content="Review shipped JavaScript, source maps, and browser requests to distinguish exposed AI service credentials from public identifiers and noisy frontend clues." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/hardcoded-ai-service-credentials-client-side/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/hardcoded-ai-service-credentials-client-side/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul,ol { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "How to Detect Hardcoded AI Service Credentials in Client-Side Code",
+        "description": "A verification-first guide to detecting hardcoded AI service credentials in client-side code, separating real browser-visible exposure from harmless config and dead artifacts.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/hardcoded-ai-service-credentials-client-side/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "dateModified": "2026-03-20",
+        "datePublished": "2026-03-20"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">High-intent guide · AI credential exposure · Client-side review</div>
+        <h1>How to detect hardcoded AI service credentials in client-side code</h1>
+        <p class="subhead">The reliable way to detect hardcoded AI service credentials in client-side code is to review what the browser can already see: shipped JavaScript, public config, source maps, and live requests. You are looking for real credential material that appears reusable or operational, not just vendor names, model identifiers, or public publishable keys. In practice, the hard part is not finding suspicious strings. It is proving whether those strings are active credentials, dead build artifacts, or intentionally public integration markers. Good triage starts with visible evidence and stops short of breach claims the browser cannot support.</p>
+        <p class="meta">Category: high-intent · Search intent: learn how to detect hardcoded AI service credentials in client-side code without overclaiming risk · Last reviewed: 2026-03-20</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> treat hardcoded AI service credentials as a verification problem, not a regex problem. Strong signals combine recognizable credential format, live browser use, or runtime references in first-party code. Weak signals include public app IDs, example strings, dead source-map artifacts, and tokens that look secret-like but are intentionally scoped for client use.</div>
+
+      <article>
+        <h2>What you can detect</h2>
+        <p>Client-side review can detect provider-facing API keys, bearer tokens, signed request helpers, environment-specific config objects, and source-map artifacts that reveal how an AI integration is wired. It can also show whether the browser appears to call a model provider directly, whether the site uses an intermediate backend, and whether a token is static across sessions.</p>
+        <p>That is useful because visible runtime evidence is stronger than a random string in a minified bundle. Still, even a convincing token pattern does not automatically prove abuse value. Scope, origin restrictions, quotas, and server-side checks may change the real risk.</p>
+
+        <h2>Signals that deserve attention</h2>
+        <ul>
+          <li><strong>Recognizable provider key formats.</strong> A vendor-specific prefix or credential structure in first-party code is much stronger than a generic long string.</li>
+          <li><strong>Runtime use in live requests.</strong> If the browser sends a stable authorization header or token directly to a third-party AI provider, that is a high-value signal.</li>
+          <li><strong>Source maps that reveal credential handling paths.</strong> Original file names, helper functions, and environment loading logic can explain whether a suspicious string is actually part of runtime behavior.</li>
+          <li><strong>Mixed-sensitivity config objects.</strong> Teams often ship harmless public keys beside riskier operational values. That mix is where false certainty starts.</li>
+          <li><strong>Cross-session reuse.</strong> A token that looks identical across reloads or accounts is usually more interesting than one that expires immediately.</li>
+        </ul>
+
+        <h2>How to verify</h2>
+        <ol>
+          <li><strong>Start with shipped assets.</strong> Save the exact bundle path, code fragment, and surrounding variable names. Context matters more than the match alone.</li>
+          <li><strong>Check whether the string appears in first-party runtime paths.</strong> A value inside old demo code or comments is a weaker signal than one wired into the application&apos;s live request flow.</li>
+          <li><strong>Inspect browser requests.</strong> Look for provider domains, authorization headers, signed payload helpers, or client-generated request metadata that points to direct provider usage.</li>
+          <li><strong>Compare behavior across sessions.</strong> If a value changes per page load or per authenticated session, it may be ephemeral by design. If it stays stable, the risk story changes.</li>
+          <li><strong>Separate what is observable from what is inferred.</strong> Say "browser-visible token reused in provider-facing requests" if that is what you saw. Do not jump straight to "account compromise" unless you have direct proof.</li>
+        </ol>
+        <blockquote>A browser finding becomes credible when the code, request path, and runtime behavior all tell the same story.</blockquote>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Public publishable keys.</strong> Some vendors intentionally expose identifiers meant only to label a project or initialize a low-risk client flow.</li>
+          <li><strong>Model names and endpoint URLs.</strong> Seeing <code>gpt-4</code>, <code>claude</code>, or a provider hostname is not the same as seeing a usable credential.</li>
+          <li><strong>Demo code and mock fixtures.</strong> Example strings often survive bundling and look more serious than they are.</li>
+          <li><strong>Dead source-map branches.</strong> Old modules, comments, or environment files can describe past integrations with no current runtime role.</li>
+          <li><strong>Ephemeral session tokens.</strong> Short-lived browser tokens can still matter, but they do not carry the same triage weight as long-lived provider credentials.</li>
+        </ul>
+
+        <h2>What this does not prove</h2>
+        <p>Client-side evidence does not prove provider account takeover, unrestricted billing abuse, or exposure of sensitive model outputs. It also does not prove a missing backend control. A site may expose a token that is domain-restricted, action-scoped, rate-limited, or useless without a server-side exchange you cannot observe from the browser.</p>
+
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>The credential-like value is present in first-party production code and tied to a real runtime path</li>
+          <li>The browser sends it directly to a provider or gateway in a stable, reusable way</li>
+          <li>The signal affects a production environment rather than a test fixture or archived asset</li>
+          <li>You can explain the operational risk clearly without guessing beyond the evidence</li>
+        </ul>
+        <p>This is the point of a tool like Source Detector: keep the code fragment, source-map context, and browser-visible request evidence together so manual review starts from something stronger than a screenshot of a suspicious string.</p>
+
+        <h2>Methodology</h2>
+        <p>This guide is based on browser-visible artifact review only: shipped JavaScript, source maps, public config, and live request behavior from a normal browsing session. It distinguishes direct evidence from inference and avoids exploit claims that the browser alone cannot support. Last reviewed: 2026-03-20.</p>
+
+        <div class="cta-box">
+          <h3>Review AI credential signals with context, not just pattern matches</h3>
+          <p>Source Detector helps you inspect client-side bundles, collect source-map evidence, and keep suspicious request context attached to the page that produced it so AI credential triage stays technical instead of speculative.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQ</h2>
+        <h3>Does a provider hostname in JavaScript mean credentials are exposed?</h3>
+        <p>No. It may only show that the app references a provider SDK, endpoint, or feature flag. You still need credential material or live runtime use.</p>
+        <h3>Are all client-side AI tokens severe?</h3>
+        <p>No. Some are ephemeral, origin-bound, or intentionally public. The severity comes from what the token can do, not from its length alone.</p>
+        <h3>Why do source maps matter here?</h3>
+        <p>They often reveal original file names and helper logic that explain whether a suspicious string is dead code, debug residue, or an active credential path.</p>
+        <h3>What is the strongest browser-visible signal?</h3>
+        <p>A stable credential reused in first-party code and sent directly to a provider-facing endpoint is usually the clearest reason to escalate.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Does a provider hostname in JavaScript mean credentials are exposed?","acceptedAnswer":{"@type":"Answer","text":"No. It may only show that the app references a provider SDK, endpoint, or feature flag. You still need credential material or live runtime use."}},
+          {"@type":"Question","name":"Are all client-side AI tokens severe?","acceptedAnswer":{"@type":"Answer","text":"No. Some are ephemeral, origin-bound, or intentionally public. The severity comes from what the token can do, not from its length alone."}},
+          {"@type":"Question","name":"Why do source maps matter here?","acceptedAnswer":{"@type":"Answer","text":"They often reveal original file names and helper logic that explain whether a suspicious string is dead code, debug residue, or an active credential path."}},
+          {"@type":"Question","name":"What is the strongest browser-visible signal?","acceptedAnswer":{"@type":"Answer","text":"A stable credential reused in first-party code and sent directly to a provider-facing endpoint is usually the clearest reason to escalate."}}
+        ]
+      }
+    </script>
+  </body>
+</html>
