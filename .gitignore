@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.debug-logs/
+.worklog/
 
 # Editor directories and files
 .vscode/*
