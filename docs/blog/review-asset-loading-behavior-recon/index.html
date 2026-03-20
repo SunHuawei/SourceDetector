@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Review Asset Loading Behavior for Recon and Triage | Source Detector</title>
+    <meta name="description" content="A practical workflow for reviewing asset loading behavior during browser recon, using load order, initiators, and state changes to separate useful security signals from normal frontend noise." />
+    <meta property="og:title" content="How to Review Asset Loading Behavior for Recon and Triage" />
+    <meta property="og:description" content="Use script loads, initiators, and page-state changes to review asset loading behavior for browser recon without overstating what the evidence proves." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/review-asset-loading-behavior-recon/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/review-asset-loading-behavior-recon/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul,ol { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "How to Review Asset Loading Behavior for Recon and Triage",
+        "description": "A practical workflow for reviewing asset loading behavior during browser recon, using load order, initiators, and state changes to separate useful security signals from normal frontend noise.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/review-asset-loading-behavior-recon/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "dateModified": "2026-03-21",
+        "datePublished": "2026-03-21"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Workflow guide · Asset loading · Browser recon</div>
+        <h1>How to review asset loading behavior for recon and triage</h1>
+        <p class="subhead">Asset loading behavior tells you a lot about a site before you ever speculate about a vulnerability. The order of scripts, the page state that triggers them, the domains they come from, and the initiators behind them can expose hidden dependencies, source-map opportunities, and workflows worth deeper review. The trick is restraint. A busy network panel is not automatically a risk story. Good recon focuses on which assets appear when, which ones are tied to meaningful user actions, and which clues stay consistent enough to support a technical conclusion.</p>
+        <p class="meta">Category: workflow · Search intent: learn how to review asset loading behavior for recon and triage in modern web apps · Last reviewed: 2026-03-21</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> review asset loading behavior by watching load order, request initiators, cache changes, and page-state triggers. You are trying to separate routine frontend plumbing from assets that reveal hidden services, sensitive workflows, or browser-visible evidence worth preserving for manual review.</div>
+
+      <article>
+        <h2>What you can detect</h2>
+        <p>This workflow can detect third-party services that appear only after auth or interaction, route-specific bundles, source-map references attached to interesting assets, feature-gated scripts, and workflow clues that help explain how the application is assembled. It is especially useful when a site looks simple at first glance but quietly loads very different assets after login, upload, checkout, or chat activity.</p>
+        <p>For researchers and developers, that makes asset-loading review a practical first pass. Instead of staring at every request equally, you get a sharper picture of which scripts belong to the app shell, which ones belong to sensitive features, and which ones likely change the application trust boundary.</p>
+
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Late-loading assets after meaningful actions.</strong> Upload, export, billing, chat, or admin interactions often pull in a different class of script than the public landing page.</li>
+          <li><strong>Unexpected third-party origins.</strong> A domain that appears only in a sensitive user journey is often more interesting than one present on every page.</li>
+          <li><strong>Distinct initiators.</strong> Whether a request was triggered by first-party code, a tag manager, a worker, or a third-party widget changes how you interpret it.</li>
+          <li><strong>Asset naming and chunk boundaries.</strong> Chunk names, source-map paths, and module labels can expose feature roles that minified code hides.</li>
+          <li><strong>Stable versus one-off behavior.</strong> A reproducible load pattern carries more triage value than a request you only saw once in a noisy session.</li>
+        </ul>
+
+        <h2>How to verify</h2>
+        <ol>
+          <li><strong>Start from a clean baseline.</strong> Load the target page with a fresh session and note which assets appear before any user interaction.</li>
+          <li><strong>Trigger one feature at a time.</strong> Review login, search, upload, settings, or chat separately. The delta between states is usually where the useful clues live.</li>
+          <li><strong>Group assets by role.</strong> Separate framework chunks, analytics, user-facing feature code, and external support tooling so the interesting additions stand out.</li>
+          <li><strong>Check for source maps on the assets that matter.</strong> You do not need every source map. You need the ones attached to scripts that explain a meaningful workflow.</li>
+          <li><strong>Repeat the same action.</strong> If the same asset pattern appears again, confidence goes up. If it disappears, record that uncertainty instead of forcing a theory.</li>
+        </ol>
+        <blockquote>The best recon notes explain the transition: which assets loaded before, which assets appeared after a specific action, and why that change matters.</blockquote>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Normal framework chunking.</strong> Modern apps split code aggressively, and route-based chunk loads are often just performance behavior.</li>
+          <li><strong>Tag-manager noise.</strong> Marketing and analytics tooling can flood the page with requests that have little security value.</li>
+          <li><strong>Prefetch and preload behavior.</strong> Some assets appear before a user action because the app is preparing for a likely next step.</li>
+          <li><strong>Browser extension interference.</strong> Local tooling can inject or modify requests and distort the recon picture.</li>
+          <li><strong>One-time experiments.</strong> A/B testing, staged rollouts, or ephemeral flags can create patterns that do not represent the stable application path.</li>
+        </ul>
+
+        <h2>What this does not prove</h2>
+        <p>Asset loading behavior does not prove exploitability, backend exposure, or data misuse. It does not tell you everything a server does after receiving a request, and it does not confirm that a third-party script receives sensitive content beyond the observed browser flow. At most, it gives you a reproducible map of the client-side surface.</p>
+
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>A sensitive user action consistently loads an undocumented service or unusual script path</li>
+          <li>Interesting assets come with source maps or code clues that explain a higher-risk workflow</li>
+          <li>The same pattern appears across multiple sessions or accounts, reducing the chance of random noise</li>
+          <li>You can preserve the exact page state, asset URLs, and initiator context that support the observation</li>
+        </ul>
+        <p>That is where Source Detector helps. It gives you a way to keep browser-visible assets, source-map findings, and related evidence tied to the page state that produced them, so recon stays reproducible instead of anecdotal.</p>
+
+        <h2>Methodology</h2>
+        <p>This guide focuses on browser-visible evidence only: asset requests, initiators, source-map references, and page-state changes observed during normal browsing. It treats public frontend artifacts as signals for triage, not proof of compromise or proof of backend behavior. Last reviewed: 2026-03-21.</p>
+
+        <div class="cta-box">
+          <h3>Turn noisy asset loads into a cleaner recon story</h3>
+          <p>Source Detector helps you preserve the browser-visible assets and source-map clues that matter, so you can review loading behavior with context instead of relying on memory and screenshots.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQ</h2>
+        <h3>Why review load order instead of just searching bundles?</h3>
+        <p>Load order adds workflow context. It tells you which assets belong to the baseline app shell and which ones appear only when a sensitive feature is triggered.</p>
+        <h3>Are late-loading scripts always suspicious?</h3>
+        <p>No. Many are normal route-based chunks or product tooling. The point is to identify the ones tied to meaningful user actions and verify them carefully.</p>
+        <h3>What makes an asset-loading clue worth keeping?</h3>
+        <p>A reproducible pattern with clear initiator context, especially when the asset reveals a hidden service, a source-map path, or a sensitive workflow boundary.</p>
+        <h3>Can asset loading behavior reveal detection opportunities?</h3>
+        <p>Yes. It often points you toward the specific scripts, source maps, and request paths worth closer inspection.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Why review load order instead of just searching bundles?","acceptedAnswer":{"@type":"Answer","text":"Load order adds workflow context. It tells you which assets belong to the baseline app shell and which ones appear only when a sensitive feature is triggered."}},
+          {"@type":"Question","name":"Are late-loading scripts always suspicious?","acceptedAnswer":{"@type":"Answer","text":"No. Many are normal route-based chunks or product tooling. The point is to identify the ones tied to meaningful user actions and verify them carefully."}},
+          {"@type":"Question","name":"What makes an asset-loading clue worth keeping?","acceptedAnswer":{"@type":"Answer","text":"A reproducible pattern with clear initiator context, especially when the asset reveals a hidden service, a source-map path, or a sensitive workflow boundary."}},
+          {"@type":"Question","name":"Can asset loading behavior reveal detection opportunities?","acceptedAnswer":{"@type":"Answer","text":"Yes. It often points you toward the specific scripts, source maps, and request paths worth closer inspection."}}
+        ]
+      }
+    </script>
+  </body>
+</html>
