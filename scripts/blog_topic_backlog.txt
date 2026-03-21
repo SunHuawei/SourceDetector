@@ -1,8 +1,6 @@
 # high-intent
-how-to-detect-exposed-api-keys-in-frontend-javascript | How to detect exposed API keys in frontend JavaScript
 
 # workflow
-separate-noisy-browser-traffic-from-security-signals | How to separate noisy browser traffic from meaningful security signals
 browser-based-recon-workflow-modern-web-apps | Browser-based recon workflow for quickly triaging modern web apps
 frontend-leakage-signals-without-false-certainty | A practical workflow for finding frontend leakage signals without false certainty
 
@@ -38,3 +36,5 @@ inspect-fetch-xhr-traffic-security-triage | How to inspect fetch/XHR traffic for
 false-positives-exposed-secrets-frontend | Common false positives when looking for exposed secrets in frontend apps
 inspect-suspicious-outbound-requests | How to inspect suspicious outbound requests on a webpage
 package-browser-request-evidence | How to package browser request evidence for later investigation
+how-to-detect-exposed-api-keys-in-frontend-javascript | How to detect exposed API keys in frontend JavaScript
+separate-noisy-browser-traffic-from-security-signals | How to separate noisy browser traffic from meaningful security signals

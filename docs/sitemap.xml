@@ -104,4 +104,12 @@
     <loc>https://sunhuawei.github.io/SourceDetector/blog/real-signals-client-side-secret-exposure/</loc>
     <lastmod>2026-03-19</lastmod>
   </url>
+  <url>
+    <loc>https://sunhuawei.github.io/SourceDetector/blog/how-to-detect-exposed-api-keys-in-frontend-javascript/</loc>
+    <lastmod>2026-03-22</lastmod>
+  </url>
+  <url>
+    <loc>https://sunhuawei.github.io/SourceDetector/blog/separate-noisy-browser-traffic-from-security-signals/</loc>
+    <lastmod>2026-03-22</lastmod>
+  </url>
 </urlset>

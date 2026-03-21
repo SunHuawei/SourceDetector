@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Detect Exposed API Keys in Frontend JavaScript | Source Detector</title>
+    <meta name="description" content="A practical guide to detecting exposed API keys in frontend JavaScript, verifying which findings are real, and avoiding false certainty from browser-visible artifacts." />
+    <meta property="og:title" content="How to Detect Exposed API Keys in Frontend JavaScript" />
+    <meta property="og:description" content="Learn how to review frontend JavaScript, source maps, and browser requests for exposed API keys without overstating what the evidence proves." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/how-to-detect-exposed-api-keys-in-frontend-javascript/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/how-to-detect-exposed-api-keys-in-frontend-javascript/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "How to Detect Exposed API Keys in Frontend JavaScript",
+        "description": "A practical guide to detecting exposed API keys in frontend JavaScript, verifying which findings are real, and avoiding false certainty from browser-visible artifacts.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/how-to-detect-exposed-api-keys-in-frontend-javascript/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "dateModified": "2026-03-22",
+        "datePublished": "2026-03-22"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">High-intent guide · API key exposure · Frontend JavaScript</div>
+        <h1>How to Detect Exposed API Keys in Frontend JavaScript</h1>
+        <p class="subhead">You can detect potentially exposed API keys in frontend JavaScript by reviewing shipped bundles, checking source maps when they are public, and matching suspicious values to live browser behavior. That part is straightforward. The harder part is deciding whether a visible key is actually risky. Some browser-side keys are meant to be public. Others only look important because of naming. The useful workflow is not “find any string that resembles a key.” It is “find a value, locate its runtime role, and decide what that value enables.” That is where real triage starts.</p>
+        <p class="meta">Category: high-intent · Search intent: detect exposed API keys in frontend JavaScript and verify whether the finding is real · Last reviewed: 2026-03-22</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> review what the browser actually receives, look for suspicious key-like values inside live JavaScript and public source maps, then verify whether the value identifies a client, authorizes a service, or does almost nothing on its own. A visible string is a signal. It is not automatic proof of a secret leak.</div>
+
+      <article>
+        <h2>What you can detect</h2>
+        <p>Frontend JavaScript can reveal several useful classes of evidence: project identifiers, publishable keys, mis-scoped tokens, hardcoded environment config, service endpoints, and provider names that would otherwise stay hidden. For a researcher or security reviewer, that browser-visible layer matters because it reflects what real users receive, not what internal documentation claims is deployed.</p>
+        <p>It also has limits. Frontend evidence tells you what is exposed to the client. It does not tell you, by itself, whether the key is privileged, active, rate-limited, origin-restricted, or operationally dangerous.</p>
+
+        <h2>Signals worth looking for</h2>
+        <ul>
+          <li><strong>Key-like strings near provider config:</strong> values sitting next to service names, SDK initialization code, or request builders are usually more meaningful than isolated regex hits.</li>
+          <li><strong>Source map references:</strong> public source maps can expose clearer variable names, configuration blocks, and dead-code history that minified bundles hide.</li>
+          <li><strong>Runtime request usage:</strong> a value that appears in actual request headers, query parameters, or POST bodies deserves more attention than a string that only exists statically in a bundle.</li>
+          <li><strong>Privilege hints:</strong> code paths involving billing, model calls, uploads, admin flows, or backend orchestration deserve more scrutiny than basic telemetry or content delivery.</li>
+          <li><strong>Cross-file repetition:</strong> the same value appearing in config, request code, and feature-specific modules is usually a stronger signal than a single loose match.</li>
+        </ul>
+
+        <h2>How to verify the finding</h2>
+        <h3>1. Start with the shipped JavaScript</h3>
+        <p>Inspect loaded bundles and linked assets before you draw conclusions. You want to know where the value appears, which module references it, and whether the surrounding code makes it look operational or decorative. A key in active initialization logic is more interesting than a key-shaped string buried in comments or legacy chunks.</p>
+
+        <h3>2. Check whether a source map sharpens the picture</h3>
+        <p>If the site exposes source maps, use them to recover names and flow structure. They often turn a vague string match into something you can reason about: a payment SDK key, an analytics write key, a tenant identifier, or a provider credential that should not have shipped at all. But even here, do not overclaim. Better naming improves confidence. It does not replace validation.</p>
+
+        <h3>3. Tie the value to a real browser action</h3>
+        <p>Watch what happens when the page loads, authenticates, searches, uploads, or calls a third-party service. A string becomes more credible when it appears in live behavior tied to a meaningful feature. If the value never leaves dead code or unused config, the finding should stay lower confidence.</p>
+
+        <h3>4. Ask what the key actually does</h3>
+        <p>This is the step many reviews skip. Does the value simply identify a frontend app to a provider? Does it unlock a billable API? Does it appear scoped to a public browser use case? Does the surrounding code imply server mediation even though the key is visible in the client? The answer changes the severity more than the string itself.</p>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Publishable keys mistaken for private credentials:</strong> some platforms intentionally expose browser-safe identifiers.</li>
+          <li><strong>Environment labels:</strong> names such as <code>API_KEY</code>, <code>PUBLIC_TOKEN</code>, or <code>CLIENT_SECRET</code> can be misleading without functional context.</li>
+          <li><strong>Dead integrations:</strong> a bundle may still contain old vendor names or leftover strings that are no longer exercised in production.</li>
+          <li><strong>Token-like cache and session values:</strong> length and entropy alone do not prove privilege.</li>
+          <li><strong>Copy-pasted examples:</strong> sample values, test fixtures, or docs snippets sometimes ship with frontend code by mistake, but they may not correspond to a live secret.</li>
+        </ul>
+
+        <h2>What this does not prove</h2>
+        <p>Finding a key in frontend JavaScript does not prove a breach, backend compromise, unrestricted provider access, or exploitable impact. Public artifact review shows that a value is visible to the browser. That is already useful. But security conclusions should stay bounded until you can explain the value’s role, scope, and likely abuse path.</p>
+
+        <h2>When to escalate</h2>
+        <ul>
+          <li>The value is used in live requests tied to expensive, sensitive, or state-changing actions.</li>
+          <li>The key appears to authorize a provider call rather than merely identify a client application.</li>
+          <li>The same value surfaces across multiple code paths, reducing the chance that it is dead residue.</li>
+          <li>The exposure reveals a hidden backend dependency or trust boundary that changes how the application should be assessed.</li>
+        </ul>
+
+        <h2>Methodology</h2>
+        <p>This guide is based on browser-visible review only: shipped JavaScript, public source maps when available, runtime request evidence, and context-based verification. It treats frontend artifacts as signals to investigate, not automatic proof of a vulnerability. Last reviewed: 2026-03-22.</p>
+
+        <div class="cta-box">
+          <h3>Use Source Detector to shorten the verification loop</h3>
+          <p>Source Detector helps you inspect source maps, review suspicious frontend strings, and keep request evidence in one workflow so you can separate real API key exposure from noisy frontend artifacts faster.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQs</h2>
+        <h3>Can frontend JavaScript contain real API keys?</h3>
+        <p>Yes. Sometimes they are intentional browser-side identifiers, and sometimes they are exposure mistakes. The difference depends on scope, privilege, and runtime use.</p>
+        <h3>Are public source maps necessary for this kind of review?</h3>
+        <p>No. They help, but you can still learn a lot from loaded bundles, request patterns, and browser-side configuration without them.</p>
+        <h3>Is every visible API key a vulnerability?</h3>
+        <p>No. Some keys are designed to be public. What matters is what they enable, not whether the string exists at all.</p>
+        <h3>What makes a finding stronger?</h3>
+        <p>Runtime use, meaningful feature context, privilege hints, and reproducible evidence across multiple frontend artifacts all raise confidence.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Can frontend JavaScript contain real API keys?","acceptedAnswer":{"@type":"Answer","text":"Yes. Sometimes they are intentional browser-side identifiers, and sometimes they are exposure mistakes. The difference depends on scope, privilege, and runtime use."}},
+          {"@type":"Question","name":"Are public source maps necessary for this kind of review?","acceptedAnswer":{"@type":"Answer","text":"No. They help, but you can still learn a lot from loaded bundles, request patterns, and browser-side configuration without them."}},
+          {"@type":"Question","name":"Is every visible API key a vulnerability?","acceptedAnswer":{"@type":"Answer","text":"No. Some keys are designed to be public. What matters is what they enable, not whether the string exists at all."}},
+          {"@type":"Question","name":"What makes a finding stronger?","acceptedAnswer":{"@type":"Answer","text":"Runtime use, meaningful feature context, privilege hints, and reproducible evidence across multiple frontend artifacts all raise confidence."}}
+        ]
+      }
+    </script>
+  </body>
+</html>
