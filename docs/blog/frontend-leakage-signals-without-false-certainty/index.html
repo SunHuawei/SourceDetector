@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A Practical Workflow for Finding Frontend Leakage Signals Without False Certainty | Source Detector</title>
+    <meta name="description" content="A workflow guide for spotting frontend leakage signals without turning weak browser clues into overconfident security claims." />
+    <meta property="og:title" content="A Practical Workflow for Finding Frontend Leakage Signals Without False Certainty" />
+    <meta property="og:description" content="Learn how to review frontend leakage signals with a verification-first workflow that separates visible clues from real proof." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/frontend-leakage-signals-without-false-certainty/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/frontend-leakage-signals-without-false-certainty/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "A Practical Workflow for Finding Frontend Leakage Signals Without False Certainty",
+        "description": "A workflow guide for spotting frontend leakage signals without turning weak browser clues into overconfident security claims.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/frontend-leakage-signals-without-false-certainty/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "dateModified": "2026-03-24",
+        "datePublished": "2026-03-24"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Workflow guide · Frontend leakage · Verification-first</div>
+        <h1>A Practical Workflow for Finding Frontend Leakage Signals Without False Certainty</h1>
+        <p class="subhead">You can find useful frontend leakage signals without turning every strange string, request, or source map into a dramatic claim. The right workflow is simple: start with what the browser can genuinely observe, collect a small set of reproducible signals, and label each one by confidence. Some clues mean “worth another look.” Some mean “likely routine.” A few mean “escalate now.” What makes the difference is context: page role, request timing, initiator, asset freshness, and whether the signal changes what an outside user can actually learn or do.</p>
+        <p class="meta">Category: workflow · Search intent: find frontend leakage signals without overclaiming what browser evidence proves · Last reviewed: 2026-03-24</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> the safest workflow is to rank browser clues by evidence strength. Start with shipped artifacts and action-linked requests, verify whether the signal is current and reproducible, then separate visibility, capability, and impact. Public artifacts are often useful signals. They are not automatic proof of compromise.</div>
+
+      <article>
+        <h2>What this workflow can detect</h2>
+        <p>This workflow is good for spotting browser-visible source maps, secret-like strings in current assets, hidden service dependencies, request patterns tied to meaningful user actions, and page behavior that reveals more architecture than the UI suggests. It can also help you notice when a public page quietly behaves like a product shell or when an authenticated route expands the trust surface more than expected.</p>
+        <p>That matters because frontend leakage usually appears as a collection of medium-strength clues, not one cinematic smoking gun. The work is in deciding which clues add up to something real.</p>
+
+        <h2>Signals worth collecting first</h2>
+        <ul>
+          <li><strong>Current source map references:</strong> useful when they still match the live asset graph and expose readable module names, routes, or feature boundaries.</li>
+          <li><strong>Secret-like values with runtime context:</strong> more meaningful when tied to a live request, config object, or current bundle path.</li>
+          <li><strong>Action-specific fetch/XHR traffic:</strong> requests that appear during login, upload, billing, export, prompt submission, or settings changes usually carry stronger review value.</li>
+          <li><strong>Unexpected external dependencies:</strong> hosts or providers that do not fit the page role can reveal hidden architecture or trust expansion.</li>
+          <li><strong>Differences between public and authenticated views:</strong> those boundary shifts often reveal what the app actually protects and what it still exposes.</li>
+        </ul>
+
+        <h2>How to verify without overclaiming</h2>
+        <h3>1. Start from page role, not from a scary string</h3>
+        <p>A marketing page, docs page, chat surface, admin panel, and billing route should not be judged the same way. The page role tells you which requests and dependencies are expected before you see them.</p>
+
+        <h3>2. Prefer reproducible behavior over isolated artifacts</h3>
+        <p>A value that shows up repeatedly in a current flow is stronger than a stray match buried in a large bundle. If you can reproduce the same signal under one clear user action, confidence goes up.</p>
+
+        <h3>3. Separate three questions: visible, usable, impactful</h3>
+        <p>A clue may be visible without being usable. It may be usable in a narrow way without carrying major impact. Keeping those three questions separate stops a lot of bad escalation.</p>
+
+        <h3>4. Check whether the clue is current</h3>
+        <p>Old source maps, stale chunk names, dead endpoints, and legacy integration strings still matter for context, but they should not be written up like current proof unless runtime behavior agrees.</p>
+
+        <h3>5. Record the uncertainty boundary directly</h3>
+        <p>Write down what the browser showed, what you inferred, and what still needs manual review. That sounds small, but it is what keeps evidence packages honest and useful.</p>
+
+        <blockquote>The practical goal is not to sound certain. It is to be precise enough that the next reviewer knows exactly what was observed, what was inferred, and what remains unproven.</blockquote>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Publishable keys and public identifiers:</strong> visible does not automatically mean sensitive.</li>
+          <li><strong>Dead routes and stale assets:</strong> older artifact residue can still surface in production bundles.</li>
+          <li><strong>Third-party SDK noise:</strong> vendor internals often look more dramatic than the site-specific behavior they actually support.</li>
+          <li><strong>Keyword-only scanner hits:</strong> strings like <code>secret</code>, <code>token</code>, or <code>internal</code> need surrounding context before they mean much.</li>
+          <li><strong>Telemetry bursts during page load:</strong> noisy, but often routine.</li>
+        </ul>
+
+        <h2>What this does not prove</h2>
+        <p>This workflow does not prove exploitability, backend compromise, or a confirmed secret leak with impact. It does not prove that a visible value grants privileged access, and it does not prove a vendor mishandles data after the request leaves the browser. It is a browser-side triage method, not a shortcut around validation.</p>
+
+        <h2>When to escalate</h2>
+        <ul>
+          <li>The signal is current, reproducible, and tied to a clear action or asset.</li>
+          <li>The clue changes the trust story: hidden service, sensitive payload context, stronger-than-expected client-side capability, or meaningful architecture exposure.</li>
+          <li>You can explain why the signal is stronger than routine browser noise.</li>
+          <li>The remaining uncertainty can only be resolved by manual review, not by another round of passive browsing.</li>
+        </ul>
+
+        <h2>Methodology</h2>
+        <p>This article reflects passive browser-visible review only: page role, shipped assets, source map references, current request behavior, and surrounding action context from normal browsing sessions. It treats public artifacts as signals for prioritization, not automatic proof of a vulnerability. Last reviewed: 2026-03-24.</p>
+
+        <div class="cta-box">
+          <h3>Keep frontend leakage review grounded in evidence</h3>
+          <p>Source Detector helps you inspect source maps, current client-side assets, and suspicious browser-visible signals in one workflow, so you can escalate the right findings without drowning in weak clues.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQs</h2>
+        <h3>Is a visible clue enough to report a real issue?</h3>
+        <p>Usually not. Visibility is the start of the review, not the end of it.</p>
+        <h3>What makes a frontend leakage signal stronger?</h3>
+        <p>Current runtime context, reproducibility, and a clear connection to capability or trust boundaries make the signal more credible.</p>
+        <h3>Should I trust source maps more than request behavior?</h3>
+        <p>Not automatically. Source maps help with context, but action-linked request behavior often gives stronger evidence of present use.</p>
+        <h3>When should I stop passive review and escalate?</h3>
+        <p>Escalate when another round of browser-only inspection is unlikely to reduce the uncertainty that still matters.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Is a visible clue enough to report a real issue?","acceptedAnswer":{"@type":"Answer","text":"Usually not. Visibility is the start of the review, not the end of it."}},
+          {"@type":"Question","name":"What makes a frontend leakage signal stronger?","acceptedAnswer":{"@type":"Answer","text":"Current runtime context, reproducibility, and a clear connection to capability or trust boundaries make the signal more credible."}},
+          {"@type":"Question","name":"Should I trust source maps more than request behavior?","acceptedAnswer":{"@type":"Answer","text":"Not automatically. Source maps help with context, but action-linked request behavior often gives stronger evidence of present use."}},
+          {"@type":"Question","name":"When should I stop passive review and escalate?","acceptedAnswer":{"@type":"Answer","text":"Escalate when another round of browser-only inspection is unlikely to reduce the uncertainty that still matters."}}
+        ]
+      }
+    </script>
+  </body>
+</html>

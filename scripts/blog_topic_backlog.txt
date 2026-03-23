@@ -1,7 +1,6 @@
 # high-intent
 
 # workflow
-frontend-leakage-signals-without-false-certainty | A practical workflow for finding frontend leakage signals without false certainty
 
 # comparison
 extension-vs-devtools-request-inspection | Browser extension vs DevTools for request inspection: what each can actually prove
@@ -14,7 +13,6 @@ suspicious-api-calls-what-they-prove | What a suspicious API call does and does 
 analytics-trackers-risk-signals | Third-party analytics, trackers, and risk signals: what is normal and what deserves review
 hidden-external-service-dependencies-browser-signals | How to spot hidden external service dependencies from browser signals
 why-browser-side-evidence-still-matters | Why browser-side evidence is useful even when it is incomplete
-when-browser-evidence-needs-manual-review | When browser evidence should trigger manual security review
 
 # artifact-analysis
 investigate-suspicious-javascript-bundles | How to investigate suspicious JavaScript bundles without over-claiming risk
@@ -38,3 +36,5 @@ inspect-suspicious-outbound-requests | How to inspect suspicious outbound reques
 package-browser-request-evidence | How to package browser request evidence for later investigation
 how-to-detect-exposed-api-keys-in-frontend-javascript | How to detect exposed API keys in frontend JavaScript
 separate-noisy-browser-traffic-from-security-signals | How to separate noisy browser traffic from meaningful security signals
+frontend-leakage-signals-without-false-certainty | A practical workflow for finding frontend leakage signals without false certainty
+when-browser-evidence-needs-manual-review | When browser evidence should trigger manual security review

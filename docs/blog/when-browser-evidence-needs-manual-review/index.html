@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>When Browser Evidence Should Trigger Manual Security Review | Source Detector</title>
+    <meta name="description" content="A risk explainer on when browser-visible evidence is strong enough to justify manual security review, and what it still cannot prove by itself." />
+    <meta property="og:title" content="When Browser Evidence Should Trigger Manual Security Review" />
+    <meta property="og:description" content="Learn which browser-visible signals deserve escalation, which ones stay weak, and how to draw a clean line between evidence and proof." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/when-browser-evidence-needs-manual-review/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/when-browser-evidence-needs-manual-review/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "When Browser Evidence Should Trigger Manual Security Review",
+        "description": "A risk explainer on when browser-visible evidence is strong enough to justify manual security review, and what it still cannot prove by itself.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/when-browser-evidence-needs-manual-review/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "dateModified": "2026-03-24",
+        "datePublished": "2026-03-24"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Risk explainer · Escalation logic · Browser evidence</div>
+        <h1>When Browser Evidence Should Trigger Manual Security Review</h1>
+        <p class="subhead">Browser evidence becomes worth escalating when it changes the security story in a concrete way. That usually means one of four things: the browser reaches a hidden dependency in a sensitive flow, the frontend ships a current artifact that reveals meaningful architecture, a request carries richer context than the page role suggests, or a visible value appears tied to capability rather than just identification. What should not trigger escalation by itself is the usual noisy stuff: dramatic route names, random long strings, stale artifacts, or third-party traffic with no clear connection to trust boundaries.</p>
+        <p class="meta">Category: risk-explainer · Search intent: understand when browser-visible evidence is strong enough to justify manual security review · Last reviewed: 2026-03-24</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> escalate browser evidence when it is current, reproducible, tied to a meaningful action or asset, and changes what a reviewer believes about access, data flow, or trust boundaries. If the clue is only visible but not clearly current, functional, or relevant, it usually stays in the “interesting but unproven” bucket.</div>
+
+      <article>
+        <h2>What browser evidence can detect</h2>
+        <p>Browser-side review can expose live request destinations, source map references, hidden external services, client-side feature boundaries, and suspicious strings embedded in shipped assets. It can also show how a page behaves differently across public, logged-in, and task-specific flows.</p>
+        <p>That is enough to identify where manual review should begin. It is not enough to confirm impact by itself. The browser shows a lot, but it only shows one side of the system.</p>
+
+        <h2>Signals that usually justify escalation</h2>
+        <ul>
+          <li><strong>Reproducible requests in sensitive flows:</strong> login, billing, upload, export, prompt submission, or admin-adjacent actions.</li>
+          <li><strong>Current source maps or artifacts that materially clarify the live app:</strong> especially when they reveal routes, modules, or dependencies that change review priorities.</li>
+          <li><strong>Visible values tied to capability:</strong> not just presence, but evidence that the value influences access, scope, cost, or privileged behavior.</li>
+          <li><strong>Unexpected external services inside trusted paths:</strong> hidden AI providers, support tooling, analytics depth, or vendor calls that become more involved exactly where user trust increases.</li>
+          <li><strong>Boundary mismatches:</strong> a public page behaving like an authenticated product surface, or a low-sensitivity route sending richer context than its role suggests.</li>
+        </ul>
+
+        <h2>How to verify before you escalate</h2>
+        <h3>1. Prove the clue is current</h3>
+        <p>Many browser findings lose strength once you realize they come from stale bundles, legacy routes, or old source map artifacts. If the clue does not line up with current runtime behavior, it may still be useful context, but it should be labeled that way.</p>
+
+        <h3>2. Tie it to one clear trigger</h3>
+        <p>Escalation gets much easier when you can say, “this appears when a user uploads a file” or “this host becomes active during billing.” A signal without a trigger is harder to prioritize and easier to misread.</p>
+
+        <h3>3. Explain why the clue changes trust</h3>
+        <p>A finding becomes more valuable when you can show how it changes the expected trust boundary: broader data flow, hidden dependency, stronger-than-expected client-side access, or richer architecture disclosure.</p>
+
+        <h3>4. Separate confidence levels explicitly</h3>
+        <p>Use plain labels: observed fact, likely inference, still unproven. That keeps manual review efficient, because the next person does not need to untangle confident language from weak evidence.</p>
+
+        <blockquote>The bar for escalation is not “this looks weird.” It is “this is weird in a way that changes what a careful reviewer should examine next.”</blockquote>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Internal-sounding paths:</strong> names like <code>/admin</code> or <code>/internal</code> may be blocked, legacy, or harmless.</li>
+          <li><strong>Public keys and tenant identifiers:</strong> often visible by design.</li>
+          <li><strong>Third-party telemetry noise:</strong> busy does not equal dangerous.</li>
+          <li><strong>Dead code matches:</strong> strings inside shipped assets that no longer affect the live flow.</li>
+          <li><strong>Single isolated anomalies:</strong> one strange request without reproducibility is weak evidence.</li>
+        </ul>
+
+        <h2>What browser evidence does not prove</h2>
+        <p>It does not prove breach, backend compromise, unauthorized access, or policy violation. It does not prove how a vendor stores or processes data after a request leaves the browser. It does not prove that a visible token is active or unrestricted. Browser evidence is often enough to justify manual review, but not enough to skip it.</p>
+
+        <h2>When not to escalate yet</h2>
+        <ul>
+          <li>The clue is old, weak, or detached from present runtime behavior.</li>
+          <li>You cannot reproduce it under a defined action or state.</li>
+          <li>The signal does not change any plausible trust boundary.</li>
+          <li>A simpler explanation, such as analytics, stale assets, or vendor SDK noise, still fits the evidence better.</li>
+        </ul>
+
+        <h2>Methodology</h2>
+        <p>This article is based on passive browser-visible review only: observed network traffic, shipped assets, source map references, page state changes, and action-based reproduction from normal browsing flows. It treats public artifacts as signals for prioritization, not conclusive proof. Last reviewed: 2026-03-24.</p>
+
+        <div class="cta-box">
+          <h3>Escalate the right browser findings, not just the loudest ones</h3>
+          <p>Source Detector helps you inspect browser-visible artifacts, source maps, and suspicious client-side evidence in context, so manual review starts with a clearer evidence package and a cleaner uncertainty boundary.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQs</h2>
+        <h3>Is a suspicious browser request enough to escalate?</h3>
+        <p>It can be, if it is reproducible, current, and tied to a meaningful trust boundary. One isolated odd request is usually not enough.</p>
+        <h3>Do source maps always justify manual review?</h3>
+        <p>No. They become more important when they are current and reveal information that materially changes the review path.</p>
+        <h3>What is the most common mistake in escalation?</h3>
+        <p>Treating visibility as proof. A visible clue can be useful without proving exploitability or impact.</p>
+        <h3>What should an escalation note include?</h3>
+        <p>Include the observed fact, the triggering action or state, the likely implication, and the part that remains unproven.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Is a suspicious browser request enough to escalate?","acceptedAnswer":{"@type":"Answer","text":"It can be, if it is reproducible, current, and tied to a meaningful trust boundary. One isolated odd request is usually not enough."}},
+          {"@type":"Question","name":"Do source maps always justify manual review?","acceptedAnswer":{"@type":"Answer","text":"No. They become more important when they are current and reveal information that materially changes the review path."}},
+          {"@type":"Question","name":"What is the most common mistake in escalation?","acceptedAnswer":{"@type":"Answer","text":"Treating visibility as proof. A visible clue can be useful without proving exploitability or impact."}},
+          {"@type":"Question","name":"What should an escalation note include?","acceptedAnswer":{"@type":"Answer","text":"Include the observed fact, the triggering action or state, the likely implication, and the part that remains unproven."}}
+        ]
+      }
+    </script>
+  </body>
+</html>
