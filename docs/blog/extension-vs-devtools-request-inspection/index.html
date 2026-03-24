@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Browser Extension vs DevTools for Request Inspection: What Each Can Actually Prove | Source Detector</title>
+    <meta name="description" content="A practical comparison of browser extensions and DevTools for request inspection, including what each method can detect, where false positives appear, and what browser evidence still cannot prove." />
+    <meta property="og:title" content="Browser Extension vs DevTools for Request Inspection: What Each Can Actually Prove" />
+    <meta property="og:description" content="Compare browser extensions and DevTools for request inspection without overstating what passive browser evidence proves." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/extension-vs-devtools-request-inspection/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/extension-vs-devtools-request-inspection/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:940px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul,ol { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:800px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box,table { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; }
+      .panel,.cta-box { padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      table { width:100%; border-collapse:collapse; overflow:hidden; }
+      th,td { padding:14px 16px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+      th { color:#fff; background:rgba(255,255,255,.03); }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Browser Extension vs DevTools for Request Inspection: What Each Can Actually Prove",
+        "description": "A practical comparison of browser extensions and DevTools for request inspection, including what each method can detect, where false positives appear, and what browser evidence still cannot prove.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/extension-vs-devtools-request-inspection/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "datePublished": "2026-03-25",
+        "dateModified": "2026-03-25"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Comparison · Request inspection · Workflow</div>
+        <h1>Browser Extension vs DevTools for Request Inspection: What Each Can Actually Prove</h1>
+        <p class="subhead">If you need a short answer, here it is: DevTools is still the most precise place to inspect one request in depth, but a browser extension is often better for continuous collection, repeated triage, and preserving evidence across many pages or sessions. Neither method proves backend risk on its own. What they can do is show which requests were sent, what triggered them, which assets referenced them, and whether the browser-visible evidence is strong enough to justify deeper review. The right choice depends less on ideology and more on the job: one-off debugging, broad reconnaissance, repeatable evidence collection, or false-positive filtering.</p>
+        <p class="meta">Category: comparison · Search intent: compare browser extensions and DevTools for request inspection in security review · Last reviewed: 2026-03-25</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> use DevTools when you need request-by-request precision and raw browser detail. Use a browser extension when you need durable collection, pattern review, source-map-aware context, or a repeatable workflow across many pages. In practice, good reviewers use both.</div>
+
+      <article>
+        <h2>What you can detect with each method</h2>
+        <p>Both methods can surface outbound requests, visible parameters, destinations, timing, and the page state that produced those requests. That overlap matters. People often frame this as a winner-take-all decision, but most of the real trade-off is about workflow shape, not basic visibility.</p>
+        <table>
+          <tr><th>Method</th><th>Best at</th><th>Usually weaker at</th></tr>
+          <tr><td>DevTools</td><td>Inspecting one request deeply, reading headers and payloads, replaying a user flow step by step, correlating network events with console and DOM changes</td><td>Long-running collection, preserving evidence across many pages, comparing repeated weak signals over time, bundling artifact context with the request trail</td></tr>
+          <tr><td>Browser extension</td><td>Continuous observation during normal browsing, structured finding review, pattern-based detection, source map discovery, exportable evidence bundles, repeated triage</td><td>Low-level protocol detail, manual one-request debugging, ad hoc exploration when the reviewer wants the browser's native raw view</td></tr>
+        </table>
+
+        <h2>When DevTools is the better choice</h2>
+        <ul>
+          <li><strong>You are debugging one specific request.</strong> DevTools is hard to beat when you need to inspect headers, timing, status codes, initiators, and payload details for a single flow.</li>
+          <li><strong>You want native browser context.</strong> The request waterfall, console, DOM, and performance view all live together.</li>
+          <li><strong>You need to answer a narrow question fast.</strong> For example: did clicking this button trigger a POST, did it retry, or did the request die before auth was attached?</li>
+        </ul>
+        <p>For focused debugging, DevTools is usually the first stop because it gives you the browser's own lens with almost no translation layer.</p>
+
+        <h2>When a browser extension is the better choice</h2>
+        <ul>
+          <li><strong>You are reviewing more than one page or more than one site.</strong> Extensions reduce the friction of reopening panels, preserving state, and re-running the same triage pattern.</li>
+          <li><strong>You care about browser-visible artifacts beyond the request itself.</strong> Source maps, suspicious strings, bundle context, and repeated signals become easier to keep together.</li>
+          <li><strong>You need evidence packaging.</strong> A structured export is more useful than a handful of screenshots when the next step is manual review, engineering triage, or writing a report.</li>
+          <li><strong>You want pattern filtering.</strong> Extensions can help separate recurring background noise from findings that actually deserve attention.</li>
+        </ul>
+        <p>This is where tools like Source Detector fit. They are less about replacing DevTools and more about creating a stable review layer on top of normal browsing.</p>
+
+        <h2>Signals that make request evidence stronger</h2>
+        <ul>
+          <li>The request is tied to a clear user action, such as login, export, upload, search, or AI request submission.</li>
+          <li>The same destination or token-like value appears in active assets as well as runtime traffic.</li>
+          <li>The behavior is repeatable across page reloads or account states.</li>
+          <li>The request belongs to a meaningful workflow rather than routine analytics or telemetry.</li>
+          <li>You can preserve both the request trail and the surrounding artifact context without guessing.</li>
+        </ul>
+
+        <h2>How to verify without overclaiming</h2>
+        <ol>
+          <li><strong>Start with the browsing action.</strong> Note exactly what interaction triggered the request.</li>
+          <li><strong>Capture the observable facts.</strong> Domain, method, visible parameters, timing, initiator, related asset, and any source-map or bundle context.</li>
+          <li><strong>Check whether the behavior repeats.</strong> A one-off event is weaker than a stable pattern tied to a real product path.</li>
+          <li><strong>Decide what claim is justified.</strong> Usually the strongest safe claim is that the browser exposed a current dependency, request path, or suspicious clue. That is different from claiming a backend flaw.</li>
+          <li><strong>Escalate only when the evidence stack is coherent.</strong> You want artifact context, runtime confirmation, and a sensitive workflow before you imply meaningful risk.</li>
+        </ol>
+
+        <h2>Common false positives in this comparison</h2>
+        <ul>
+          <li><strong>Assuming more raw detail always means better triage.</strong> DevTools is richer at the single-request level, but that does not mean it is the best tool for broad or repeated review.</li>
+          <li><strong>Assuming automation means certainty.</strong> An extension can help collect and rank evidence, but it still needs human judgment.</li>
+          <li><strong>Treating noisy background requests as meaningful.</strong> Analytics, crash reporting, feature flags, and CDN chatter can dominate both tools.</li>
+          <li><strong>Forgetting the collection goal.</strong> Debugging, reconnaissance, and reporting are different jobs. The tool choice should follow the job.</li>
+        </ul>
+
+        <h2>What this does not prove</h2>
+        <p>Neither DevTools nor a browser extension proves a vulnerability just because a request exists or looks unusual. Request inspection can show behavior, dependencies, and clues. It cannot, by itself, prove unauthorized backend access, sensitive data exposure, or exploitability. Those stronger claims need additional validation.</p>
+
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>You can tie the request to a sensitive workflow and explain the trigger clearly.</li>
+          <li>You have both runtime evidence and supporting artifact context from current assets.</li>
+          <li>The behavior is repeatable and not explained by normal analytics or vendor noise.</li>
+          <li>The visible evidence changes the reviewer's understanding of trust boundaries, data flow, or hidden dependencies.</li>
+        </ul>
+
+        <h2>Methodology</h2>
+        <p>This comparison reflects passive browser-visible review only: request inspection during normal browsing, current asset analysis, and evidence-preservation workflows used for technical triage. It does not rely on backend access, active probing, or exploit claims. Last reviewed: 2026-03-25.</p>
+
+        <div class="cta-box">
+          <h3>Use Source Detector when request review needs more than a single tab in DevTools</h3>
+          <p>Source Detector helps you keep request evidence, source maps, suspicious strings, and exported artifacts in one workflow. That is useful when the job is repeatable triage rather than one-request debugging.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQ</h2>
+        <h3>Is DevTools enough for request inspection?</h3>
+        <p>For many one-off debugging tasks, yes. It becomes less convenient when you need repeatable collection, cross-page evidence, or structured exports.</p>
+        <h3>Can a browser extension replace DevTools completely?</h3>
+        <p>No. Extensions are useful for triage and preservation, but DevTools remains the most direct place for native low-level request inspection.</p>
+        <h3>Which method is better for false-positive reduction?</h3>
+        <p>Usually the extension workflow, because it can keep request clues together with source maps, bundles, and repeated context instead of forcing the reviewer to reconstruct everything manually.</p>
+        <h3>Should security reviewers use both?</h3>
+        <p>Usually yes. DevTools is the precision tool. An extension is the scaling and evidence-packaging layer.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Is DevTools enough for request inspection?","acceptedAnswer":{"@type":"Answer","text":"For many one-off debugging tasks, yes. It becomes less convenient when you need repeatable collection, cross-page evidence, or structured exports."}},
+          {"@type":"Question","name":"Can a browser extension replace DevTools completely?","acceptedAnswer":{"@type":"Answer","text":"No. Extensions are useful for triage and preservation, but DevTools remains the most direct place for native low-level request inspection."}},
+          {"@type":"Question","name":"Which method is better for false-positive reduction?","acceptedAnswer":{"@type":"Answer","text":"Usually the extension workflow, because it can keep request clues together with source maps, bundles, and repeated context instead of forcing the reviewer to reconstruct everything manually."}},
+          {"@type":"Question","name":"Should security reviewers use both?","acceptedAnswer":{"@type":"Answer","text":"Usually yes. DevTools is the precision tool. An extension is the scaling and evidence-packaging layer."}}
+        ]
+      }
+    </script>
+  </body>
+</html>

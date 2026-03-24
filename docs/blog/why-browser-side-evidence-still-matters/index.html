@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Why Browser-Side Evidence Is Useful Even When It Is Incomplete | Source Detector</title>
+    <meta name="description" content="A risk explainer on why browser-side evidence still matters in security review, what it can reliably show, where it stops, and when incomplete evidence is enough to justify deeper review." />
+    <meta property="og:title" content="Why Browser-Side Evidence Is Useful Even When It Is Incomplete" />
+    <meta property="og:description" content="Learn what browser-side evidence can detect, what it cannot prove, and why incomplete evidence still matters for technical triage." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/why-browser-side-evidence-still-matters/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/why-browser-side-evidence-still-matters/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul,ol { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Why Browser-Side Evidence Is Useful Even When It Is Incomplete",
+        "description": "A risk explainer on why browser-side evidence still matters in security review, what it can reliably show, where it stops, and when incomplete evidence is enough to justify deeper review.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/why-browser-side-evidence-still-matters/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "datePublished": "2026-03-25",
+        "dateModified": "2026-03-25"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Risk explainer · Browser evidence · Methodology</div>
+        <h1>Why Browser-Side Evidence Is Useful Even When It Is Incomplete</h1>
+        <p class="subhead">Browser-side evidence is incomplete by definition, but that does not make it weak. It shows what a real public client receives, what requests are actually sent, which assets ship to users, and which third-party dependencies are visible from the runtime edge. That is often enough to detect hidden architecture clues, validate whether a suspicious signal is current, and decide whether deeper review is justified. What it cannot do is prove every backend condition that sits behind the browser. Good security review does not throw browser evidence away because it is partial. It uses that partial view honestly, then stops at the right boundary.</p>
+        <p class="meta">Category: risk-explainer · Search intent: understand why browser-side evidence still matters in security review even when incomplete · Last reviewed: 2026-03-25</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> browser-side evidence matters because it reflects real deployed behavior. It can reveal source maps, exposed identifiers, request paths, visible dependencies, and weak trust boundaries. It becomes misleading only when reviewers ask it to prove more than the browser can actually show.</div>
+
+      <article>
+        <h2>What you can detect from the browser</h2>
+        <ul>
+          <li>Current JavaScript bundles, source maps, config objects, and asset references shipped to real users</li>
+          <li>Runtime requests triggered by normal page loads or user actions</li>
+          <li>Third-party services, hidden vendors, analytics endpoints, AI providers, and infrastructure clues visible at the network layer</li>
+          <li>Operational differences between routes, states, or account contexts</li>
+          <li>Signals that a suspicious finding is current, stale, dead, or only loosely connected to the live app</li>
+        </ul>
+        <p>That is already a lot. The browser is not a complete map of the system, but it is a trustworthy map of the public client surface.</p>
+
+        <h2>Why incomplete evidence is still operationally useful</h2>
+        <p>Most technical review starts with incomplete evidence. You rarely begin with privileged backend access or a neat explanation of system boundaries. You begin with what the deployment reveals. The browser is where that reality shows up.</p>
+        <p>If a source map is publicly reachable, that is a real condition. If a request fires during a sensitive flow, that is a real condition. If a public bundle references a hidden external dependency, that is a real condition. None of those observations proves a breach. They still matter because they change what a reviewer should look at next.</p>
+        <blockquote>Incomplete evidence is still good evidence when it accurately narrows the next decision.</blockquote>
+
+        <h2>Signals that deserve attention</h2>
+        <ul>
+          <li><strong>Repeatable runtime behavior.</strong> The browser performs the same request or loads the same asset under normal conditions.</li>
+          <li><strong>Sensitive workflow context.</strong> The signal appears around login, billing, uploads, export, AI generation, or admin-like actions.</li>
+          <li><strong>Cross-artifact consistency.</strong> The same clue appears in a bundle, a source map, and a live request trail.</li>
+          <li><strong>Unexpected external dependencies.</strong> The browser reveals vendors or services the page does not obviously disclose.</li>
+          <li><strong>Evidence that survives reloads and state changes.</strong> One noisy line in one minified file is weak. A stable pattern is stronger.</li>
+        </ul>
+
+        <h2>How to verify incomplete evidence responsibly</h2>
+        <ol>
+          <li><strong>Preserve the exact observation.</strong> Save the page URL, asset path, request destination, trigger, and timestamp or build context.</li>
+          <li><strong>Separate fact from inference.</strong> "The browser requested this endpoint" is a fact. "The endpoint is vulnerable" is an inference that likely needs more work.</li>
+          <li><strong>Look for corroboration.</strong> A clue gets stronger when it appears in multiple browser-visible places.</li>
+          <li><strong>State the uncertainty boundary.</strong> If you cannot see authorization logic, backend validation, or data sensitivity, say that directly.</li>
+          <li><strong>Escalate when the evidence changes the risk picture.</strong> The point is not to prove everything from the browser. It is to decide when a deeper manual review is justified.</li>
+        </ol>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Public identifiers mistaken for private secrets.</strong> Visibility does not automatically mean dangerous capability.</li>
+          <li><strong>Stale code mistaken for live behavior.</strong> A bundle string without runtime confirmation can be old or dormant.</li>
+          <li><strong>Analytics noise mistaken for meaningful exposure.</strong> Many requests are operational background traffic with little security significance.</li>
+          <li><strong>Naming conventions mistaken for proof.</strong> Words like <code>internal</code>, <code>admin</code>, or <code>secret</code> are clues, not conclusions.</li>
+        </ul>
+
+        <h2>What browser-side evidence does not prove</h2>
+        <p>It does not prove exploitability, backend authorization failures, business impact, or data exposure merely because a public client can observe an artifact or a request. It also does not prove that a visible secret-like value is active, privileged, or reusable outside its intended context. Those are exactly the places where disciplined reviewers slow down.</p>
+
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>The evidence is current, repeatable, and tied to a meaningful flow.</li>
+          <li>You have enough context to explain why the observation changes priority.</li>
+          <li>The signal suggests a hidden dependency, exposed artifact, or reachable path that deserves human follow-up.</li>
+          <li>You can hand off the evidence without overstating what it proves.</li>
+        </ul>
+        <p>That handoff quality matters. A careful escalation based on incomplete but honest evidence is much more useful than a dramatic claim built on guesswork.</p>
+
+        <h2>Methodology</h2>
+        <p>This article reflects passive browser-visible review only: shipped assets, source map references, request behavior during ordinary browsing, and evidence packaging for later manual analysis. It does not rely on exploit attempts, privileged access, or backend assumptions. Last reviewed: 2026-03-25.</p>
+
+        <div class="cta-box">
+          <h3>Use Source Detector when browser evidence needs structure, not hype</h3>
+          <p>Source Detector helps you keep source maps, suspicious strings, request signals, and exportable artifacts together, so incomplete evidence becomes easier to verify and easier to hand off responsibly.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQ</h2>
+        <h3>Is browser-side evidence too limited to be useful?</h3>
+        <p>No. It is limited, but it is often the best view of what production actually exposes to public clients.</p>
+        <h3>Why not wait for backend access before reviewing anything?</h3>
+        <p>Because browser evidence often tells you where deeper review is worth spending time. It is a prioritization tool as much as a detection surface.</p>
+        <h3>Can incomplete evidence still justify escalation?</h3>
+        <p>Yes, if it is current, repeatable, and materially changes the understanding of a workflow or dependency. The escalation just needs honest uncertainty boundaries.</p>
+        <h3>What is the main mistake reviewers make with browser evidence?</h3>
+        <p>They either dismiss it too early or overclaim from it. The useful middle ground is evidence-led triage.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Is browser-side evidence too limited to be useful?","acceptedAnswer":{"@type":"Answer","text":"No. It is limited, but it is often the best view of what production actually exposes to public clients."}},
+          {"@type":"Question","name":"Why not wait for backend access before reviewing anything?","acceptedAnswer":{"@type":"Answer","text":"Because browser evidence often tells you where deeper review is worth spending time. It is a prioritization tool as much as a detection surface."}},
+          {"@type":"Question","name":"Can incomplete evidence still justify escalation?","acceptedAnswer":{"@type":"Answer","text":"Yes, if it is current, repeatable, and materially changes the understanding of a workflow or dependency. The escalation just needs honest uncertainty boundaries."}},
+          {"@type":"Question","name":"What is the main mistake reviewers make with browser evidence?","acceptedAnswer":{"@type":"Answer","text":"They either dismiss it too early or overclaim from it. The useful middle ground is evidence-led triage."}}
+        ]
+      }
+    </script>
+  </body>
+</html>
