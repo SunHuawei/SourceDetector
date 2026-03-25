@@ -3,11 +3,9 @@
 # workflow
 
 # comparison
-passive-scanning-vs-active-probing-frontend-review | Passive scanning vs active probing for frontend security review
 manual-review-vs-automated-detection-frontend | Manual review vs automated detection for frontend leakage triage
 
 # risk-explainer
-leaked-endpoints-passive-recon | What leaked endpoints can reveal during passive web reconnaissance
 suspicious-api-calls-what-they-prove | What a suspicious API call does and does not prove
 analytics-trackers-risk-signals | Third-party analytics, trackers, and risk signals: what is normal and what deserves review
 hidden-external-service-dependencies-browser-signals | How to spot hidden external service dependencies from browser signals
@@ -35,6 +33,8 @@ false-positives-exposed-secrets-frontend | Common false positives when looking f
 inspect-suspicious-outbound-requests | How to inspect suspicious outbound requests on a webpage
 package-browser-request-evidence | How to package browser request evidence for later investigation
 how-to-detect-exposed-api-keys-in-frontend-javascript | How to detect exposed API keys in frontend JavaScript
+passive-scanning-vs-active-probing-frontend-review | Passive scanning vs active probing for frontend security review
+leaked-endpoints-passive-recon | What leaked endpoints can reveal during passive web reconnaissance
 separate-noisy-browser-traffic-from-security-signals | How to separate noisy browser traffic from meaningful security signals
 frontend-leakage-signals-without-false-certainty | A practical workflow for finding frontend leakage signals without false certainty
 when-browser-evidence-needs-manual-review | When browser evidence should trigger manual security review

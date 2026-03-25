@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>What Leaked Endpoints Can Reveal During Passive Web Reconnaissance | Source Detector</title>
+    <meta name="description" content="A calm, evidence-led explainer on what leaked endpoints in frontend assets can reveal during passive web reconnaissance, how to verify them, and where the evidence stops." />
+    <meta property="og:title" content="What Leaked Endpoints Can Reveal During Passive Web Reconnaissance" />
+    <meta property="og:description" content="A calm, evidence-led explainer on what leaked endpoints in frontend assets can reveal during passive web reconnaissance, how to verify them, and where the evidence stops." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/leaked-endpoints-passive-recon/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/leaked-endpoints-passive-recon/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;margin:0;background:#0f172a;color:#e5e7eb;line-height:1.75}.wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}a{color:#93c5fd;text-decoration:none}a:hover{text-decoration:underline}.panel{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;margin:16px 0}.muted{color:#94a3b8}h1,h2,h3{color:#fff}ul,ol{padding-left:20px}code{background:#1f2937;padding:2px 6px;border-radius:6px}</style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"What Leaked Endpoints Can Reveal During Passive Web Reconnaissance","description":"A calm, evidence-led explainer on what leaked endpoints in frontend assets can reveal during passive web reconnaissance, how to verify them, and where the evidence stops.","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"datePublished":"2026-03-26","dateModified":"2026-03-26","mainEntityOfPage":"https://sunhuawei.github.io/SourceDetector/blog/leaked-endpoints-passive-recon/"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <p><a href="../../">← Back to homepage</a></p>
+      <div class="panel">
+        <h1>What Leaked Endpoints Can Reveal During Passive Web Reconnaissance</h1>
+        <p class="muted">Leaked endpoints can tell you a surprising amount about how a web application is put together, but they rarely tell the whole story by themselves. In passive reconnaissance, an exposed path, host, or route pattern can reveal product structure, third-party dependencies, regional architecture, and which workflows probably exist behind the UI. That is useful. It is also easy to overread. A frontend endpoint string does not automatically mean the route is live, sensitive, unauthenticated, or vulnerable. The right habit is to treat leaked endpoints as architecture signals first, then look for runtime confirmation before escalating the finding.</p>
+<h2>What you can detect</h2>
+<ul>
+<li>Feature areas that exist behind the product, such as billing, uploads, search, AI generation, admin tooling, support flows, or reporting.</li>
+<li>Deployment patterns like region-specific hosts, API gateways, service prefixes, versioned paths, and vendor-owned subdomains.</li>
+<li>Integration clues that point to external services, internal naming conventions, or migration leftovers.</li>
+<li>Whether an endpoint appears current in live bundles, source maps, route definitions, or runtime requests.</li>
+</ul>
+<p>Even without touching the backend, these clues help a researcher decide which assets deserve closer review and which strings are probably just noise.</p>
+<h2>Signals that matter</h2>
+<ul>
+<li><strong>Endpoint role.</strong> Paths tied to auth, export, file handling, model calls, or admin surfaces usually deserve more attention than metrics or asset delivery paths.</li>
+<li><strong>Naming quality.</strong> Clear names like <code>/admin/audit/export</code> or <code>/api/v2/model-inference</code> carry more operational meaning than generic transport paths.</li>
+<li><strong>Runtime support.</strong> If the browser already calls the same host or adjacent path during normal use, the clue becomes more credible.</li>
+<li><strong>Freshness.</strong> A path found in a current chunk or live source map matters more than one buried in an old archived asset.</li>
+<li><strong>Clustering.</strong> Multiple related endpoints can reveal a real subsystem even when no single string is conclusive on its own.</li>
+</ul>
+<h2>How to verify</h2>
+<ol>
+<li><strong>Capture the full artifact context.</strong> Save the endpoint, surrounding code, asset name, page URL, and any source map relationship.</li>
+<li><strong>Group similar paths.</strong> Related routes often tell a clearer story together than one isolated string.</li>
+<li><strong>Look for passive runtime confirmation.</strong> Watch whether normal navigation, form submission, or route changes trigger adjacent requests in the browser.</li>
+<li><strong>Separate route discovery from backend claims.</strong> An endpoint can be real and still be fully protected.</li>
+<li><strong>Document uncertainty clearly.</strong> If the path looks meaningful but you did not observe live traffic, label it as an unverified architecture clue.</li>
+</ol>
+<p>For example, seeing <code>api.us-west-2.example.com/v1/reports</code>, <code>/reports/export</code>, and <code>/reports/schedule</code> in current assets tells you reporting likely exists and may be region-aware. It does not tell you whether those routes are open, who can use them, or whether they handle sensitive data.</p>
+<h2>Common false positives</h2>
+<ul>
+<li><strong>Legacy routes.</strong> Old endpoints often remain in bundles long after the product flow has changed.</li>
+<li><strong>SDK or framework internals.</strong> Vendor code may contain paths that belong to the library, not the site you are reviewing.</li>
+<li><strong>Sample and fallback values.</strong> Example configs, mocked endpoints, and offline fallback values can look more meaningful than they are.</li>
+<li><strong>Feature-flagged code.</strong> A shipped route may never be reachable in the current environment.</li>
+<li><strong>Telemetry noise.</strong> Background analytics and health-check traffic can inflate the apparent size of a system without revealing anything security-relevant.</li>
+</ul>
+<h2>Limits and non-proof</h2>
+<p>Leaked endpoints are evidence of exposure, not automatic evidence of impact. They do not prove missing authorization, data disclosure, or exploitability. They also do not prove the backend still accepts the route. Passive recon is good at showing what the frontend reveals to a normal visitor. It is not a substitute for controlled validation when the stakes are higher.</p>
+<h2>When to escalate to manual review</h2>
+<ul>
+<li>The endpoint is tied to a sensitive workflow and appears current.</li>
+<li>You have multiple supporting signals, not just one string match.</li>
+<li>The browser shows adjacent live requests or clear feature triggers.</li>
+<li>You can preserve a clean evidence trail without overstating the claim.</li>
+</ul>
+<p>That is where Source Detector helps most: it gives you a structured view of source maps, suspicious assets, and browser-visible clues so you can decide whether an endpoint is just an architectural breadcrumb or something that deserves a deeper review.</p>
+<h2>Methodology and last reviewed</h2>
+<p><strong>Methodology:</strong> passive browser-based review of shipped assets, route artifacts, and runtime request evidence, with deliberate separation between exposure signals and stronger backend claims.</p>
+<p><strong>Last reviewed:</strong> 2026-03-26</p>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Passive Scanning vs Active Probing for Frontend Security Review | Source Detector</title>
+    <meta name="description" content="A verification-first comparison of passive scanning and active probing in frontend security review, with practical guidance on what each method can detect and where each one can mislead you." />
+    <meta property="og:title" content="Passive Scanning vs Active Probing for Frontend Security Review" />
+    <meta property="og:description" content="A verification-first comparison of passive scanning and active probing in frontend security review, with practical guidance on what each method can detect and where each one can mislead you." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/passive-scanning-vs-active-probing-frontend-review/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/passive-scanning-vs-active-probing-frontend-review/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;margin:0;background:#0f172a;color:#e5e7eb;line-height:1.75}.wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}a{color:#93c5fd;text-decoration:none}a:hover{text-decoration:underline}.panel{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;margin:16px 0}.muted{color:#94a3b8}h1,h2,h3{color:#fff}ul,ol{padding-left:20px}code{background:#1f2937;padding:2px 6px;border-radius:6px}</style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Passive Scanning vs Active Probing for Frontend Security Review","description":"A verification-first comparison of passive scanning and active probing in frontend security review, with practical guidance on what each method can detect and where each one can mislead you.","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"datePublished":"2026-03-26","dateModified":"2026-03-26","mainEntityOfPage":"https://sunhuawei.github.io/SourceDetector/blog/passive-scanning-vs-active-probing-frontend-review/"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <p><a href="../../">← Back to homepage</a></p>
+      <div class="panel">
+        <h1>Passive Scanning vs Active Probing for Frontend Security Review</h1>
+        <p class="muted">If your goal is safe, repeatable frontend review, start passive and escalate to active probing only when the evidence justifies it. Passive scanning is good at finding what a site already exposes to any normal visitor: source maps, bundled endpoints, public config, browser requests, and suspicious strings. Active probing can answer narrower questions, such as whether a route is still reachable or whether a parameter changes behavior, but it also increases the risk of overstepping scope or misreading a backend control. The useful distinction is simple: passive methods tell you what the frontend reveals; active methods test what the application still accepts. They are complementary, but they do not prove the same things.</p>
+<h2>What you can detect</h2>
+<ul>
+<li><strong>Passive scanning:</strong> source map references, JavaScript bundle contents, public route patterns, browser-visible requests, third-party dependencies, hardcoded strings, and asset-level clues that suggest a real workflow.</li>
+<li><strong>Active probing:</strong> whether a suspicious path still responds, whether a parameter is accepted, whether an undocumented route behaves differently, and whether a frontend clue maps to a live backend surface.</li>
+<li><strong>Combined workflow:</strong> enough context to separate stale code from a live integration and enough restraint to avoid turning a clue into an exaggerated claim.</li>
+</ul>
+<p>For most researchers, passive review should do the bulk of the work. It scales better, stays closer to what the browser already exposes, and produces cleaner evidence for later escalation.</p>
+<h2>Signals to look for</h2>
+<ul>
+<li><strong>Signals that favor passive scanning:</strong> source maps, route manifests, runtime API calls, chunk names, public environment values, or repeated token-like strings across current assets.</li>
+<li><strong>Signals that may justify active probing:</strong> a path tied to a sensitive workflow, a request you can already trigger from the UI, or an endpoint that appears current across multiple assets and sessions.</li>
+<li><strong>Signals to slow down:</strong> old source maps, dead feature flags, SDK example values, analytics-only requests, or endpoint strings with no runtime confirmation.</li>
+</ul>
+<p>A concrete example: if you find <code>/api/internal/reports/export</code> in a current bundle and also see the browser call nearby reporting endpoints during a normal workflow, that may justify a tightly scoped reachability check. If the string appears only in an old source map with no current request path, passive evidence is usually enough to label it low confidence and move on.</p>
+<h2>How to verify</h2>
+<ol>
+<li><strong>Begin with passive collection.</strong> Record the page URL, bundle name, source map reference, suspicious string, and any related requests the browser makes during normal use.</li>
+<li><strong>Map the clue to product context.</strong> Ask what user action, feature area, or dependency the artifact appears to support. A billing, upload, or admin path matters more than telemetry noise.</li>
+<li><strong>Check for runtime support.</strong> Confirm whether the browser already triggers a related request. That gives you stronger footing than a string match alone.</li>
+<li><strong>Escalate narrowly if needed.</strong> If scope allows and the evidence is strong enough, test the specific route or behavior that the passive evidence points to. Keep the action minimal and document exactly what changed.</li>
+<li><strong>Preserve the uncertainty boundary.</strong> If active probing produces no meaningful response, say that. A negative result can be just as useful as a positive one.</li>
+</ol>
+<h2>Common false positives</h2>
+<ul>
+<li><strong>Passive false positives:</strong> stale endpoints, mock data, third-party SDK internals, commented-out config in source maps, and public strings that look secret-like but are identifiers or publishable keys.</li>
+<li><strong>Active false positives:</strong> generic 200 responses from CDN edges, redirects that make a dead route look alive, error handlers that echo inputs, and auth challenges that look like access but reveal nothing new.</li>
+<li><strong>Workflow false positives:</strong> treating any server response as proof of sensitivity, or treating any suspicious string as proof the backend is exposed.</li>
+</ul>
+<h2>Limits and what this does not prove</h2>
+<p>Passive scanning does not prove exploitability, authorization weakness, or business impact. Active probing does not automatically prove those things either. A live response may still be fully protected. A dead response does not mean the original clue was useless; it may still show architecture, integration choices, or a recently retired feature. Neither method, on its own, should be stretched into a breach claim.</p>
+<h2>When to escalate</h2>
+<ul>
+<li>You have a browser-visible clue plus current runtime evidence.</li>
+<li>The affected workflow appears sensitive, not just noisy.</li>
+<li>You can describe exactly why the extra validation is necessary.</li>
+<li>You can stay within scope and keep the test narrow.</li>
+</ul>
+<p>If you are still in the collection phase, Source Detector is most helpful on the passive side: reviewing source maps, suspicious strings, asset relationships, and request evidence in one place before you decide whether a deeper manual check is warranted.</p>
+<h2>Methodology and last reviewed</h2>
+<p><strong>Methodology:</strong> comparison based on browser-visible artifact review, normal-user runtime observation, and tightly scoped validation logic for frontend security triage.</p>
+<p><strong>Last reviewed:</strong> 2026-03-26</p>
+      </div>
+    </div>
+  </body>
+</html>
