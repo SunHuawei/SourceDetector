@@ -3,10 +3,8 @@
 # workflow
 
 # comparison
-manual-review-vs-automated-detection-frontend | Manual review vs automated detection for frontend leakage triage
 
 # risk-explainer
-suspicious-api-calls-what-they-prove | What a suspicious API call does and does not prove
 analytics-trackers-risk-signals | Third-party analytics, trackers, and risk signals: what is normal and what deserves review
 hidden-external-service-dependencies-browser-signals | How to spot hidden external service dependencies from browser signals
 
@@ -16,6 +14,8 @@ source-maps-and-frontend-artifacts | Source maps, frontend artifacts, and what t
 
 # used
 hardcoded-ai-service-credentials-client-side | How to detect hardcoded AI service credentials in client-side code
+manual-review-vs-automated-detection-frontend | Manual review vs automated detection for frontend leakage triage
+suspicious-api-calls-what-they-prove | What a suspicious API call does and does not prove
 audit-browser-visible-integrations | How to audit browser-visible integrations without touching the backend
 # Move published topics here after successful deployment verification.
 extension-vs-devtools-request-inspection | Browser extension vs DevTools for request inspection: what each can actually prove

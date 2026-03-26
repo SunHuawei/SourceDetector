@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manual Review vs Automated Detection for Frontend Leakage Triage | Source Detector</title>
+    <meta name="description" content="A practical comparison of manual review and automated detection for frontend leakage triage, including what each approach finds, where each one misleads, and when to combine them." />
+    <meta property="og:title" content="Manual Review vs Automated Detection for Frontend Leakage Triage" />
+    <meta property="og:description" content="Compare manual review and automated detection for source maps, exposed keys, browser requests, and frontend leakage signals without overclaiming what either method proves." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/manual-review-vs-automated-detection-frontend/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/manual-review-vs-automated-detection-frontend/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:940px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul,ol { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:800px; margin:0 0 14px; }
+      .meta { color:var(--muted); font-size:14px; }
+      .panel,.cta-box,table { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; }
+      .panel,.cta-box { padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      table { width:100%; border-collapse:collapse; overflow:hidden; }
+      th,td { padding:14px 16px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+      th { color:#fff; background:rgba(255,255,255,.03); }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Manual Review vs Automated Detection for Frontend Leakage Triage",
+        "description": "A practical comparison of manual review and automated detection for frontend leakage triage, including what each approach finds, where each one misleads, and when to combine them.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/manual-review-vs-automated-detection-frontend/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "datePublished": "2026-03-27",
+        "dateModified": "2026-03-27"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Comparison · Workflow · Frontend leakage triage</div>
+        <h1>Manual Review vs Automated Detection for Frontend Leakage Triage</h1>
+        <p class="subhead">If the goal is reliable frontend leakage triage, automation should usually go first and manual review should usually go deeper. Automated detection is better at coverage, repeatability, and catching patterns across source maps, bundles, and browser activity that a human would miss or skip. Manual review is better at judging context, separating weak signals from meaningful ones, and deciding whether a finding changes the actual security story. The mistake is treating either lane as complete on its own. Automation without review inflates false positives. Manual review without automation burns time and misses breadth.</p>
+        <p class="meta">Category: comparison · Search intent: compare manual review and automated detection for frontend leakage triage workflows · Last reviewed: 2026-03-27</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> use automated detection to gather current browser-visible evidence at scale, then use manual review to verify trigger, context, false positives, and escalation value. For source maps, exposed-key patterns, hidden dependencies, and request evidence, the strongest workflow is staged rather than ideological.</div>
+
+      <article>
+        <h2>What this method can detect</h2>
+        <p>A combined workflow of automated detection plus manual review can detect current source map references, suspicious strings in bundles, recurring request destinations, hidden service dependencies, asset relationships, and runtime patterns that stay invisible when a reviewer samples too narrowly. It can also detect which findings survive context checks and which ones fall apart under closer inspection.</p>
+        <p>Automated detection is good at collecting repetitive evidence. Manual review is good at interpreting those findings in context: whether the clue is current, whether it matters for the page role, whether it reflects capability or mere visibility, and whether the evidence stack is strong enough to escalate.</p>
+        <table>
+          <tr><th>Method</th><th>Strongest use</th><th>Typical weakness</th></tr>
+          <tr><td>Automated detection</td><td>Coverage, repeatability, signal collection across many pages, source-map discovery, rule-based finding surfacing, evidence packaging</td><td>Context judgment, edge-case interpretation, distinguishing weak visibility from meaningful security impact</td></tr>
+          <tr><td>Manual review</td><td>False-positive reduction, trust-boundary analysis, workflow-specific verification, deciding what actually deserves escalation</td><td>Limited coverage, reviewer fatigue, inconsistency across sessions, easy drift toward ad hoc judgment</td></tr>
+        </table>
+
+        <h2>Where automation wins</h2>
+        <ul>
+          <li><strong>Coverage across assets and sessions:</strong> automation does not get tired of scanning every bundle, repeating the same rules, or collecting evidence while you browse.</li>
+          <li><strong>Consistency:</strong> the same rule fires the same way across pages, which is useful for trending and comparison.</li>
+          <li><strong>Structured evidence capture:</strong> findings stay attached to their source assets, domains, or browsing sessions instead of becoming scattered notes.</li>
+          <li><strong>Early surfacing of weak but useful clues:</strong> source map references, token-like strings, and repeated service calls are often worth seeing early even if many will be de-prioritized later.</li>
+        </ul>
+
+        <h2>Where manual review wins</h2>
+        <ul>
+          <li><strong>Context and intent:</strong> humans are still better at asking whether a signal actually changes the trust picture.</li>
+          <li><strong>False-positive filtering:</strong> a reviewer can recognize telemetry, stale assets, publishable keys, and vendor noise faster than a rigid rule set can.</li>
+          <li><strong>Action-based verification:</strong> manual review can tie a clue to one page action, account state, or sensitive workflow and explain why that matters.</li>
+          <li><strong>Escalation quality:</strong> better write-ups come from humans who separate observed fact, likely inference, and still-unproven risk.</li>
+        </ul>
+
+        <blockquote>The practical question is not “automation or manual review?” It is “at which point should a human start spending judgment on this signal?”</blockquote>
+
+        <h2>Signals to use as handoff points</h2>
+        <p>Some findings are ideal handoff points from automation into manual review. These include current source maps that clarify live code paths, suspicious requests tied to sensitive actions, repeated first-party references to hidden services, or token-like values that appear both in shipped assets and in runtime behavior. Those patterns deserve a human faster than a lone string match in an old bundle.</p>
+
+        <h2>How to verify with a staged workflow</h2>
+        <ol>
+          <li><strong>Collect broadly first.</strong> Let automated detection surface current artifacts, domains, and patterns without making strong claims yet.</li>
+          <li><strong>Cluster by page, domain, or workflow.</strong> Group related findings so a reviewer sees a coherent trail instead of disconnected noise.</li>
+          <li><strong>Promote only stronger signals.</strong> Prefer findings tied to current runtime behavior, first-party initiators, or sensitive actions.</li>
+          <li><strong>Manually verify trigger and context.</strong> Reproduce the page action and inspect whether the signal stays relevant under a defined state.</li>
+          <li><strong>Write the smallest justified claim.</strong> Usually that means describing what the browser showed, not claiming what the backend must be doing.</li>
+        </ol>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Rule-only certainty:</strong> a pattern match can be useful without proving secret exposure or exploitability.</li>
+          <li><strong>Manual overfitting:</strong> a reviewer can invent a compelling story around one weak signal if there is no disciplined verification step.</li>
+          <li><strong>Stale artifact inflation:</strong> both humans and tools can treat legacy code as live evidence if runtime alignment is missing.</li>
+          <li><strong>Noise from normal third-party services:</strong> analytics, feature flags, anti-bot systems, and monitoring traffic appear in both workflows and can dominate attention.</li>
+        </ul>
+
+        <h2>What this does not prove</h2>
+        <p>Neither method proves a vulnerability on its own. Automation can prove that a pattern was observed consistently. Manual review can prove that a signal is more relevant than it first looked. Neither one, without additional validation, proves backend weakness, secret usability, unauthorized access, or breach. Frontend leakage triage is about prioritization, evidence quality, and clean uncertainty boundaries.</p>
+
+        <h2>When to escalate</h2>
+        <ul>
+          <li>Automation surfaced a current signal tied to meaningful runtime behavior.</li>
+          <li>Manual review confirmed the trigger, page state, and likely trust-boundary impact.</li>
+          <li>The finding survives obvious false-positive explanations.</li>
+          <li>You can explain the evidence chain clearly enough that another reviewer could reproduce the same judgment.</li>
+        </ul>
+
+        <h2>Methodology</h2>
+        <p>This comparison reflects passive browser-visible workflows only: source map discovery, asset review, request observation, pattern-based surfacing, and human verification during normal browsing sessions. It does not rely on exploit development, credential abuse, or unsupported claims about backend state. Last reviewed: 2026-03-27.</p>
+
+        <div class="cta-box">
+          <h3>Use automation for coverage, then review the findings that actually matter</h3>
+          <p>Source Detector helps you collect source maps, suspicious client-side signals, and browser-visible evidence in one place, so manual review starts from a stronger queue instead of a blank tab and a hunch.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQ</h2>
+        <h3>Should automation replace manual review?</h3>
+        <p>No. It should reduce blind manual work and improve coverage, not replace human judgment about relevance and escalation.</p>
+        <h3>What findings deserve a human first?</h3>
+        <p>Current runtime-backed signals tied to sensitive actions, hidden dependencies, or source maps that clarify live app behavior.</p>
+        <h3>Why not rely on manual review only?</h3>
+        <p>Because coverage drops fast, reviewers miss patterns, and repeated triage becomes inconsistent and expensive.</p>
+        <h3>What is the best workflow in practice?</h3>
+        <p>Collect broadly with automation, cluster the findings, then manually verify the small set that changes the trust story.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Should automation replace manual review?","acceptedAnswer":{"@type":"Answer","text":"No. It should reduce blind manual work and improve coverage, not replace human judgment about relevance and escalation."}},
+          {"@type":"Question","name":"What findings deserve a human first?","acceptedAnswer":{"@type":"Answer","text":"Current runtime-backed signals tied to sensitive actions, hidden dependencies, or source maps that clarify live app behavior."}},
+          {"@type":"Question","name":"Why not rely on manual review only?","acceptedAnswer":{"@type":"Answer","text":"Because coverage drops fast, reviewers miss patterns, and repeated triage becomes inconsistent and expensive."}},
+          {"@type":"Question","name":"What is the best workflow in practice?","acceptedAnswer":{"@type":"Answer","text":"Collect broadly with automation, cluster the findings, then manually verify the small set that changes the trust story."}}
+        ]
+      }
+    </script>
+  </body>
+</html>

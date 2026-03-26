@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>What a Suspicious API Call Does and Does Not Prove | Source Detector</title>
+    <meta name="description" content="A risk explainer on what suspicious API calls in browser traffic can actually prove, how to verify them, and where researchers should stop short of overclaiming." />
+    <meta property="og:title" content="What a Suspicious API Call Does and Does Not Prove" />
+    <meta property="og:description" content="Learn how to interpret suspicious API calls as browser evidence without turning a visible request into a claim of breach or exploitability." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/suspicious-api-calls-what-they-prove/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/suspicious-api-calls-what-they-prove/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "What a Suspicious API Call Does and Does Not Prove",
+        "description": "A risk explainer on what suspicious API calls in browser traffic can actually prove, how to verify them, and where researchers should stop short of overclaiming.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/suspicious-api-calls-what-they-prove/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "dateModified": "2026-03-27",
+        "datePublished": "2026-03-27"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Risk explainer · Request evidence · Detection limits</div>
+        <h1>What a Suspicious API Call Does and Does Not Prove</h1>
+        <p class="subhead">A suspicious API call is useful because it shows that the browser attempted a real interaction with a real destination under a real page state. That is already stronger than finding an isolated string in a JavaScript bundle. But it still does not prove a breach, exposed backend access, or exploitable behavior on its own. The practical way to read a suspicious call is to treat it as evidence of runtime behavior, then verify destination, trigger, payload context, response outcome, and surrounding assets before deciding whether it deserves manual escalation.</p>
+        <p class="meta">Category: risk-explainer · Search intent: understand what a suspicious API call can and cannot prove during browser-based security review · Last reviewed: 2026-03-27</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> a suspicious API call can prove that the browser reached or attempted to reach a specific endpoint from a specific page state. It can help prove timing, initiator, payload shape, and whether a hidden dependency is present in the live flow. It does <em>not</em> prove backend compromise, privilege, data exposure, or exploitability unless you have additional verification.</div>
+
+      <article>
+        <h2>What this method can detect</h2>
+        <p>Reviewing suspicious API calls can uncover hidden service dependencies, undocumented outbound destinations, action-specific data flows, and places where the frontend sends richer context than the page role suggests. It can also show that a route is active in the current experience instead of merely mentioned in stale code.</p>
+        <p>That distinction matters. Runtime traffic is current evidence. It tells you more than a route name buried in a bundle, and it gives you a better starting point for technical triage.</p>
+
+        <h2>Signals that make an API call worth attention</h2>
+        <ul>
+          <li><strong>Unexpected destination:</strong> the request reaches a host or service that does not fit the visible function of the page.</li>
+          <li><strong>Sensitive trigger:</strong> the call appears during login, upload, prompt submission, billing, export, settings, or account recovery flows.</li>
+          <li><strong>Meaningful payload context:</strong> the body or query string carries user-entered data, account-linked identifiers, environment hints, or capability-related flags.</li>
+          <li><strong>First-party initiator:</strong> the request is triggered by first-party application code rather than routine third-party scripts.</li>
+          <li><strong>Consistent reproduction:</strong> the same behavior repeats under the same action or state, instead of appearing once as background noise.</li>
+        </ul>
+
+        <h2>How to verify what the call actually shows</h2>
+        <h3>1. Tie the request to one clear page action</h3>
+        <p>Do not start from a giant traffic dump. Start from one defined action: load a page, submit a form, save settings, upload a file, or send a prompt. If you cannot explain what triggered the request, your confidence ceiling stays low.</p>
+
+        <h3>2. Check the initiator and runtime context</h3>
+        <p>An unfamiliar host means more when a first-party bundle triggered it during a sensitive action. The same host might be far less interesting if it comes from analytics, fraud controls, or a support widget.</p>
+
+        <h3>3. Compare the payload shape, not just the route name</h3>
+        <p>Routes can sound dramatic and still be harmless. Payload shape often tells the better story: whether the request carries user content, identifiers, file metadata, or state that changes with the action you performed.</p>
+
+        <h3>4. Separate successful behavior from attempted behavior</h3>
+        <p>A visible request can still fail because of CORS, auth requirements, missing headers, or server-side validation. A failed request and a successful one are not the same kind of evidence, even if they share the same path.</p>
+
+        <h3>5. Cross-check against nearby artifacts</h3>
+        <p>If the same host, route family, or service name appears in current bundles or source maps, the call becomes easier to explain and prioritize. The point is not to inflate the claim. It is to tighten the evidence stack.</p>
+
+        <blockquote>The safest useful claim is usually simple: this browser session attempted a current interaction with this destination under this trigger. Anything stronger needs another layer of proof.</blockquote>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Telemetry and observability traffic:</strong> busy error-reporting or analytics calls often look suspicious before you map their role.</li>
+          <li><strong>Internal-sounding endpoints:</strong> paths containing <code>/admin</code>, <code>/private</code>, or <code>/internal</code> may be blocked, legacy, or poorly named.</li>
+          <li><strong>Public identifiers mistaken for secrets:</strong> long values can be tenant markers, publishable keys, or correlation IDs with limited security meaning.</li>
+          <li><strong>Third-party SDK churn:</strong> tag managers, feature flags, session replay, and anti-bot products can generate dense request patterns that are noisy but normal.</li>
+          <li><strong>One-off anomalies:</strong> a single request without a stable trigger is weak evidence unless you can reproduce and contextualize it.</li>
+        </ul>
+
+        <h2>What this does not prove</h2>
+        <p>A suspicious API call does not prove a vulnerability, confirmed data leak, backend compromise, or unauthorized access. It does not prove that the endpoint is reachable outside the observed session, and it does not prove that a token or parameter grants useful privileges. Public artifact plus runtime visibility is stronger than a string match, but it is still not final proof.</p>
+
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>The call is reproducible and tied to a meaningful user action.</li>
+          <li>The payload or response behavior changes the trust story in a concrete way.</li>
+          <li>The destination is hidden, surprising, or more privileged than the page role suggests.</li>
+          <li>You can explain observed fact, likely implication, and remaining uncertainty without stretching the evidence.</li>
+        </ul>
+
+        <h2>Methodology</h2>
+        <p>This article reflects passive browser-visible review only: observed network requests, page state, initiators, current assets, and source-map-adjacent context from normal browsing sessions. It treats public artifacts and runtime traffic as signals for technical triage, not automatic proof of exploitability. Last reviewed: 2026-03-27.</p>
+
+        <div class="cta-box">
+          <h3>Keep suspicious calls tied to the evidence around them</h3>
+          <p>Source Detector helps you inspect browser-visible artifacts, review suspicious client-side signals, and preserve the surrounding context so a strange API call does not get reduced to a screenshot and a guess.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQ</h2>
+        <h3>Does a suspicious API call prove a vulnerability?</h3>
+        <p>No. It proves runtime behavior in the browser, not exploitability or backend weakness by itself.</p>
+        <h3>Why is a live request stronger than a string found in code?</h3>
+        <p>Because a live request shows that the browser actually attempted the interaction in the current experience, not just that the code once mentioned it.</p>
+        <h3>What should I record before escalating?</h3>
+        <p>Record the trigger, destination, initiator, payload shape, observed outcome, and whether the same pattern appears in current assets or source maps.</p>
+        <h3>When should I de-prioritize a suspicious call?</h3>
+        <p>De-prioritize it when a simpler explanation such as analytics, stale assets, or vendor SDK noise still fits the evidence better.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Does a suspicious API call prove a vulnerability?","acceptedAnswer":{"@type":"Answer","text":"No. It proves runtime behavior in the browser, not exploitability or backend weakness by itself."}},
+          {"@type":"Question","name":"Why is a live request stronger than a string found in code?","acceptedAnswer":{"@type":"Answer","text":"Because a live request shows that the browser actually attempted the interaction in the current experience, not just that the code once mentioned it."}},
+          {"@type":"Question","name":"What should I record before escalating?","acceptedAnswer":{"@type":"Answer","text":"Record the trigger, destination, initiator, payload shape, observed outcome, and whether the same pattern appears in current assets or source maps."}},
+          {"@type":"Question","name":"When should I de-prioritize a suspicious call?","acceptedAnswer":{"@type":"Answer","text":"De-prioritize it when a simpler explanation such as analytics, stale assets, or vendor SDK noise still fits the evidence better."}}
+        ]
+      }
+    </script>
+  </body>
+</html>
