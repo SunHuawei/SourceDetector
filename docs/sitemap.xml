@@ -112,4 +112,12 @@
     <loc>https://sunhuawei.github.io/SourceDetector/blog/separate-noisy-browser-traffic-from-security-signals/</loc>
     <lastmod>2026-03-22</lastmod>
   </url>
+  <url>
+    <loc>https://sunhuawei.github.io/SourceDetector/blog/analytics-trackers-risk-signals/</loc>
+    <lastmod>2026-03-28</lastmod>
+  </url>
+  <url>
+    <loc>https://sunhuawei.github.io/SourceDetector/blog/investigate-suspicious-javascript-bundles/</loc>
+    <lastmod>2026-03-28</lastmod>
+  </url>
 </urlset>
