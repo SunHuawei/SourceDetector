@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Spot Hidden External Service Dependencies from Browser Signals | Source Detector</title>
+    <meta name="description" content="A practical risk explainer on spotting hidden external service dependencies from browser signals, what those signals actually mean, and how to verify them without overstating risk." />
+    <meta property="og:title" content="How to Spot Hidden External Service Dependencies from Browser Signals" />
+    <meta property="og:description" content="Learn how browser-visible requests, asset origins, and runtime patterns can reveal hidden external service dependencies without treating every third-party call as a security issue." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/hidden-external-service-dependencies-browser-signals/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/hidden-external-service-dependencies-browser-signals/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:940px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:810px; margin:0 0 14px; }
+      .meta { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "How to Spot Hidden External Service Dependencies from Browser Signals",
+        "description": "A practical risk explainer on spotting hidden external service dependencies from browser signals, what those signals actually mean, and how to verify them without overstating risk.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/hidden-external-service-dependencies-browser-signals/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "datePublished": "2026-03-29",
+        "dateModified": "2026-03-29"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Risk explainer · Browser recon · Third-party dependencies</div>
+        <h1>How to Spot Hidden External Service Dependencies from Browser Signals</h1>
+        <p class="subhead">You can often spot hidden external service dependencies from browser signals, but you need to stay disciplined about what those signals actually prove. Repeated requests to unfamiliar domains, SDK bundles loaded from vendor CDNs, script-loaded assets, and browser-visible config objects can all reveal that a site depends on outside services for analytics, AI features, search, fraud control, chat, or file delivery. That matters for security review because third-party dependencies change the trust boundary and expand the set of systems handling user data. It does <em>not</em> mean the service is risky by default. The right move is to identify the dependency, verify how it appears in runtime behavior, and describe the evidence without inventing breach-level conclusions.</p>
+        <p class="meta">Category: risk-explainer · Search intent: understand how browser signals reveal hidden external service dependencies and how to verify them safely · Last reviewed: 2026-03-29</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> browser signals can reveal hidden external service dependencies through repeated third-party requests, asset origins, vendor-specific script names, config objects, and request timing tied to page actions. These are useful architecture signals, but they are still signals. They do not automatically prove data exposure, contract scope, or unsafe handling.</div>
+
+      <article>
+        <h2>What you can detect</h2>
+        <p>From the browser alone, you can often detect that a site relies on more external services than its visible UI suggests. A page may look like one product while quietly depending on analytics providers, feature-flag vendors, fraud services, search APIs, embedded support tools, or AI inference endpoints. Those dependencies show up because the browser has to load scripts, call APIs, fetch assets, or exchange telemetry to make the page work.</p>
+        <p>That visibility is valuable for researchers and technical auditors. It helps explain where data may travel, which vendors participate in key workflows, and which trust boundaries deserve closer review. It also helps separate first-party architecture from third-party behavior before anyone overstates what the frontend proves.</p>
+
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Repeated requests to the same external origin:</strong> especially when they appear during login, checkout, form submission, upload, or search.</li>
+          <li><strong>Vendor-specific script paths or SDK filenames:</strong> bundle names, initialization blocks, and public docs often make the service family recognizable.</li>
+          <li><strong>Config objects exposed in page source or runtime state:</strong> tenant IDs, region markers, API base URLs, or public app identifiers can reveal which external platform is in the loop.</li>
+          <li><strong>Script-loaded assets and chained requests:</strong> one first-party script may quietly pull in another vendor script after the initial page load.</li>
+          <li><strong>Request timing tied to user actions:</strong> if a new domain only appears after a search, export, upload, or AI request event, it is more likely to represent a functional dependency rather than generic page noise.</li>
+        </ul>
+
+        <h2>Why it matters</h2>
+        <p>Hidden dependencies matter because they change the trust picture. If a site sends requests to a third-party risk engine during login, that is different from a marketing page firing normal analytics. If an application relies on an outside search provider or AI service, that may affect data handling, debugging, rate limiting, and incident response boundaries. Even when there is no obvious exposure, dependency visibility gives a reviewer a better map of who is participating in the workflow.</p>
+
+        <blockquote>The useful claim is usually “this workflow appears to depend on this external service,” not “this service is leaking data” or “this proves a vulnerability.”</blockquote>
+
+        <h2>How to verify without over-claiming</h2>
+        <h3>1. Tie the signal to one page action</h3>
+        <p>Pick a concrete event such as loading the dashboard, opening search, starting chat, or submitting a form. If the same external origin appears consistently after that event, you have a stronger case that the dependency is functional rather than incidental.</p>
+
+        <h3>2. Compare first-party and third-party roles</h3>
+        <p>Ask whether the external service appears to provide infrastructure, analytics, media, AI, support tooling, or fraud control. The answer shapes how the signal should be described. A telemetry endpoint and a transactional API are not the same story.</p>
+
+        <h3>3. Look for supporting artifacts</h3>
+        <p>Support the runtime signal with adjacent evidence: recognizable SDK names, public configuration values, repeated origin patterns across multiple pages, or browser-visible source maps that clarify the code path. One clue is interesting; several aligned clues are much more reliable.</p>
+
+        <h3>4. State the smallest justified conclusion</h3>
+        <p>If the browser shows a dependency, say that. If it suggests a workflow-specific handoff, say that. Do not jump to “user data is definitely stored there” unless the browser evidence clearly supports that claim.</p>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>CDN confusion:</strong> a third-party CDN may host static assets without representing an application-level dependency in the sensitive workflow you are reviewing.</li>
+          <li><strong>Noise from common telemetry:</strong> analytics, performance monitoring, and bot mitigation calls can dominate the request list while adding very little architectural insight.</li>
+          <li><strong>Leftover vendor code:</strong> a stale SDK reference in a bundle does not prove the service is still active in production.</li>
+          <li><strong>Shared infrastructure misread as product dependency:</strong> cloud or edge providers can appear in requests even when the application is not directly using a distinct external product feature.</li>
+        </ul>
+
+        <h2>Detection limits and what this does not prove</h2>
+        <p>Browser-visible evidence does not prove contract scope, retention rules, backend payload contents, privileged service-to-service exchanges, or unsafe vendor handling. It also does not prove a security issue. At most, it proves that the browser observed external assets, requests, or initialization patterns consistent with a dependency. That is already useful. It just needs clean boundaries.</p>
+
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>The dependency appears during a sensitive workflow such as auth, billing, upload, export, or AI request handling.</li>
+          <li>The same service shows up through several aligned signals: requests, config, source maps, or multiple page flows.</li>
+          <li>The dependency changes how you would scope data handling, supply-chain review, or trust-boundary analysis.</li>
+          <li>The browser evidence is strong enough that another reviewer could reproduce it and understand why it matters.</li>
+        </ul>
+
+        <h2>Methodology</h2>
+        <p>This article uses passive browser-visible review only: network requests, asset origins, runtime loading patterns, and shipped frontend artifacts such as config objects or source maps when available. It avoids claims about backend internals unless directly supported by public evidence. Last reviewed: 2026-03-29.</p>
+
+        <div class="cta-box">
+          <h3>Use Source Detector to keep dependency review grounded in evidence</h3>
+          <p>Source Detector helps you inspect source maps, bundle clues, and browser-visible request evidence in one place, so hidden service dependencies are easier to document without turning every third-party call into a false alarm.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQ</h2>
+        <h3>Can the browser really reveal hidden dependencies?</h3>
+        <p>Yes. If the page has to load an SDK, call an API, or fetch third-party assets, the browser often exposes enough signal to identify that a dependency exists.</p>
+        <h3>Does a third-party request always mean risk?</h3>
+        <p>No. Many pages load third-party services for normal analytics, hosting, media, or anti-bot functions. The question is what role the service plays and when it appears.</p>
+        <h3>What makes a dependency signal stronger?</h3>
+        <p>Consistency across actions, multiple supporting artifacts, and clear linkage to a functional workflow make the signal stronger than a single stray request.</p>
+        <h3>What should I avoid claiming?</h3>
+        <p>Avoid claiming breach, unsafe storage, or backend behavior that the browser evidence does not directly support.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Can the browser really reveal hidden dependencies?","acceptedAnswer":{"@type":"Answer","text":"Yes. If the page has to load an SDK, call an API, or fetch third-party assets, the browser often exposes enough signal to identify that a dependency exists."}},
+          {"@type":"Question","name":"Does a third-party request always mean risk?","acceptedAnswer":{"@type":"Answer","text":"No. Many pages load third-party services for normal analytics, hosting, media, or anti-bot functions. The question is what role the service plays and when it appears."}},
+          {"@type":"Question","name":"What makes a dependency signal stronger?","acceptedAnswer":{"@type":"Answer","text":"Consistency across actions, multiple supporting artifacts, and clear linkage to a functional workflow make the signal stronger than a single stray request."}},
+          {"@type":"Question","name":"What should I avoid claiming?","acceptedAnswer":{"@type":"Answer","text":"Avoid claiming breach, unsafe storage, or backend behavior that the browser evidence does not directly support."}}
+        ]
+      }
+    </script>
+  </body>
+</html>

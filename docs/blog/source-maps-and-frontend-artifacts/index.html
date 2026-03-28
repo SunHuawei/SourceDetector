@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Source Maps, Frontend Artifacts, and What They Can Reveal to Researchers | Source Detector</title>
+    <meta name="description" content="A practical guide to what source maps and related frontend artifacts can reveal to researchers, how to verify those signals, and where their limits begin." />
+    <meta property="og:title" content="Source Maps, Frontend Artifacts, and What They Can Reveal to Researchers" />
+    <meta property="og:description" content="Learn what source maps, asset names, debug references, and shipped frontend artifacts can reveal to researchers without overstating what public artifacts prove." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/source-maps-and-frontend-artifacts/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/source-maps-and-frontend-artifacts/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:940px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:810px; margin:0 0 14px; }
+      .meta { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Source Maps, Frontend Artifacts, and What They Can Reveal to Researchers",
+        "description": "A practical guide to what source maps and related frontend artifacts can reveal to researchers, how to verify those signals, and where their limits begin.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/source-maps-and-frontend-artifacts/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "datePublished": "2026-03-29",
+        "dateModified": "2026-03-29"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Artifact analysis · Source maps · Frontend research</div>
+        <h1>Source Maps, Frontend Artifacts, and What They Can Reveal to Researchers</h1>
+        <p class="subhead">Source maps and related frontend artifacts can reveal a surprising amount to researchers: original file paths, framework structure, feature names, internal naming habits, hidden routes, service references, and the shape of a live frontend build. That makes them useful for browser-based recon and technical auditing. But researchers get into trouble when they turn useful artifact visibility into stronger claims than the evidence supports. A public source map can clarify how an app is assembled. A bundle can hint at integrations or debugging leftovers. Neither one, on its own, proves exploitability or backend compromise. The practical job is to extract what these artifacts reliably show, verify the signal against runtime behavior when possible, and keep non-proof boundaries explicit.</p>
+        <p class="meta">Category: artifact-analysis · Search intent: understand what source maps and frontend artifacts can reveal to researchers and how to verify those signals responsibly · Last reviewed: 2026-03-29</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> source maps and frontend artifacts can reveal code structure, naming conventions, dependency clues, hidden routes, and verification context for other browser-visible findings. They are strong research signals, but they do not automatically prove exposure impact, reachable backend behavior, or a vulnerability.</div>
+
+      <article>
+        <h2>What you can detect</h2>
+        <p>Source maps and shipped frontend artifacts help researchers answer practical questions quickly: What framework or build system is in use? Which modules appear to handle auth, search, billing, AI requests, uploads, or feature flags? Do client bundles reference vendor SDKs, debug helpers, environment markers, or endpoints that never appear in the visible UI? When you are trying to make sense of scattered browser clues, artifacts often provide the missing map.</p>
+        <p>That matters because public frontend evidence is rarely a single smoking gun. More often, researchers build confidence by aligning several moderate-strength signals: a source map, a request pattern, a suspicious string, and a clearly named module that explains what the app is doing.</p>
+
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Original file paths and module names:</strong> these often reveal feature boundaries, team naming habits, or product areas that are hard to infer from minified bundles alone.</li>
+          <li><strong>Service references and SDK wrappers:</strong> artifact names can show which external platforms the frontend expects to talk to.</li>
+          <li><strong>Route and component naming:</strong> hidden pages, admin-ish panels, onboarding flows, or feature-flagged experiences may become easier to reason about.</li>
+          <li><strong>Environment markers and debug leftovers:</strong> log labels, staging markers, or verbose error helpers can reveal build discipline issues worth documenting.</li>
+          <li><strong>Alignment with runtime evidence:</strong> the strongest artifact insights are the ones that help explain an actual browser request, page action, or observed code path.</li>
+        </ul>
+
+        <h2>Why it matters</h2>
+        <p>Artifacts matter because they shorten ambiguity. A suspicious request is easier to interpret when the source map shows a module named for export generation, payment setup, or AI completion handling. A string that looked random may become understandable when surrounding file paths reveal it belongs to telemetry config or a public client identifier. Good artifact analysis improves triage quality, reduces false positives, and produces tighter write-ups.</p>
+
+        <blockquote>The best artifact analysis does not make your claims louder. It makes them more precise.</blockquote>
+
+        <h2>How to verify what the artifacts really mean</h2>
+        <h3>1. Start with the artifact, then return to runtime behavior</h3>
+        <p>It is easy to get lost inside file names and module trees. Use artifacts to sharpen a question, not to replace verification. If a source map suggests a hidden integration or workflow, go back to the browser and see whether runtime behavior supports that reading.</p>
+
+        <h3>2. Separate naming from capability</h3>
+        <p>A component called <code>admin</code>, <code>internal</code>, or <code>secret</code> may mean very little by itself. Names are clues, not capabilities. What matters is whether the browser-visible behavior lines up with the implied role.</p>
+
+        <h3>3. Corroborate with nearby signals</h3>
+        <p>Artifact analysis is strongest when it aligns with one or more of these: request initiators, public config values, repeated external origins, page-state transitions, or multiple files pointing at the same feature boundary.</p>
+
+        <h3>4. Keep the claim anchored to observation</h3>
+        <p>“The source map exposes original module names related to file export” is a defensible statement. “This proves the export backend is vulnerable” is not. Write what the artifact revealed, not what you wish it implied.</p>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Unused legacy modules:</strong> source maps may preserve old code organization that no longer reflects live production behavior.</li>
+          <li><strong>Scary names with ordinary functions:</strong> internal-sounding labels can represent harmless client helpers or abandoned branches.</li>
+          <li><strong>Third-party package noise:</strong> bundle contents often include libraries and wrappers that say more about the build toolchain than the application’s real security posture.</li>
+          <li><strong>Assuming reachability from naming alone:</strong> a hidden route in artifacts does not prove that the route is accessible or meaningful in the current app state.</li>
+        </ul>
+
+        <h2>Detection limits and non-proof boundaries</h2>
+        <p>Source maps and frontend artifacts do not prove active vulnerabilities, backend trust decisions, secret validity, or server-side authorization weaknesses. They also do not prove that every named feature is reachable in production. Public artifact visibility is useful because it improves understanding. Its limit is that understanding still has to be checked against live behavior.</p>
+
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>The artifact clarifies a runtime signal tied to a sensitive workflow.</li>
+          <li>Several artifact clues line up with the same hidden dependency, route family, or feature path.</li>
+          <li>The source map or bundle materially changes how you interpret an observed request or suspicious string.</li>
+          <li>The evidence is specific enough that another reviewer could reproduce the same conclusion from the same public artifacts.</li>
+        </ul>
+
+        <h2>Methodology</h2>
+        <p>This article covers passive analysis of public frontend artifacts only: source maps, bundle names, file paths, public configuration, and browser-visible runtime behavior used to validate interpretation. It does not assume exploitability from artifact visibility alone. Last reviewed: 2026-03-29.</p>
+
+        <div class="cta-box">
+          <h3>Use Source Detector to connect artifact clues to real browser evidence</h3>
+          <p>Source Detector helps you discover source maps, inspect suspicious client-side patterns, and keep artifact analysis tied to observable browser evidence instead of guesswork.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQ</h2>
+        <h3>Why are source maps valuable to researchers?</h3>
+        <p>They can reveal original file structure, feature names, and integration clues that make other browser-visible findings easier to interpret.</p>
+        <h3>Does a public source map mean the site is vulnerable?</h3>
+        <p>No. It means additional implementation detail is exposed. Whether that creates meaningful risk depends on what the map reveals and how it aligns with live behavior.</p>
+        <h3>Can frontend artifacts reveal hidden routes?</h3>
+        <p>They can reveal route names or feature references, but that does not prove those routes are reachable or useful in the current production state.</p>
+        <h3>What is the safest way to write up artifact findings?</h3>
+        <p>Describe the observed artifact, explain the likely relevance, and clearly separate verified runtime evidence from inference.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Why are source maps valuable to researchers?","acceptedAnswer":{"@type":"Answer","text":"They can reveal original file structure, feature names, and integration clues that make other browser-visible findings easier to interpret."}},
+          {"@type":"Question","name":"Does a public source map mean the site is vulnerable?","acceptedAnswer":{"@type":"Answer","text":"No. It means additional implementation detail is exposed. Whether that creates meaningful risk depends on what the map reveals and how it aligns with live behavior."}},
+          {"@type":"Question","name":"Can frontend artifacts reveal hidden routes?","acceptedAnswer":{"@type":"Answer","text":"They can reveal route names or feature references, but that does not prove those routes are reachable or useful in the current production state."}},
+          {"@type":"Question","name":"What is the safest way to write up artifact findings?","acceptedAnswer":{"@type":"Answer","text":"Describe the observed artifact, explain the likely relevance, and clearly separate verified runtime evidence from inference."}}
+        ]
+      }
+    </script>
+  </body>
+</html>
