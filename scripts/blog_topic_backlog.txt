@@ -9,6 +9,8 @@
 # artifact-analysis
 
 # used
+how-to-verify-source-map-exposure-without-overclaiming | How to verify source map exposure without overclaiming risk
+source-map-false-positives-what-looks-scary-but-isnt-proof | Source map false positives: what looks scary but is not proof
 hidden-external-service-dependencies-browser-signals | How to spot hidden external service dependencies from browser signals
 source-maps-and-frontend-artifacts | Source maps, frontend artifacts, and what they can reveal to researchers
 analytics-trackers-risk-signals | Third-party analytics, trackers, and risk signals: what is normal and what deserves review

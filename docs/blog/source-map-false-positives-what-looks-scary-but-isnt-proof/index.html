@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Source Map False Positives: What Looks Scary but Isn’t Proof | Source Detector</title>
+    <meta name="description" content="A risk explainer on common source map false positives, what those clues can really mean, and when a source map finding deserves escalation." />
+    <meta property="og:title" content="Source Map False Positives: What Looks Scary but Isn’t Proof" />
+    <meta property="og:description" content="Learn how to separate useful source map signals from stale artifacts, dramatic naming, and other clues that look severe before they are verified." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/source-map-false-positives-what-looks-scary-but-isnt-proof/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/source-map-false-positives-what-looks-scary-but-isnt-proof/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>:root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }* { box-sizing:border-box; }body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }.wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }.nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }.eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }.subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }.meta { color:var(--muted); font-size:14px; }.panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }.cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }.btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }.btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }.btn-secondary { color:var(--text); }code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }</style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Source Map False Positives: What Looks Scary but Isn’t Proof","description":"A risk explainer on common source map false positives, what those clues can really mean, and when a source map finding deserves escalation.","url":"https://sunhuawei.github.io/SourceDetector/blog/source-map-false-positives-what-looks-scary-but-isnt-proof/","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"dateModified":"2026-03-30","datePublished":"2026-03-30"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav"><a href="../../">← Source Detector home</a><a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a><a href="https://github.com/SunHuawei/SourceDetector">GitHub</a></div>
+      <header>
+        <div class="eyebrow">Risk explainer · False positives · Source maps</div>
+        <h1>Source Map False Positives: What Looks Scary but Isn’t Proof</h1>
+        <p class="subhead">Source maps often make frontend findings feel more serious because they replace vague minified code with readable names. That extra readability is useful, but it also creates a common trap: people start treating dramatic labels, old modules, or half-understood implementation details as if they were confirmed risk. In practice, the most common source map false positives are stale deploy artifacts, internal-sounding names with no current function, dead feature code, public identifiers that only look sensitive, and readable paths that do not change any real trust boundary. A source map can strengthen a finding. It can also make a weak one sound smarter than it is.</p>
+        <p class="meta">Category: risk-explainer · Search intent: understand common source map false positives and when they actually matter · Last reviewed: 2026-03-30</p>
+      </header>
+      <div class="panel"><strong>Short answer:</strong> the strongest source map false positives come from readability without verification. If a map reveals a scary name but you cannot connect it to a current asset, live flow, or meaningful trust-boundary change, keep the claim narrow. Readable code is not the same thing as proved impact.</div>
+      <article>
+        <h2>What you can detect</h2>
+        <p>Source maps can help you detect implementation structure, build residue, hidden route names, module ownership, provider integrations, and better context around suspicious strings. They are good at making frontend evidence easier to interpret.</p>
+        <p>What they do poorly is settle severity by themselves. A readable module named <code>adminExportService</code> may point to a real feature, an abandoned experiment, or a harmless frontend wrapper around a fully protected backend. The map tells you where to look next. It does not finish the argument.</p>
+        <h2>Signals that the finding may still matter</h2>
+        <ul>
+          <li><strong>Current asset linkage:</strong> the readable clue belongs to a live bundle the page is using now.</li>
+          <li><strong>Runtime support:</strong> the map clarifies a request, route, or feature path you can still observe in the browser.</li>
+          <li><strong>Trust-boundary relevance:</strong> the revealed detail changes how you think about access, sensitive flows, or hidden dependencies.</li>
+          <li><strong>Cross-evidence consistency:</strong> the source map context matches what nearby code, requests, and page state already suggest.</li>
+        </ul>
+
+        <h2>The false positives that show up most often</h2>
+        <ul>
+          <li><strong>Stale release residue:</strong> a public map from an older deploy that no longer matches the current app.</li>
+          <li><strong>Dramatic naming:</strong> module or function names that sound privileged but are not reachable or relevant now.</li>
+          <li><strong>Dead code history:</strong> old integrations, unused routes, feature flags, or commented logic preserved in artifacts.</li>
+          <li><strong>Public identifiers dressed up as secrets:</strong> tenant IDs, publishable keys, client labels, and analytics config that look more severe once names are readable.</li>
+          <li><strong>Framework and build internals:</strong> details that are useful for debugging or reverse-engineering but weak as security findings on their own.</li>
+        </ul>
+        <h2>How to verify</h2>
+        <h3>1. Reconnect the readable clue to the live app</h3>
+        <p>Start with the production asset and current page behavior. If the clue only exists in a readable map but never aligns with a live route, request, or feature state, treat it as weaker evidence.</p>
+        <h3>2. Check whether the map is fresh</h3>
+        <p>Old maps are one of the easiest ways to overstate current risk. Compare bundle references, filenames, and runtime behavior. If it looks stale, say so directly.</p>
+        <h3>3. Ask whether the readable detail changes trust</h3>
+        <p>A clue matters more when it changes what a reviewer believes about access, data flow, hidden dependencies, or validation boundaries. If it only makes the code nicer to read, the security implication may stay limited.</p>
+        <h3>4. Label inference separately from fact</h3>
+        <p>Observed fact: the map is public and contains certain names. Inference: those names may correspond to sensitive functionality. Unproven point: whether that functionality is live, reachable, or risky in practice. That split keeps reports honest.</p>
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong><code>internal</code>, <code>admin</code>, or <code>secret</code> in names:</strong> often noise without runtime confirmation.</li>
+          <li><strong>Readable env blocks:</strong> labels can look important even when values are browser-safe.</li>
+          <li><strong>Large map size mistaken for high severity:</strong> size means disclosure breadth, not automatically security impact.</li>
+          <li><strong>Legacy vendor references:</strong> a map may preserve integrations no longer used by the site.</li>
+          <li><strong>Single-map conclusions:</strong> one readable artifact without supporting runtime evidence is usually not enough.</li>
+        </ul>
+        <h2>What this does not prove</h2>
+        <p>A public source map does not prove exploitability, data exposure, privilege bypass, or backend weakness. It does not prove that readable code paths are live. It does not prove that a key-like value is active or sensitive. It proves visibility, not outcome.</p>
+        <h2>When to escalate</h2>
+        <ul>
+          <li>The map is current and tied to a sensitive live feature.</li>
+          <li>Readable code turns a weak frontend clue into a reproducible, higher-confidence finding.</li>
+          <li>The map reveals hidden architecture or dependency context that materially changes review priority.</li>
+          <li>You can explain both the observed fact and the remaining uncertainty without stretching the claim.</li>
+        </ul>
+        <h2>Methodology</h2>
+        <p>This article is based on browser-visible review only: current production bundles, their referenced source maps when reachable, readable implementation context, and verification against ordinary page behavior. It treats source maps as evidence amplifiers, not as automatic proof of a vulnerability. Last reviewed: 2026-03-30.</p>
+        <div class="cta-box"><h3>Use Source Detector to reduce source map noise</h3><p>Source Detector helps you surface source map references alongside the surrounding frontend evidence, which makes it easier to tell apart strong triage signals and readable-but-weak source map noise.</p><div class="btn-row"><a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a><a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a></div></div>
+        <h2>FAQs</h2>
+        <h3>Why do source maps create so many false positives?</h3><p>Because they make weak clues easier to narrate. Readability raises confidence fast, even when the underlying evidence is still thin.</p>
+        <h3>Is a source map with internal-sounding names enough to escalate?</h3><p>Usually not by itself. It gets stronger when those names tie back to a current asset, live request, or sensitive feature path.</p>
+        <h3>What is the fastest sanity check?</h3><p>Check freshness first. A stale map explains a surprising number of dramatic but low-value findings.</p>
+        <h3>What makes a source map finding genuinely useful?</h3><p>When it changes triage decisions by clarifying current architecture, runtime behavior, or the meaning of another suspicious frontend clue.</p>
+      </article>
+      <footer><div class="footer-links"><a href="../../">Home</a><a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a><a href="../../faq/">FAQ</a><a href="../../privacy/">Privacy</a></div></footer>
+    </div>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Why do source maps create so many false positives?","acceptedAnswer":{"@type":"Answer","text":"Because they make weak clues easier to narrate. Readability raises confidence fast, even when the underlying evidence is still thin."}},{"@type":"Question","name":"Is a source map with internal-sounding names enough to escalate?","acceptedAnswer":{"@type":"Answer","text":"Usually not by itself. It gets stronger when those names tie back to a current asset, live request, or sensitive feature path."}},{"@type":"Question","name":"What is the fastest sanity check?","acceptedAnswer":{"@type":"Answer","text":"Check freshness first. A stale map explains a surprising number of dramatic but low-value findings."}},{"@type":"Question","name":"What makes a source map finding genuinely useful?","acceptedAnswer":{"@type":"Answer","text":"When it changes triage decisions by clarifying current architecture, runtime behavior, or the meaning of another suspicious frontend clue."}}]}</script>
+  </body>
+</html>
