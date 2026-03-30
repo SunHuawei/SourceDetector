@@ -236,20 +236,20 @@
         <p class="muted">Homepage mix target: 2 high-intent guides + 1 workflow + 1 risk explainer for browser-based security review.</p>
         <div class="grid-2">
           <div class="card">
+            <h3><a href="./blog/how-to-verify-whether-a-browser-visible-api-key-is-restricted/">How to Verify Whether a Browser-Visible API Key Is Actually Restricted</a></h3>
+            <p class="muted">High-intent guide: separate publishable browser-side keys from credentials that may authorize real actions, spend, or deeper review.</p>
+          </div>
+          <div class="card">
             <h3><a href="./blog/how-to-verify-source-map-exposure-without-overclaiming/">How to Verify Source Map Exposure Without Overclaiming Risk</a></h3>
             <p class="muted">High-intent guide: confirm a source map is current, decide what it actually reveals, and keep the risk claim as narrow as the evidence supports.</p>
           </div>
           <div class="card">
-            <h3><a href="./blog/how-to-detect-exposed-api-keys-in-frontend-javascript/">How to Detect Exposed API Keys in Frontend JavaScript</a></h3>
-            <p class="muted">High-intent guide: review shipped JavaScript, source maps, and runtime requests to tell real API key exposure from browser-visible noise.</p>
+            <h3><a href="./blog/review-client-side-feature-flags-hidden-service-dependencies/">How to Review Client-Side Feature Flags for Hidden Service Dependencies</a></h3>
+            <p class="muted">Workflow guide: use browser-visible flag state, scripts, and requests to spot hidden vendors, environments, and service dependencies.</p>
           </div>
           <div class="card">
-            <h3><a href="./blog/browser-based-recon-workflow-modern-web-apps/">Browser-Based Recon Workflow for Quickly Triaging Modern Web Apps</a></h3>
-            <p class="muted">Workflow guide: use a repeatable browser-first sequence to find stronger frontend signals before you spend time on deep manual review.</p>
-          </div>
-          <div class="card">
-            <h3><a href="./blog/source-map-false-positives-what-looks-scary-but-isnt-proof/">Source Map False Positives: What Looks Scary but Isn’t Proof</a></h3>
-            <p class="muted">Risk explainer: separate readable-but-weak source map clues from findings that genuinely change triage priority.</p>
+            <h3><a href="./blog/false-positives-exposed-secrets-frontend/">Common False Positives When Looking for Exposed Secrets in Frontend Apps</a></h3>
+            <p class="muted">Risk explainer: separate token-like noise, public identifiers, and stale artifacts from frontend findings that actually deserve escalation.</p>
           </div>
         </div>
         <p class="muted">Rotation rule: prefer representative freshness over strict chronology; keep at least one practical detection guide visible at all times.</p>

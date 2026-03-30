@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Review Client-Side Feature Flags for Hidden Service Dependencies | Source Detector</title>
+    <meta name="description" content="A browser-first workflow for reviewing client-side feature flags, spotting hidden service dependencies, and deciding which signals deserve deeper security or architecture review." />
+    <meta property="og:title" content="How to Review Client-Side Feature Flags for Hidden Service Dependencies" />
+    <meta property="og:description" content="Use browser-visible evidence to see what feature flag systems reveal about hidden integrations, environments, and operational dependencies." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/review-client-side-feature-flags-hidden-service-dependencies/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/review-client-side-feature-flags-hidden-service-dependencies/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      blockquote { margin:22px 0; padding:16px 18px; border-left:4px solid var(--accent2); background:rgba(255,255,255,.03); border-radius:0 12px 12px 0; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "How to Review Client-Side Feature Flags for Hidden Service Dependencies",
+        "description": "A browser-first workflow for reviewing client-side feature flags, spotting hidden service dependencies, and deciding which signals deserve deeper security or architecture review.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/review-client-side-feature-flags-hidden-service-dependencies/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "dateModified": "2026-03-31",
+        "datePublished": "2026-03-31"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+
+      <header>
+        <div class="eyebrow">Workflow guide · Browser recon · Hidden dependencies</div>
+        <h1>How to Review Client-Side Feature Flags for Hidden Service Dependencies</h1>
+        <p class="subhead">Client-side feature flag systems often reveal more than just which button is turned on. They can expose hidden vendors, environment labels, experiment families, API relationships, and the operational shape of a frontend that looks simple on the surface. That does not make every flag payload a security issue. It does make feature flag traffic a useful browser-first reconnaissance surface. The practical move is to review which flag service loads, what context the browser sends, how flag states change across page actions, and whether those changes point to undocumented services or trust boundaries worth manual review.</p>
+        <p class="meta">Category: workflow · Search intent: learn a browser workflow for reviewing feature flags and hidden frontend dependencies · Last reviewed: 2026-03-31</p>
+      </header>
+
+      <div class="panel"><strong>Short answer:</strong> review feature flag traffic by identifying the flag vendor or payload source, comparing flag state before and after meaningful actions, and looking for context fields that reveal hidden integrations, environments, or product capabilities. The valuable output is not “feature flags exist.” It is understanding what those flags imply about the site’s service dependencies and review priorities.</div>
+
+      <article>
+        <h2>What this method can detect</h2>
+        <p>This workflow can surface third-party flag vendors, hidden product modules, environment segmentation, client-side experiments, and backend service relationships that are not obvious from the UI alone. It can also reveal when a public page quietly carries account tier hints, rollout stages, or internal naming patterns that help explain how the frontend is actually assembled.</p>
+        <p>For security and audit work, that matters because hidden dependencies change where sensitive flows may originate. A page that looks like a simple dashboard shell may actually rely on a separate experimentation platform, analytics vendor, AI path, or role-gated product service you would otherwise miss.</p>
+
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Vendor-specific requests:</strong> calls to recognizable flag or experiment platforms, or internal endpoints that clearly return flag configuration.</li>
+          <li><strong>Environment and cohort fields:</strong> payload values that reference staging names, tenant groups, beta programs, regions, or internal product families.</li>
+          <li><strong>Action-driven flag changes:</strong> flags that shift after login, page navigation, form submission, or role changes.</li>
+          <li><strong>Hidden capability names:</strong> experiment or feature labels that point to modules the UI barely exposes, such as export, billing, AI, moderation, or admin-like capabilities.</li>
+          <li><strong>Context-rich bootstraps:</strong> initialization payloads that include user type, workspace identifiers, org plans, or service identifiers.</li>
+        </ul>
+
+        <h2>How to verify</h2>
+        <h3>1. Identify where the flag state comes from</h3>
+        <p>Some apps fetch flags from a known vendor. Others embed them into a bootstrap response or inline config blob. Start by locating the source. Until you know that, it is easy to confuse generic configuration with true flag behavior.</p>
+
+        <h3>2. Capture one baseline state</h3>
+        <p>Record the page state before interacting: logged out or logged in, public page or app shell, chosen workspace, selected tab, and any visible experiment toggles. Feature flags make more sense when you tie them to a specific session shape.</p>
+
+        <h3>3. Change one variable at a time</h3>
+        <p>Login, open a different route, switch locale, trigger a product action, or move between user states one step at a time. If flag payloads or downstream requests change, you learn which services are actually conditional and which are always loaded.</p>
+
+        <h3>4. Look for dependency clues, not just feature names</h3>
+        <p>A label like <code>new_ui</code> tells you almost nothing. A flag group that references moderation, embeddings, export queues, billing providers, or support tooling tells you much more. The goal is to understand what the frontend depends on, not just which experiment names sound interesting.</p>
+
+        <h3>5. Cross-check with loaded scripts and requests</h3>
+        <p>The strongest pattern is when a flag name and a network behavior tell the same story. If a flag implies a hidden module and the browser also loads a matching vendor or endpoint family, confidence goes up quickly.</p>
+
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Dead or legacy flags:</strong> old experiment names often survive long after the underlying feature is retired.</li>
+          <li><strong>Generic labels:</strong> names like <code>test_a</code> or <code>variant_b</code> create curiosity but carry little security meaning by themselves.</li>
+          <li><strong>UI experiments mistaken for backend reach:</strong> a visible experiment does not automatically imply privileged service access.</li>
+          <li><strong>Staging-like names without exposure value:</strong> an environment label can reveal process details without proving a live security weakness.</li>
+        </ul>
+
+        <h2>What this does not prove</h2>
+        <p>Feature flag review does not prove backend exploitability, unauthorized access, or a confirmed vulnerability. It also does not prove that a hidden module is reachable in the current session. Browser-visible flag state is best treated as architecture and dependency evidence: useful, concrete, but still incomplete.</p>
+
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>A flag payload reveals a hidden dependency or capability that materially changes the app’s trust model.</li>
+          <li>Flag state changes are tied to sensitive flows such as billing, export, file handling, moderation, or AI requests.</li>
+          <li>The same hidden service appears in both flag data and runtime network behavior.</li>
+          <li>Environment or role fields suggest the browser is receiving more internal context than expected for that surface.</li>
+        </ul>
+
+        <h2>Methodology</h2>
+        <p>This article is based on browser-visible review only: feature flag payload sources, initialization context, downstream request behavior, and script-loading evidence observed during normal browsing. It does not treat flag names or public config as proof of a security issue by themselves. Last reviewed: 2026-03-31.</p>
+
+        <div class="cta-box">
+          <h3>Use Source Detector to connect feature flag clues with the rest of the frontend evidence</h3>
+          <p>Source Detector helps you inspect source maps, client-side assets, and suspicious browser-visible behavior in one place, which makes it easier to tell whether a feature flag clue is just metadata or the start of a stronger hidden-dependency story.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+
+        <h2>FAQs</h2>
+        <h3>Why look at feature flags during browser recon?</h3>
+        <p>Because they often reveal hidden modules, vendors, rollout logic, and environment context that the visible UI does not explain.</p>
+        <h3>Does a feature flag payload mean I found a vulnerability?</h3>
+        <p>No. It usually means you found architecture evidence or operational clues that may justify a closer review.</p>
+        <h3>What makes a flag clue stronger?</h3>
+        <p>It becomes stronger when the flag data lines up with loaded scripts, runtime requests, or a sensitive flow that changes the security story.</p>
+        <h3>Are generic experiment names useful?</h3>
+        <p>Usually not by themselves. They become useful only when paired with richer context or matching runtime behavior.</p>
+      </article>
+
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"Why look at feature flags during browser recon?","acceptedAnswer":{"@type":"Answer","text":"Because they often reveal hidden modules, vendors, rollout logic, and environment context that the visible UI does not explain."}},
+          {"@type":"Question","name":"Does a feature flag payload mean I found a vulnerability?","acceptedAnswer":{"@type":"Answer","text":"No. It usually means you found architecture evidence or operational clues that may justify a closer review."}},
+          {"@type":"Question","name":"What makes a flag clue stronger?","acceptedAnswer":{"@type":"Answer","text":"It becomes stronger when the flag data lines up with loaded scripts, runtime requests, or a sensitive flow that changes the security story."}},
+          {"@type":"Question","name":"Are generic experiment names useful?","acceptedAnswer":{"@type":"Answer","text":"Usually not by themselves. They become useful only when paired with richer context or matching runtime behavior."}}
+        ]
+      }
+    </script>
+  </body>
+</html>
