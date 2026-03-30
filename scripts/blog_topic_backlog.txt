@@ -40,3 +40,5 @@ leaked-endpoints-passive-recon | What leaked endpoints can reveal during passive
 separate-noisy-browser-traffic-from-security-signals | How to separate noisy browser traffic from meaningful security signals
 frontend-leakage-signals-without-false-certainty | A practical workflow for finding frontend leakage signals without false certainty
 when-browser-evidence-needs-manual-review | When browser evidence should trigger manual security review
+source-detector-high-intent-browser-visible-api-key-restrictions | How to verify whether a browser-visible API key is actually restricted
+source-detector-workflow-feature-flag-hidden-dependencies | How to review client-side feature flags for hidden service dependencies
