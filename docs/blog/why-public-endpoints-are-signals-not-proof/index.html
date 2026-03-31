@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Why Public Endpoints Are Signals, Not Proof | Source Detector</title>
+    <meta name="description" content="A risk explainer on what public endpoint strings, routes, and browser-visible paths can tell you—and what they still do not prove." />
+    <meta property="og:title" content="Why Public Endpoints Are Signals, Not Proof" />
+    <meta property="og:description" content="Learn how to interpret browser-visible endpoints without jumping from discovery to breach claims." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/why-public-endpoints-are-signals-not-proof/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/why-public-endpoints-are-signals-not-proof/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Why Public Endpoints Are Signals, Not Proof","description":"A risk explainer on what public endpoint strings, routes, and browser-visible paths can tell you—and what they still do not prove.","url":"https://sunhuawei.github.io/SourceDetector/blog/why-public-endpoints-are-signals-not-proof/","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"dateModified":"2026-04-01","datePublished":"2026-04-01"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+      <header>
+        <div class="eyebrow">Risk explainer · Browser recon · Detection limits</div>
+        <h1>Why Public Endpoints Are Signals, Not Proof</h1>
+        <p class="subhead">Public endpoints show up everywhere in modern frontend apps: route definitions, fetch targets, service configuration, GraphQL paths, upload destinations, analytics collectors, and SDK defaults. They are useful recon artifacts because they tell you how a client is wired. But they do not automatically prove reachability, privilege, weak authorization, or exploitability. A path can be visible and still be gated. It can be current and still be harmless. It can look internal and still be a dead remnant. The disciplined move is to treat endpoint discovery as a routing clue, then verify what the browser can actually observe before escalating.</p>
+        <p class="meta">Category: risk-explainer · Search intent: understand what leaked or browser-visible endpoints do and do not prove during frontend review · Last reviewed: 2026-04-01</p>
+      </header>
+      <div class="panel"><strong>Short answer:</strong> public endpoints are valuable because they reveal architecture and workflow hints, but the string itself is only a signal. To justify a stronger claim, you still need runtime behavior, contextual evidence, and a narrow statement about what was actually observed.</div>
+      <article>
+        <h2>What this method can detect</h2>
+        <p>This framing helps reviewers interpret endpoint discoveries in bundles, source maps, and network traffic. It can surface hidden services, environment clues, routing boundaries, and the likely business function behind a page flow. It also helps you avoid jumping from "I found a path" to "this system is exposed" when the evidence does not support that leap.</p>
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Live runtime use:</strong> the endpoint appears in real browser requests, not only in static JavaScript.</li>
+          <li><strong>Flow-specific behavior:</strong> the path is triggered by a concrete action such as search, upload, export, or chat submission.</li>
+          <li><strong>Environment clues:</strong> hostnames, subdomains, route prefixes, or naming conventions suggest whether the target is public, internal-facing, or tenant-specific.</li>
+          <li><strong>Response evidence:</strong> status codes, redirects, headers, and payload shapes reveal more than the endpoint string alone.</li>
+        </ul>
+        <h2>How to verify</h2>
+        <h3>1. Ask where the endpoint was found</h3>
+        <p>A route discovered in a source map, a minified bundle, and live network traffic are not equal. Start by classifying the evidence source. Runtime observations usually deserve more weight than static residue.</p>
+        <h3>2. Tie it to one browser action</h3>
+        <p>Find the page event that causes the endpoint to appear. This turns a raw route string into a behavior clue. Without that connection, you may be documenting architecture trivia instead of a meaningful exposure signal.</p>
+        <h3>3. Inspect surrounding request evidence</h3>
+        <p>Look at method, headers, authentication context, response status, content type, and whether the browser is clearly acting as a thin client for a normal product flow. Often the surrounding request explains why a path is visible without making it a problem.</p>
+        <h3>4. State the narrowest supportable claim</h3>
+        <p>A careful claim sounds like this: "The frontend references and uses endpoint X during action Y, which suggests dependency Z." It should not sound like: "Endpoint X is exposed and vulnerable." The first is evidence-led. The second adds conclusions you may not have earned.</p>
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Dead routes:</strong> old code paths can survive in bundles or source maps long after backend behavior changed.</li>
+          <li><strong>Expected public APIs:</strong> many modern apps openly call public endpoints as part of normal browser operation.</li>
+          <li><strong>Internal-looking names:</strong> words like <code>admin</code>, <code>internal</code>, or <code>private</code> can be misleading without runtime context.</li>
+          <li><strong>One-off test hosts:</strong> staging-like or vendor-looking domains may be leftovers rather than active production dependencies.</li>
+        </ul>
+        <h2>What this does not prove</h2>
+        <p>Endpoint discovery does not prove authorization weakness, backend reachability outside the observed page flow, data exposure, or exploitability. It does not prove that a service is public just because the route string is visible in the browser. And it definitely does not prove a breach.</p>
+        <h2>When to escalate to manual review</h2>
+        <ul>
+          <li>The endpoint is used in a sensitive runtime flow involving uploads, billing, account state, or privileged actions.</li>
+          <li>The response behavior suggests unusually direct access to an internal or provider-facing service.</li>
+          <li>The same endpoint pattern shows up consistently across assets, sessions, or environments.</li>
+          <li>The endpoint materially changes how you would scope follow-up review, even if impact remains unproven.</li>
+        </ul>
+        <h2>Methodology</h2>
+        <p>This article is based on browser-visible and asset-visible evidence only: route strings, request traffic, source maps, and surrounding runtime behavior. It deliberately treats public artifacts as recon signals rather than proof of backend weakness. Last reviewed: 2026-04-01.</p>
+        <div class="cta-box">
+          <h3>Use Source Detector to review endpoints with the context that makes them meaningful</h3>
+          <p>Source Detector helps you inspect source maps, suspicious assets, and live request patterns together, so endpoint findings stay tied to evidence instead of turning into overconfident guesses.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+        <h2>FAQs</h2>
+        <h3>Are public endpoints ever worth reporting?</h3>
+        <p>Yes, when the endpoint is tied to meaningful runtime behavior and changes triage priority. The key is to report the evidence narrowly.</p>
+        <h3>Why is a visible path not enough?</h3>
+        <p>Because visibility tells you that the client knows about the route, not whether the route is weakly protected or broadly usable.</p>
+        <h3>What makes endpoint discovery more credible?</h3>
+        <p>Reproducible runtime use, response context, and clear separation between what the browser showed and what you infer from it.</p>
+      </article>
+      <footer><div class="footer-links"><a href="../../">Home</a><a href="../../faq/">FAQ</a><a href="../../privacy/">Privacy</a></div></footer>
+    </div>
+  </body>
+</html>
