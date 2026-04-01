@@ -1,7 +1,5 @@
 # high-intent
-
 # workflow
-
 # comparison
 
 # risk-explainer
@@ -9,6 +7,8 @@
 # artifact-analysis
 
 # used
+how-to-tell-if-a-client-side-token-is-just-session-state-or-a-real-exposure | How to tell whether a client-side token is just session state or a real exposure
+trace-third-party-script-chains-before-calling-them-risky | How to trace third-party script chains before calling them risky
 how-to-verify-source-map-exposure-without-overclaiming | How to verify source map exposure without overclaiming risk
 source-map-false-positives-what-looks-scary-but-isnt-proof | Source map false positives: what looks scary but is not proof
 hidden-external-service-dependencies-browser-signals | How to spot hidden external service dependencies from browser signals
@@ -19,7 +19,6 @@ hardcoded-ai-service-credentials-client-side | How to detect hardcoded AI servic
 manual-review-vs-automated-detection-frontend | Manual review vs automated detection for frontend leakage triage
 suspicious-api-calls-what-they-prove | What a suspicious API call does and does not prove
 audit-browser-visible-integrations | How to audit browser-visible integrations without touching the backend
-# Move published topics here after successful deployment verification.
 extension-vs-devtools-request-inspection | Browser extension vs DevTools for request inspection: what each can actually prove
 why-browser-side-evidence-still-matters | Why browser-side evidence is useful even when it is incomplete
 inspect-ai-enabled-sites-integration-clues | How to inspect AI-enabled sites for exposed integration clues
