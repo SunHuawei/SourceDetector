@@ -7,6 +7,8 @@
 # artifact-analysis
 
 # used
+how-to-review-graphql-endpoints-from-browser-evidence | How to Review GraphQL Endpoints from Browser Evidence Without Overclaiming
+how-to-assess-debug-endpoints-and-dev-paths-from-frontend-artifacts | How to Assess Debug Endpoints and Dev Paths from Frontend Artifacts
 how-to-tell-if-a-client-side-token-is-just-session-state-or-a-real-exposure | How to tell whether a client-side token is just session state or a real exposure
 trace-third-party-script-chains-before-calling-them-risky | How to trace third-party script chains before calling them risky
 how-to-verify-source-map-exposure-without-overclaiming | How to verify source map exposure without overclaiming risk
