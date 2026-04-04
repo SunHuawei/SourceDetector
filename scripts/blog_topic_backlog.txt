@@ -7,6 +7,8 @@
 # artifact-analysis
 
 # used
+how-to-assess-browser-visible-openai-realtime-config-without-overclaiming | How to Assess Browser-Visible OpenAI Realtime Config Without Overclaiming
+what-csp-report-endpoints-do-and-dont-prove-about-third-party-risk | What CSP Report Endpoints Do and Don’t Prove About Third-Party Risk
 how-to-assess-whether-a-browser-visible-upload-token-has-real-privilege | How to Assess Whether a Browser-Visible Upload Token Has Real Privilege
 what-client-side-error-messages-do-and-dont-prove-about-backend-exposure | What Client-Side Error Messages Do and Don’t Prove About Backend Exposure
 how-to-review-graphql-endpoints-from-browser-evidence | How to Review GraphQL Endpoints from Browser Evidence Without Overclaiming

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Assess Browser-Visible OpenAI Realtime Config Without Overclaiming | Source Detector</title>
+    <meta name="description" content="A verification-first guide to deciding whether browser-visible OpenAI Realtime configuration is routine frontend setup, a scoped integration clue, or a finding that deserves deeper review." />
+    <meta property="og:title" content="How to Assess Browser-Visible OpenAI Realtime Config Without Overclaiming" />
+    <meta property="og:description" content="Learn which browser-visible realtime AI signals matter, which ones are weak, and when to escalate for manual review." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/how-to-assess-browser-visible-openai-realtime-config-without-overclaiming/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/how-to-assess-browser-visible-openai-realtime-config-without-overclaiming/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "How to Assess Browser-Visible OpenAI Realtime Config Without Overclaiming",
+        "description": "A verification-first guide to deciding whether browser-visible OpenAI Realtime configuration is routine frontend setup, a scoped integration clue, or a finding that deserves deeper review.",
+        "url": "https://sunhuawei.github.io/SourceDetector/blog/how-to-assess-browser-visible-openai-realtime-config-without-overclaiming/",
+        "author": {"@type": "Organization", "name": "Source Detector"},
+        "publisher": {"@type": "Organization", "name": "Source Detector"},
+        "dateModified": "2026-04-05",
+        "datePublished": "2026-04-05"
+      }
+    </script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+      <header>
+        <div class="eyebrow">High-intent guide · AI integration evidence · Verification-first</div>
+        <h1>How to Assess Browser-Visible OpenAI Realtime Config Without Overclaiming</h1>
+        <p class="subhead">If you spot OpenAI Realtime settings, model identifiers, websocket endpoints, or session bootstrapping code in a browser app, that is a useful signal, not automatic proof of exposed provider credentials. The first question is not “did I find a breach?” It is narrower: what exactly is visible, what runtime action uses it, what trust boundary is still server-mediated, and what part of the flow is merely configuration versus real authorization. Good frontend review can tell you whether you are looking at ordinary client bootstrapping, a scoped integration worth documenting, or a stronger sign that a live browser flow may deserve manual security review.</p>
+        <p class="meta">Category: high-intent · Search intent: verify whether browser-visible OpenAI Realtime clues indicate real exposure or normal frontend setup · Last reviewed: 2026-04-05</p>
+      </header>
+      <div class="panel"><strong>Short answer:</strong> browser-visible realtime config matters when it shows how the app connects, what model or session shape it expects, and whether sensitive actions appear to be initiated directly from the browser. It does <em>not</em> prove exposed long-lived credentials, unrestricted provider access, or exploitable impact by itself.</div>
+      <article>
+        <h2>What you can detect</h2>
+        <p>This workflow can detect whether a site is shipping visible realtime integration clues such as model names, session parameters, websocket endpoints, ephemeral token handling, audio or event transport logic, and prompt scaffolding tied to live user actions. It can also help you separate plain product wiring from riskier patterns, like browser-side code that appears to carry more authority than the page should need.</p>
+        <p>That distinction matters in practice. Modern AI apps often expose a surprising amount of client logic because the browser has to initialize voice, text, and streaming interfaces. Visibility alone is normal. What matters is whether the browser seems to be holding meaningful authority instead of just participating in a constrained session flow.</p>
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Live runtime linkage:</strong> the config appears during an actual chat, voice, or streaming event flow, not just as leftover text in a stale bundle.</li>
+          <li><strong>Session bootstrapping clues:</strong> the browser receives short-lived session material, signed session instructions, or server-issued realtime parameters immediately before connection.</li>
+          <li><strong>Direct provider-facing requests:</strong> requests look like they go straight from the browser to a provider-facing realtime endpoint rather than through a fully mediated backend relay.</li>
+          <li><strong>Model and modality hints:</strong> the code references streaming models, audio formats, or event channels that explain the feature set and help you understand whether the browser is only doing client setup.</li>
+          <li><strong>Privilege mismatch:</strong> browser-visible material appears to control more than the frontend should reasonably need, such as broad account operations, persistent admin actions, or non-session-scoped capabilities.</li>
+        </ul>
+        <h2>How to verify</h2>
+        <h3>1. Tie the clue to one concrete user action</h3>
+        <p>Start with a single feature, like pressing a talk button or sending one message. Watch which requests appear, which scripts execute, and whether the suspicious config only shows up during that flow. This keeps the evidence narrow and avoids over-reading dead code.</p>
+        <h3>2. Separate session material from durable credentials</h3>
+        <p>A lot of realtime integrations rely on short-lived session objects or server-minted handoff data. Those are different from durable provider keys. If the browser is only receiving narrow, temporary session parameters right before connection, that tells a different story than a long-lived credential embedded in bundled code.</p>
+        <h3>3. Inspect request direction and role</h3>
+        <p>Look at whether the browser is talking to the site backend, a relay service, or a provider-facing endpoint. Then ask what role the visible value appears to play: identification, session setup, routing, or authorization. Those roles are easy to blur together, and that is where bad findings usually start.</p>
+        <h3>4. Check whether the flow still depends on server mediation</h3>
+        <p>Even when the browser opens a realtime channel directly, the server may still define session limits, allowed models, or acceptable actions. If the observable flow shows a backend issuing ephemeral configuration per session, that is usually evidence of control, not evidence that the app dumped its master credential into the client.</p>
+        <h3>5. Compare repeated runs</h3>
+        <p>Run the same feature again in a fresh tab or session. If the visible value rotates quickly or changes per session, that pushes the interpretation toward scoped handoff material. If the same credential-like value stays stable across sessions and appears central to privileged calls, concern rises.</p>
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Model names and endpoint paths:</strong> these reveal architecture, not secrets.</li>
+          <li><strong>Ephemeral session artifacts:</strong> short-lived session setup can look scary when copied out of context, but it often exists precisely to avoid shipping durable credentials.</li>
+          <li><strong>Instruction fragments or tool schemas:</strong> interesting from a product-analysis perspective, but not proof of security exposure.</li>
+          <li><strong>Realtime transport libraries:</strong> a websocket client or audio pipeline in the bundle does not mean the browser is holding privileged provider access.</li>
+        </ul>
+        <h2>Limits and what this does not prove</h2>
+        <p>Browser review does not prove whether a provider key is unrestricted, whether backend safeguards are strong, or whether a visible realtime flow can be abused outside the intended page context. It also does not prove cost impact, cross-tenant access, or policy bypass. Public artifacts tell you what the frontend reveals. They do not automatically reveal the full server policy behind the integration.</p>
+        <h2>When to escalate</h2>
+        <ul>
+          <li>The same credential-like value is stable across sessions and appears to authorize meaningful provider-facing actions.</li>
+          <li>The browser seems to invoke sensitive capabilities directly without obvious session scoping or backend mediation.</li>
+          <li>Visible config materially changes the trust story of the app, such as enabling broader model usage or account-level actions than the frontend should control.</li>
+          <li>You can document repeatable runtime evidence showing that the visible material is operational, current, and tied to real behavior.</li>
+        </ul>
+        <h2>Methodology + last reviewed</h2>
+        <p>This article is based on browser-visible assets, live request observation, and runtime flow review. It intentionally separates public evidence from confirmed provider-side policy. Last reviewed: 2026-04-05.</p>
+        <div class="cta-box">
+          <h3>Use Source Detector to keep the evidence together</h3>
+          <p>Source Detector helps you review suspicious strings, source maps, and browser-side artifacts in one place so you can decide whether an AI integration clue is normal client setup or something worth escalating.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+        <h2>FAQs</h2>
+        <h3>Does a visible OpenAI Realtime endpoint mean the site leaked a secret?</h3>
+        <p>No. It means the frontend reveals integration details. Whether anything sensitive leaked depends on what credentials or session material are visible and how much authority they carry.</p>
+        <h3>What is the strongest reassuring signal?</h3>
+        <p>A backend-issued, short-lived session handoff that rotates per use is usually more consistent with controlled design than with a durable credential leak.</p>
+        <h3>What is the strongest escalation signal?</h3>
+        <p>A stable browser-visible credential that appears to authorize meaningful provider-facing actions across sessions is a much stronger reason to escalate.</p>
+        <h3>Can browser evidence still be useful even if it is incomplete?</h3>
+        <p>Yes. Good browser evidence narrows what the integration is doing, which questions remain open, and whether manual review is warranted.</p>
+      </article>
+      <footer>
+        <div class="footer-links">
+          <a href="../../">Home</a>
+          <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Chrome Web Store</a>
+          <a href="../../faq/">FAQ</a>
+          <a href="../../privacy/">Privacy</a>
+        </div>
+      </footer>
+    </div>
+    <script type="application/ld+json">
+      {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+        {"@type":"Question","name":"Does a visible OpenAI Realtime endpoint mean the site leaked a secret?","acceptedAnswer":{"@type":"Answer","text":"No. It means the frontend reveals integration details. Whether anything sensitive leaked depends on what credentials or session material are visible and how much authority they carry."}},
+        {"@type":"Question","name":"What is the strongest reassuring signal?","acceptedAnswer":{"@type":"Answer","text":"A backend-issued, short-lived session handoff that rotates per use is usually more consistent with controlled design than with a durable credential leak."}},
+        {"@type":"Question","name":"What is the strongest escalation signal?","acceptedAnswer":{"@type":"Answer","text":"A stable browser-visible credential that appears to authorize meaningful provider-facing actions across sessions is a much stronger reason to escalate."}},
+        {"@type":"Question","name":"Can browser evidence still be useful even if it is incomplete?","acceptedAnswer":{"@type":"Answer","text":"Yes. Good browser evidence narrows what the integration is doing, which questions remain open, and whether manual review is warranted."}}
+      ]}
+    </script>
+  </body>
+</html>
