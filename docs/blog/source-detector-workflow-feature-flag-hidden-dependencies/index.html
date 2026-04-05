@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Feature Flags and Hidden Dependencies: A Browser Workflow for Security Review | Source Detector</title>
+    <meta name="description" content="A practical workflow for using browser-visible feature flag traffic to spot hidden vendors, service dependencies, and review priorities without overstating what flag payloads prove." />
+    <meta property="og:title" content="Feature Flags and Hidden Dependencies: A Browser Workflow for Security Review" />
+    <meta property="og:description" content="Learn how to inspect client-side feature flag traffic for hidden service dependencies while keeping architecture clues separate from vulnerability claims." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/source-detector-workflow-feature-flag-hidden-dependencies/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/source-detector-workflow-feature-flag-hidden-dependencies/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Feature Flags and Hidden Dependencies: A Browser Workflow for Security Review","description":"A practical workflow for using browser-visible feature flag traffic to spot hidden vendors, service dependencies, and review priorities without overstating what flag payloads prove.","url":"https://sunhuawei.github.io/SourceDetector/blog/source-detector-workflow-feature-flag-hidden-dependencies/","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"dateModified":"2026-04-06","datePublished":"2026-04-06"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+      <header>
+        <div class="eyebrow">Workflow guide · Feature flags · Hidden dependencies</div>
+        <h1>Feature Flags and Hidden Dependencies: A Browser Workflow for Security Review</h1>
+        <p class="subhead">Client-side feature flag systems often reveal more than release logic. They can expose hidden vendors, internal service names, rollout boundaries, role-aware behavior, and product capabilities that the visible UI barely hints at. That makes feature flag traffic useful for browser-based recon and technical audit work. It does not make every flag payload a security finding. The disciplined workflow is to identify where the flag state comes from, compare it across one controlled session change at a time, and connect those clues to the rest of the browser evidence. Done well, feature flag review helps you map hidden dependencies without drifting into weak vulnerability claims.</p>
+        <p class="meta">Category: workflow · Search intent: learn a browser workflow for reviewing client-side feature flags and hidden service dependencies · Last reviewed: 2026-04-06</p>
+      </header>
+      <div class="panel"><strong>Short answer:</strong> feature flag review is valuable when it helps you map hidden service dependencies, conditional capabilities, and trust-boundary changes. But flag names alone are architecture clues, not proof of exploitability or backend weakness.</div>
+      <article>
+        <h2>What you can detect</h2>
+        <p>This workflow can detect whether a page depends on a third-party flag vendor, whether hidden modules appear only for certain users or routes, whether rollout logic hints at undocumented service relationships, and whether browser-visible experiment context changes the way you should prioritize security review. It is especially useful when a frontend looks simple on the surface but behaves like a shell for many conditional services underneath.</p>
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Flag payload sources:</strong> requests to known experimentation vendors or internal endpoints that clearly return feature state.</li>
+          <li><strong>Capability-shaped names:</strong> flags referencing billing, AI, moderation, exports, uploads, admin surfaces, or other meaningful modules.</li>
+          <li><strong>Session-sensitive changes:</strong> flag state shifts after login, route changes, workspace changes, or one specific product action.</li>
+          <li><strong>Context fields:</strong> tenant, region, plan, role, org, environment, or cohort values that explain why behavior differs.</li>
+          <li><strong>Cross-evidence alignment:</strong> the flag clues line up with matching scripts, requests, or asset families elsewhere in the browser.</li>
+        </ul>
+        <h2>How to verify</h2>
+        <h3>1. Find the source of truth for flag state</h3>
+        <p>Some sites fetch flags from a vendor endpoint. Others inline them in a bootstrap payload. Start there. Until you know the source, it is easy to mistake generic frontend config for meaningful feature state.</p>
+        <h3>2. Capture a baseline session</h3>
+        <p>Record the exact state before interacting: logged out or logged in, route, workspace, locale, and visible product context. Feature flags make more sense when they are tied to one clear session shape rather than vague browsing notes.</p>
+        <h3>3. Change one variable at a time</h3>
+        <p>Login, switch route, trigger one product action, or move between user states one step at a time. If the flag payload changes, ask what dependency story that change suggests. A controlled comparison beats a noisy capture every time.</p>
+        <h3>4. Connect flag clues to runtime behavior</h3>
+        <p>Flag review gets much stronger when a capability hint matches a loaded script, endpoint family, or request pattern. A name by itself may be interesting. A name plus matching runtime evidence is usually actionable.</p>
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Legacy experiment residue:</strong> old flag names can survive long after a feature was retired.</li>
+          <li><strong>Generic labels:</strong> names like <code>variant_a</code> or <code>test_toggle</code> rarely mean much alone.</li>
+          <li><strong>UI-only experiments:</strong> a visible experiment can change presentation without changing backend trust boundaries.</li>
+          <li><strong>Staging-like vocabulary:</strong> environment-looking names may reveal process detail without confirming active exposure.</li>
+        </ul>
+        <h2>Limits and what this does not prove</h2>
+        <p>Feature flag review does not prove a vulnerability, unauthorized access, or exploitability. It does not prove that a hidden module is reachable in the current session, or that a service named in the flag system is exposed in a meaningful way. Treat the output as architecture evidence and dependency mapping, not automatic proof of risk.</p>
+        <h2>When to escalate</h2>
+        <ul>
+          <li>A flag payload reveals a hidden service or capability that materially changes the app's trust model.</li>
+          <li>Flag state changes are clearly tied to sensitive flows like billing, uploads, AI requests, moderation, or exports.</li>
+          <li>The same hidden dependency appears in both flag data and runtime network behavior.</li>
+          <li>The browser is receiving richer internal context than expected for that surface, even if impact remains unproven.</li>
+        </ul>
+        <h2>Methodology + last reviewed</h2>
+        <p>This article is based on browser-visible evidence only: feature flag payloads, initialization context, downstream requests, and loaded assets observed during normal browsing. It keeps architecture clues separate from vulnerability claims. Last reviewed: 2026-04-06.</p>
+        <div class="cta-box">
+          <h3>Use Source Detector to connect feature flag clues with the rest of the frontend evidence</h3>
+          <p>Source Detector helps you inspect source maps, client-side assets, and suspicious browser behavior in one place, so hidden-dependency review stays grounded in evidence instead of guesswork.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+        <h2>FAQs</h2>
+        <h3>Why review feature flags during browser recon?</h3>
+        <p>Because they often reveal hidden modules, vendors, rollout logic, and environment context that the visible UI does not explain.</p>
+        <h3>Does a flag payload mean I found a security issue?</h3>
+        <p>No. It usually means you found useful architecture evidence that may justify deeper review.</p>
+        <h3>What makes a flag clue stronger?</h3>
+        <p>It gets stronger when the flag data lines up with loaded scripts, request families, or a sensitive product flow.</p>
+      </article>
+      <footer><div class="footer-links"><a href="../../">Home</a><a href="../../faq/">FAQ</a><a href="../../privacy/">Privacy</a></div></footer>
+    </div>
+  </body>
+</html>

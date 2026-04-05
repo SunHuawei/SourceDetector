@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Browser-Visible API Key Restrictions: What You Can Verify Without Overclaiming | Source Detector</title>
+    <meta name="description" content="A verification-first guide to checking whether a browser-visible API key appears tightly restricted, loosely controlled, or still too ambiguous to classify from frontend evidence alone." />
+    <meta property="og:title" content="Browser-Visible API Key Restrictions: What You Can Verify Without Overclaiming" />
+    <meta property="og:description" content="Learn how to inspect browser-visible API keys for restriction clues without jumping from public visibility to breach claims." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/source-detector-high-intent-browser-visible-api-key-restrictions/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/source-detector-high-intent-browser-visible-api-key-restrictions/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Browser-Visible API Key Restrictions: What You Can Verify Without Overclaiming","description":"A verification-first guide to checking whether a browser-visible API key appears tightly restricted, loosely controlled, or still too ambiguous to classify from frontend evidence alone.","url":"https://sunhuawei.github.io/SourceDetector/blog/source-detector-high-intent-browser-visible-api-key-restrictions/","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"dateModified":"2026-04-06","datePublished":"2026-04-06"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+      <header>
+        <div class="eyebrow">High-intent guide · API key review · Verification-first</div>
+        <h1>Browser-Visible API Key Restrictions: What You Can Verify Without Overclaiming</h1>
+        <p class="subhead">If an API key appears in browser code, the first question is not whether it exists. The real question is whether the browser evidence suggests narrow client-side use, broader operational authority, or simply an ambiguous clue that still needs manual review. In practice, you can often verify more than people assume: whether the key is tied to one normal page flow, whether requests stay bound to one service family, whether behavior looks origin-aware, and whether the browser can trigger anything costly or privileged. What you cannot do from public artifacts alone is prove the full backend policy. That boundary matters. It is the difference between careful triage and overclaiming exposure.</p>
+        <p class="meta">Category: high-intent · Search intent: learn how to assess browser-visible API key restriction clues without overstating what frontend evidence proves · Last reviewed: 2026-04-06</p>
+      </header>
+      <div class="panel"><strong>Short answer:</strong> browser-visible API keys deserve escalation when runtime behavior suggests they authorize meaningful actions, lack obvious scope boundaries, or affect sensitive flows. But visibility alone is not proof of unrestricted access, compromise, or vulnerability.</div>
+      <article>
+        <h2>What you can detect</h2>
+        <p>This review method can help you detect whether a browser-visible key is acting like ordinary publishable configuration, a narrowly scoped integration credential, or a stronger signal that the frontend may be carrying more authority than it should. It also helps you distinguish live operational use from dead code, copied examples, or token-like strings with little standalone meaning.</p>
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Runtime participation:</strong> the key appears in live fetch, XHR, or SDK initialization during a reproducible page action.</li>
+          <li><strong>Sensitive flow context:</strong> the surrounding request touches uploads, AI calls, billing-related actions, exports, or user data handling.</li>
+          <li><strong>Restriction clues:</strong> the key seems bound to one origin, one product flow, one tenant, or one service family rather than broad account behavior.</li>
+          <li><strong>Consequence clues:</strong> the browser can trigger actions that appear to create cost, invoke provider operations, or widen access beyond simple identification.</li>
+          <li><strong>Cross-asset consistency:</strong> the same key or pattern appears across live requests and current assets, which makes stale residue less likely.</li>
+        </ul>
+        <h2>How to verify</h2>
+        <h3>1. Classify where the key appears</h3>
+        <p>A key embedded in a bootstrap object, a key passed to an SDK, and a key attached to a direct network request are not the same level of evidence. Start by asking where the browser actually exposes it and whether the exposure is current.</p>
+        <h3>2. Tie it to one concrete page action</h3>
+        <p>Do not review the string in isolation. Trigger one action and inspect whether the key becomes active in a real browser flow. That tells you much more than a static code match ever will.</p>
+        <h3>3. Inspect the request family around it</h3>
+        <p>Look at destination hosts, methods, response behavior, and whether the key stays inside a narrow service boundary. A key that only appears in one constrained browser integration usually tells a different story from a key that seems to travel across multiple sensitive requests.</p>
+        <h3>4. Write the narrowest supportable claim</h3>
+        <p>A strong review note sounds like this: the browser-visible key is actively used in flow X, appears limited to service Y, and may still need manual validation for backend restrictions. It should not jump straight to "unrestricted leaked secret" unless the evidence really earns that language.</p>
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Publishable frontend identifiers:</strong> some integrations are designed to expose a browser-side key safely within tight limits.</li>
+          <li><strong>Dead config residue:</strong> historical values can stay in bundles after the underlying path changed.</li>
+          <li><strong>Opaque non-secret strings:</strong> not every long value is a meaningful credential.</li>
+          <li><strong>Single-hit regex findings:</strong> a match with no runtime support is often too weak to classify confidently.</li>
+        </ul>
+        <h2>Limits and what this does not prove</h2>
+        <p>Browser evidence does not prove the full scope of backend enforcement, whether a key is accepted outside the observed page flow, or whether abuse is truly possible. It also does not prove breach, account compromise, or exploitability. Public visibility is a signal. Impact still has to be earned with stronger evidence.</p>
+        <h2>When to escalate</h2>
+        <ul>
+          <li>The key is used in live runtime flows tied to cost, privileged actions, or sensitive data handling.</li>
+          <li>The browser appears able to call provider-facing or internal-looking endpoints directly.</li>
+          <li>You can reproduce the same behavior across sessions, assets, or routes, which raises confidence the key is active and operationally relevant.</li>
+          <li>The finding materially changes how a reviewer should think about the app's trust boundary, even if impact is not yet proven.</li>
+        </ul>
+        <h2>Methodology + last reviewed</h2>
+        <p>This article is based on browser-visible evidence only: exposed strings, current assets, runtime requests, and surrounding request context. It deliberately separates observed behavior from inferred impact. Last reviewed: 2026-04-06.</p>
+        <div class="cta-box">
+          <h3>Use Source Detector to review the key together with the evidence around it</h3>
+          <p>Source Detector helps you inspect source maps, suspicious strings, and request behavior in one workflow, so API key findings stay grounded in what the browser really showed.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+        <h2>FAQs</h2>
+        <h3>Does a browser-visible API key always mean unsafe exposure?</h3>
+        <p>No. Some keys are intentionally public and tightly limited. The real question is what the browser can do with them.</p>
+        <h3>What makes a visible key more concerning?</h3>
+        <p>Live use in sensitive flows, weak-looking scope boundaries, and behavior that seems to authorize costly or privileged actions are stronger signals than static exposure alone.</p>
+        <h3>Can frontend evidence prove a key is fully restricted?</h3>
+        <p>No. Frontend evidence can reveal clues, not the complete backend policy.</p>
+      </article>
+      <footer><div class="footer-links"><a href="../../">Home</a><a href="../../faq/">FAQ</a><a href="../../privacy/">Privacy</a></div></footer>
+    </div>
+  </body>
+</html>
