@@ -4,6 +4,7 @@
 
 # risk-explainer
 
+
 # artifact-analysis
 
 # used
@@ -50,3 +51,5 @@ build-browser-evidence-package-for-security-review | How to build a browser evid
 why-public-endpoints-are-signals-not-proof | Why public endpoints are signals, not proof
 source-detector-high-intent-browser-visible-api-key-restrictions | Browser-Visible API Key Restrictions: What You Can Verify Without Overclaiming
 source-detector-workflow-feature-flag-hidden-dependencies | Feature Flags and Hidden Dependencies: A Browser Workflow for Security Review
+how-to-verify-whether-a-browser-visible-webhook-url-is-actually-sensitive | How to Verify Whether a Browser-Visible Webhook URL Is Actually Sensitive
+what-browser-visible-admin-labels-do-and-dont-prove | What Browser-Visible Admin Labels Do and Don’t Prove

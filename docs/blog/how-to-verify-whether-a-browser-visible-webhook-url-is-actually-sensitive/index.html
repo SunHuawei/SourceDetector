@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Verify Whether a Browser-Visible Webhook URL Is Actually Sensitive | Source Detector</title>
+    <meta name="description" content="A high-intent guide for checking whether a browser-visible webhook URL is harmless routing detail, narrow client plumbing, or a signal that deserves manual security review." />
+    <meta property="og:title" content="How to Verify Whether a Browser-Visible Webhook URL Is Actually Sensitive" />
+    <meta property="og:description" content="Learn how to review browser-visible webhook URLs without jumping from a public endpoint string to confirmed exposure or impact." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/how-to-verify-whether-a-browser-visible-webhook-url-is-actually-sensitive/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/how-to-verify-whether-a-browser-visible-webhook-url-is-actually-sensitive/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"How to Verify Whether a Browser-Visible Webhook URL Is Actually Sensitive","description":"A high-intent guide for checking whether a browser-visible webhook URL is harmless routing detail, narrow client plumbing, or a signal that deserves manual security review.","url":"https://sunhuawei.github.io/SourceDetector/blog/how-to-verify-whether-a-browser-visible-webhook-url-is-actually-sensitive/","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"dateModified":"2026-04-08","datePublished":"2026-04-08"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+      <header>
+        <div class="eyebrow">High-intent guide · Webhook review · Verification-first</div>
+        <h1>How to Verify Whether a Browser-Visible Webhook URL Is Actually Sensitive</h1>
+        <p class="subhead">If a webhook URL appears in browser-visible code or runtime traffic, treat it as a signal worth reviewing, not automatic proof of exposed write access. In practice, some webhook-looking URLs are harmless routing artifacts, dead configuration, or narrowly scoped notification endpoints. Others deserve escalation because the browser can trigger meaningful downstream behavior, the URL appears live in production flows, or the surrounding context suggests broader operational authority. The useful review path is to classify where the URL appears, tie it to one concrete browser action, and separate naming drama from observable consequence. That keeps the finding credible and much easier to hand off for manual validation.</p>
+        <p class="meta">Category: high-intent · Search intent: learn how to assess whether a browser-visible webhook URL is meaningful exposure or just a weak frontend clue · Last reviewed: 2026-04-08</p>
+      </header>
+      <div class="panel"><strong>Short answer:</strong> a browser-visible webhook URL is more concerning when it is active in a live workflow, appears to accept meaningful event delivery or state-changing traffic, and lacks obvious scope boundaries. The URL string alone does not prove unauthorized access, exploitable behavior, or backend impact.</div>
+      <article>
+        <h2>What you can detect</h2>
+        <p>This method can help you tell whether a webhook-looking URL is part of current runtime behavior, whether it sits inside a narrow integration flow or a more consequential operational path, and whether the browser evidence justifies escalation. It is useful for separating real signal from stale environment residue, copied examples, analytics callbacks, and generic route names that only sound sensitive.</p>
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Runtime use:</strong> the URL appears in live requests, SDK setup, or browser-triggered flows rather than only in static code.</li>
+          <li><strong>Workflow relevance:</strong> the surrounding action involves uploads, notifications, exports, AI jobs, user-generated content, or other meaningful operations.</li>
+          <li><strong>Scope clues:</strong> the browser evidence suggests tenant binding, event scoping, signed routing, or one service family rather than broad account authority.</li>
+          <li><strong>Consequence clues:</strong> triggering the visible flow appears to enqueue work, deliver events, or change downstream state in a way that matters.</li>
+          <li><strong>Cross-evidence support:</strong> the same endpoint family appears in current assets, request logs, and feature context, which lowers the chance it is dead residue.</li>
+        </ul>
+        <h2>How to verify</h2>
+        <h3>1. Classify where the URL appears</h3>
+        <p>A webhook URL found in a source map comment, a dormant config object, and a live POST request are three different levels of evidence. Start by identifying whether you are looking at static residue, current initialization data, or an actively used network path.</p>
+        <h3>2. Tie it to one reproducible browser action</h3>
+        <p>Trigger one normal action and watch whether the webhook-related request appears. A URL that only exists in code is weaker than one clearly tied to a product flow like file processing, notifications, form submission, or background job dispatch.</p>
+        <h3>3. Inspect the surrounding request family</h3>
+        <p>Look at method, destination, headers at a high level, timing, and neighboring requests. A narrow event callback usually reads differently from a path that appears to drive more general write behavior.</p>
+        <h3>4. Compare the strongest harmless explanation</h3>
+        <p>Many webhook-looking paths are simply integration plumbing, signed relay URLs, or route templates. Write down the best normal explanation before reaching for stronger language. It is one of the fastest ways to avoid overclaiming.</p>
+        <h3>5. State the narrowest supportable conclusion</h3>
+        <p>A strong review note sounds like this: the browser exposes a live webhook-related endpoint during workflow X, and the surrounding traffic suggests meaningful downstream processing, so the finding deserves manual validation for scope and authorization. That is much better than treating a public-looking URL as proof of exposure.</p>
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Dead config residue:</strong> old webhook routes often remain in assets after the active integration changes.</li>
+          <li><strong>Route templates:</strong> some strings are only templated path fragments or assembly pieces rather than usable live destinations.</li>
+          <li><strong>Narrow signed plumbing:</strong> a browser-visible callback can still be tightly constrained to one event path or one short-lived context.</li>
+          <li><strong>Webhook-like naming with ordinary purpose:</strong> teams reuse event vocabulary for internal UI routes and service wrappers that are not sensitive on their own.</li>
+        </ul>
+        <h2>Limits and non-proof</h2>
+        <p>Browser evidence does not prove that a webhook endpoint accepts arbitrary traffic, can be replayed safely outside the observed session, or carries meaningful privilege beyond the visible flow. It does not prove exploitability, secret leakage, or compromise. Public visibility is a useful clue. Impact still needs stronger validation.</p>
+        <h2>When to escalate</h2>
+        <ul>
+          <li>The endpoint is active in production runtime and tied to state-changing or cost-bearing workflows.</li>
+          <li>The browser appears able to reach a provider-facing or operationally meaningful event path directly.</li>
+          <li>The same endpoint family appears across assets, sessions, or product areas, which raises confidence it is current and important.</li>
+          <li>The evidence materially changes how a reviewer understands the app's trust boundary, even if impact remains unproven.</li>
+        </ul>
+        <h2>Methodology + last reviewed</h2>
+        <p>This article is based on browser-visible evidence only: current assets, runtime requests, and surrounding workflow context observed during normal browsing. It deliberately separates endpoint visibility from confirmed backend weakness. Last reviewed: 2026-04-08.</p>
+        <div class="cta-box">
+          <h3>Use Source Detector to review webhook clues together with the surrounding browser evidence</h3>
+          <p>Source Detector helps you inspect source maps, suspicious strings, and request behavior in one workflow, so webhook-related findings stay attached to what the browser actually showed instead of turning into loose, overstated fragments.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+        <h2>FAQs</h2>
+        <h3>Does a browser-visible webhook URL always mean exposed write access?</h3>
+        <p>No. It may be narrow integration plumbing, old residue, or a route that still has meaningful backend controls.</p>
+        <h3>What makes a webhook URL more important?</h3>
+        <p>Live runtime use, linkage to meaningful product flows, and browser evidence that suggests real downstream processing usually make the clue stronger.</p>
+        <h3>Can browser evidence prove a webhook is unrestricted?</h3>
+        <p>No. It can reveal strong escalation cues, but not the full server-side policy or acceptance rules.</p>
+        <h3>What should I preserve for manual review?</h3>
+        <p>The exact browser action, request context, neighboring traffic, and the narrowest credible explanation of what the visible endpoint seems to do.</p>
+      </article>
+      <footer><div class="footer-links"><a href="../../">Home</a><a href="../../faq/">FAQ</a><a href="../../privacy/">Privacy</a></div></footer>
+    </div>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does a browser-visible webhook URL always mean exposed write access?","acceptedAnswer":{"@type":"Answer","text":"No. It may be narrow integration plumbing, old residue, or a route that still has meaningful backend controls."}},{"@type":"Question","name":"What makes a webhook URL more important?","acceptedAnswer":{"@type":"Answer","text":"Live runtime use, linkage to meaningful product flows, and browser evidence that suggests real downstream processing usually make the clue stronger."}},{"@type":"Question","name":"Can browser evidence prove a webhook is unrestricted?","acceptedAnswer":{"@type":"Answer","text":"No. It can reveal strong escalation cues, but not the full server-side policy or acceptance rules."}},{"@type":"Question","name":"What should I preserve for manual review?","acceptedAnswer":{"@type":"Answer","text":"The exact browser action, request context, neighboring traffic, and the narrowest credible explanation of what the visible endpoint seems to do."}}]}</script>
+  </body>
+</html>
