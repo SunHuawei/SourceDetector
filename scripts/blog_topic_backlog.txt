@@ -8,6 +8,8 @@
 # artifact-analysis
 
 # used
+how-to-assess-browser-visible-recaptcha-site-keys-without-overclaiming | How to Assess Browser-Visible reCAPTCHA Site Keys Without Overclaiming
+what-browser-visible-upload-endpoints-do-and-dont-prove-about-storage-exposure | What Browser-Visible Upload Endpoints Do and Don’t Prove About Storage Exposure
 how-to-assess-browser-visible-sentry-dsn-risk | How to Assess Browser-Visible Sentry DSN Risk Without Overclaiming
 what-browser-visible-environment-labels-do-and-dont-prove | What Browser-Visible Environment Labels Do and Don’t Prove
 how-to-assess-browser-visible-openai-realtime-config-without-overclaiming | How to Assess Browser-Visible OpenAI Realtime Config Without Overclaiming

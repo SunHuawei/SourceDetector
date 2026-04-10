@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>What Browser-Visible Upload Endpoints Do and Don’t Prove About Storage Exposure | Source Detector</title>
+    <meta name="description" content="A risk explainer for reviewing browser-visible upload endpoints, presigned flows, and storage clues without confusing operational signals with proof of unauthorized access." />
+    <meta property="og:title" content="What Browser-Visible Upload Endpoints Do and Don’t Prove About Storage Exposure" />
+    <meta property="og:description" content="Learn what browser-visible upload endpoints can reveal about storage architecture, and where the evidence stops short of proving sensitive exposure." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/what-browser-visible-upload-endpoints-do-and-dont-prove-about-storage-exposure/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/what-browser-visible-upload-endpoints-do-and-dont-prove-about-storage-exposure/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"What Browser-Visible Upload Endpoints Do and Don’t Prove About Storage Exposure","description":"A risk explainer for reviewing browser-visible upload endpoints, presigned flows, and storage clues without confusing operational signals with proof of unauthorized access.","url":"https://sunhuawei.github.io/SourceDetector/blog/what-browser-visible-upload-endpoints-do-and-dont-prove-about-storage-exposure/","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"dateModified":"2026-04-11","datePublished":"2026-04-11"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+      <header>
+        <div class="eyebrow">Risk explainer · Upload flows · Signals vs proof</div>
+        <h1>What Browser-Visible Upload Endpoints Do and Don’t Prove About Storage Exposure</h1>
+        <p class="subhead">Upload flows almost always leave visible traces in the browser. You may see a storage domain, a presigned request, a multipart upload path, or a backend endpoint that hands back temporary upload instructions. Those traces are useful. They tell you where files move, which vendors may be involved, how the application segments ingestion, and sometimes whether a supposedly simple product hides a larger storage architecture underneath. What they do not do, by themselves, is prove open buckets, unauthorized read access, or a storage vulnerability. Good review work is about separating operational evidence from claims the browser cannot support.</p>
+        <p class="meta">Category: risk-explainer · Search intent: understand what browser-visible upload endpoints, storage domains, and presigned flows really prove during frontend security review · Last reviewed: 2026-04-11</p>
+      </header>
+      <div class="panel"><strong>Short answer:</strong> browser-visible upload endpoints are valuable architecture signals. They can show live ingestion paths, storage vendors, and trust-boundary handoffs. They do not automatically prove exposed storage, unauthorized access, or a breach.</div>
+      <article>
+        <h2>What you can detect</h2>
+        <p>This method can detect whether a web app uses direct-to-storage uploads, brokered backend upload setup, multipart file handling, temporary upload credentials, or third-party media infrastructure. It can also reveal whether upload behavior changes across product tiers, roles, or routes, which is often useful during recon and technical audit work.</p>
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Endpoint family:</strong> direct calls to storage domains, CDN-backed upload services, or backend endpoints that return upload instructions.</li>
+          <li><strong>Presign behavior:</strong> short-lived parameters, signed URLs, policy documents, or tokenized form fields generated just before upload.</li>
+          <li><strong>Object handling clues:</strong> MIME checks, size constraints, chunking, multipart orchestration, or media-processing hints.</li>
+          <li><strong>Role or route sensitivity:</strong> uploads available only after login, in admin-like areas, or during higher-trust workflows.</li>
+          <li><strong>Cross-evidence correlation:</strong> upload endpoints that line up with source maps, config objects, or loaded SDKs elsewhere in the browser.</li>
+        </ul>
+        <h2>How to verify</h2>
+        <h3>1. Map the upload path end to end</h3>
+        <p>Start with one real upload action and note each handoff: page trigger, backend setup call, returned upload target, final storage destination, and post-upload confirmation. Even a simple file picker often hides a multi-step chain that is more informative than the endpoint hostname alone.</p>
+        <h3>2. Distinguish direct storage from brokered access</h3>
+        <p>A browser talking directly to storage with temporary instructions is not the same thing as a browser holding broad storage authority. The difference matters. Presigned flows often indicate a safer pattern than raw long-lived credentials or overly generic client-side upload APIs.</p>
+        <h3>3. Check whether the same path appears across contexts</h3>
+        <p>Compare guest versus authenticated flows, basic versus advanced product routes, or one workspace versus another. Reuse patterns can reveal whether the upload system is narrowly scoped or part of a much wider storage architecture.</p>
+        <h3>4. Describe the evidence without inflating it</h3>
+        <p>The useful claim is usually architectural: the browser uses a brokered upload flow backed by storage service X and temporary parameters. That is stronger and more accurate than claiming open storage exposure because you saw a bucket-like hostname or a presigned request.</p>
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Vendor hostnames that look scary:</strong> seeing a storage domain does not mean the storage is public or misconfigured.</li>
+          <li><strong>Temporary upload instructions:</strong> presigned URLs are expected in many normal architectures.</li>
+          <li><strong>One-time test routes:</strong> onboarding or support tooling can expose upload paths that are not broadly reachable.</li>
+          <li><strong>Artifact names that imply storage detail:</strong> bucket-like labels or region codes can reveal infrastructure hints without exposing access.</li>
+        </ul>
+        <h2>Limits and what this does not prove</h2>
+        <p>Browser evidence does not prove unauthorized read access, bucket listing, cross-tenant access, weak object permissions, or exploitability. It also does not prove that presigned uploads are dangerously broad. Those claims require stronger verification outside ordinary browser observation.</p>
+        <h2>When to escalate</h2>
+        <ul>
+          <li>The upload flow touches sensitive documents, privileged roles, or high-trust administrative surfaces.</li>
+          <li>The browser appears to hold unusually broad upload authority rather than narrowly scoped temporary instructions.</li>
+          <li>Storage-related evidence lines up with other client-side signals such as exposed config, source maps, or suspicious request families.</li>
+          <li>The observed architecture changes your threat model enough that manual review is justified even without proof of impact.</li>
+        </ul>
+        <h2>Methodology + last reviewed</h2>
+        <p>This article is based on browser-visible evidence only: upload requests, returned parameters, surrounding runtime assets, and ordinary user-triggered flows. It treats storage clues as signals and keeps breach claims out unless stronger evidence exists. Last reviewed: 2026-04-11.</p>
+        <div class="cta-box">
+          <h3>Use Source Detector to keep upload-path findings attached to concrete browser evidence</h3>
+          <p>Source Detector helps you review source maps, suspicious strings, and request context in one workflow, so upload endpoint analysis stays grounded in what the browser actually revealed.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+        <h2>FAQs</h2>
+        <h3>Does a visible upload endpoint mean storage is exposed?</h3>
+        <p>No. It usually means the browser is participating in a normal upload workflow. Exposure still has to be proven.</p>
+        <h3>What makes an upload endpoint more interesting during review?</h3>
+        <p>It gets more interesting when the browser appears to receive broad authority, the flow touches sensitive material, or the same storage clues appear across multiple high-trust routes.</p>
+        <h3>Are presigned URLs automatically risky?</h3>
+        <p>No. They are common in well-designed upload flows. The question is how narrow, temporary, and context-bound they are.</p>
+      </article>
+      <footer><div class="footer-links"><a href="../../">Home</a><a href="../../faq/">FAQ</a><a href="../../privacy/">Privacy</a></div></footer>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Assess Browser-Visible reCAPTCHA Site Keys Without Overclaiming | Source Detector</title>
+    <meta name="description" content="A verification-first guide to reviewing browser-visible reCAPTCHA site keys, what they can signal, how to verify runtime use, and what they do not prove about backend protection." />
+    <meta property="og:title" content="How to Assess Browser-Visible reCAPTCHA Site Keys Without Overclaiming" />
+    <meta property="og:description" content="Learn how to review browser-visible reCAPTCHA site keys without confusing public integration data with proof of weak protection." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://sunhuawei.github.io/SourceDetector/blog/how-to-assess-browser-visible-recaptcha-site-keys-without-overclaiming/" />
+    <link rel="canonical" href="https://sunhuawei.github.io/SourceDetector/blog/how-to-assess-browser-visible-recaptcha-site-keys-without-overclaiming/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root { --bg:#0b1020; --panel:#12192b; --text:#edf2ff; --muted:#a6afc7; --line:#25314d; --accent:#7ab0ff; --accent2:#8ef0c9; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#0b1020 0%,#10172a 100%); color:var(--text); line-height:1.75; }
+      a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+      .wrap { max-width:920px; margin:0 auto; padding:28px 22px 72px; }
+      .nav,.footer-links,.btn-row { display:flex; flex-wrap:wrap; gap:14px; }
+      .eyebrow { display:inline-block; margin-bottom:14px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:13px; }
+      h1 { font-size:clamp(34px,5vw,54px); line-height:1.05; margin:0 0 16px; letter-spacing:-0.03em; }
+      h2 { font-size:29px; line-height:1.2; margin:44px 0 16px; }
+      h3 { font-size:21px; line-height:1.3; margin:28px 0 12px; }
+      p { margin:0 0 18px; } ul { padding-left:22px; margin:0 0 18px; } li { margin:0 0 10px; }
+      .subhead { font-size:20px; color:#d7e1f7; max-width:780px; margin:0 0 14px; }
+      .meta,.small { color:var(--muted); font-size:14px; }
+      .panel,.cta-box { margin:26px 0; background:rgba(18,25,43,.78); border:1px solid var(--line); border-radius:18px; padding:22px; }
+      .cta-box { background:linear-gradient(135deg,rgba(122,176,255,.12),rgba(142,240,201,.08)); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:12px; font-weight:600; border:1px solid var(--line); }
+      .btn-primary { background:var(--accent); color:#07101f; border-color:transparent; }
+      .btn-secondary { color:var(--text); }
+      code { background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.95em; }
+      footer { border-top:1px solid var(--line); margin-top:40px; padding-top:22px; color:var(--muted); }
+    </style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"How to Assess Browser-Visible reCAPTCHA Site Keys Without Overclaiming","description":"A verification-first guide to reviewing browser-visible reCAPTCHA site keys, what they can signal, how to verify runtime use, and what they do not prove about backend protection.","url":"https://sunhuawei.github.io/SourceDetector/blog/how-to-assess-browser-visible-recaptcha-site-keys-without-overclaiming/","author":{"@type":"Organization","name":"Source Detector"},"publisher":{"@type":"Organization","name":"Source Detector"},"dateModified":"2026-04-11","datePublished":"2026-04-11"}</script>
+    <script defer src="../../assets/website_analytics.js"></script>
+  </head>
+  <body data-page-type="blog_article">
+    <div class="wrap">
+      <div class="nav">
+        <a href="../../">← Source Detector home</a>
+        <a href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install on Chrome</a>
+        <a href="https://github.com/SunHuawei/SourceDetector">GitHub</a>
+      </div>
+      <header>
+        <div class="eyebrow">High-intent guide · Verification-first · Browser-visible config</div>
+        <h1>How to Assess Browser-Visible reCAPTCHA Site Keys Without Overclaiming</h1>
+        <p class="subhead">A browser-visible reCAPTCHA site key is usually not the smoking gun people want it to be. Site keys are meant to appear in the client so the page can load the challenge, score requests, or bind anti-automation logic to a visible flow. That does not make every exposed key harmless, but it does mean the right question is narrower: what does the browser evidence tell you about live use, coverage, and trust boundaries, and what still requires backend confirmation? In practice, you can verify whether the key is actively tied to login, signup, checkout, or reset flows, whether it is reused broadly across routes, and whether the surrounding implementation looks disciplined or sloppy. What you cannot prove from the frontend alone is whether server-side validation is strong enough.</p>
+        <p class="meta">Category: high-intent · Search intent: assess whether a browser-visible reCAPTCHA site key is normal public configuration or a stronger signal that protection boundaries deserve review · Last reviewed: 2026-04-11</p>
+      </header>
+      <div class="panel"><strong>Short answer:</strong> a browser-visible reCAPTCHA site key is normally public integration data. It becomes more interesting when runtime behavior suggests weak coverage, inconsistent enforcement, or security-critical flows that depend on challenge logic you cannot verify from the browser alone.</div>
+      <article>
+        <h2>What you can detect</h2>
+        <p>This method can detect whether a visible site key is actively used in important user flows, whether challenge logic appears consistently across routes, whether the same key spans multiple app surfaces, and whether the implementation hints at operational gaps such as partial rollout, missing protection on adjacent flows, or weak separation between high-risk and low-risk actions.</p>
+        <h2>Signals to look for</h2>
+        <ul>
+          <li><strong>Live runtime use:</strong> the site key loads during one real flow such as login, account recovery, checkout, or sign-up.</li>
+          <li><strong>Coverage shape:</strong> some risky flows load challenge code while nearby flows with similar abuse potential do not.</li>
+          <li><strong>Cross-route reuse:</strong> the same key appears across unrelated product areas, which may indicate one shared anti-abuse policy.</li>
+          <li><strong>Request context:</strong> tokens, challenge scripts, or verification handoff appear in a way that shows the key is not dead residue.</li>
+          <li><strong>Implementation drift:</strong> challenge assets, callbacks, or form wiring differ across paths, which can matter during audit work.</li>
+        </ul>
+        <h2>How to verify</h2>
+        <h3>1. Tie the key to one concrete user flow</h3>
+        <p>Do not stop at the source match. Trigger one page action and confirm whether the key is loaded or referenced during a current browser interaction. A key sitting in an old bundle tells a different story from one driving a live checkout or reset path.</p>
+        <h3>2. Compare adjacent flows</h3>
+        <p>Good review work often comes from contrast. If sign-up uses challenge logic but password reset does not, or checkout is protected while promotional claim flows are not, that asymmetry is usually more valuable than the key string itself.</p>
+        <h3>3. Inspect the surrounding implementation</h3>
+        <p>Look at script loading, callback placement, token submission timing, and whether challenge state clearly feeds a server-bound request. You are not trying to reverse engineer the whole anti-bot system. You are checking whether the implementation looks current, coherent, and attached to the workflow people actually use.</p>
+        <h3>4. Write the narrowest supportable conclusion</h3>
+        <p>A defensible note sounds like this: the browser-visible site key is active in flow X, appears absent from adjacent flow Y, and suggests protection coverage should be manually reviewed. That is much stronger than claiming the key is a leaked secret or that the application is bypassable.</p>
+        <h2>Common false positives</h2>
+        <ul>
+          <li><strong>Public-by-design configuration:</strong> site keys are generally intended to be visible in the browser.</li>
+          <li><strong>Legacy script residue:</strong> old challenge integrations may remain in assets after the active path changed.</li>
+          <li><strong>Third-party plugin noise:</strong> templates or embedded widgets may ship a key that is not central to a sensitive flow.</li>
+          <li><strong>Static code matches without runtime use:</strong> a string match alone does not show active enforcement.</li>
+        </ul>
+        <h2>Limits and what this does not prove</h2>
+        <p>Browser evidence does not prove whether server-side verification is strict, whether tokens are validated correctly, or whether the challenge meaningfully blocks abuse. It does not prove bypass, vulnerability, or breach. At most, it shows how protection appears from the client and where manual review should focus next.</p>
+        <h2>When to escalate</h2>
+        <ul>
+          <li>The key is tied to sensitive flows such as login, reset, checkout, or high-volume submission endpoints.</li>
+          <li>Protection coverage appears inconsistent across flows with similar abuse potential.</li>
+          <li>The challenge wiring looks broken, partial, or detached from the final server-bound request.</li>
+          <li>The browser evidence changes how a reviewer should think about anti-abuse assumptions, even if impact is still unproven.</li>
+        </ul>
+        <h2>Methodology + last reviewed</h2>
+        <p>This article is based on browser-visible evidence only: current assets, challenge script loading, runtime callbacks, and request context observed during normal browsing. It separates public integration data from claims about backend enforcement. Last reviewed: 2026-04-11.</p>
+        <div class="cta-box">
+          <h3>Use Source Detector to keep reCAPTCHA findings tied to the rest of the browser evidence</h3>
+          <p>Source Detector helps you inspect source maps, suspicious strings, and client-side request context together, so public configuration findings stay grounded in real runtime behavior instead of loose assumptions.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/source-detector/aioimldmpakibclgckpdfpfkadbflfkn">Install Source Detector</a>
+            <a class="btn btn-secondary" href="https://github.com/SunHuawei/SourceDetector">View on GitHub</a>
+          </div>
+        </div>
+        <h2>FAQs</h2>
+        <h3>Is a reCAPTCHA site key supposed to be public?</h3>
+        <p>Usually yes. The browser needs it to load the challenge or score flow. Public visibility alone is not a secret leak.</p>
+        <h3>What makes a visible site key worth reviewing?</h3>
+        <p>It becomes worth reviewing when it is tied to sensitive flows, used inconsistently, or seems disconnected from the server-bound action it is meant to protect.</p>
+        <h3>Can frontend evidence prove reCAPTCHA is weak?</h3>
+        <p>No. It can show coverage clues and implementation hints, but not the full server-side validation story.</p>
+      </article>
+      <footer><div class="footer-links"><a href="../../">Home</a><a href="../../faq/">FAQ</a><a href="../../privacy/">Privacy</a></div></footer>
+    </div>
+  </body>
+</html>
