@@ -45,7 +45,7 @@
     "@typescript-eslint/eslint-plugin": "^8.17.0",
     "@typescript-eslint/parser": "^8.17.0",
     "archiver": "^5.3.1",
-    "esbuild": "^0.27.3",
+    "esbuild": "^0.28.1",
     "eslint": "^9.16.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.14",
@@ -55,7 +55,7 @@
     "prettier": "^3.4.2",
     "rimraf": "^5.0.5",
     "sharp": "^0.33.5",
-    "tsx": "^4.7.1",
+    "tsx": "^4.22.4",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.15.0"
   },
